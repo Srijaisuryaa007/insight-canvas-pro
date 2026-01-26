@@ -1,0 +1,259 @@
+import { useState, useCallback } from 'react';
+import { Upload, FileSpreadsheet, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
+import { parseCSV, createDataset } from '@/lib/dataParser';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useCredits } from '@/hooks/useCredits';
+import { useAuth } from '@/contexts/AuthContext';
+import { PLAN_LIMITS } from '@/types';
+
+interface DatasetUploaderProps {
+  onUploadComplete?: (data: Record<string, unknown>[]) => void;
+}
+
+export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [datasetName, setDatasetName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const { currentWorkspace, datasets, addDataset } = useWorkspace();
+  const { consumeCredits } = useCredits();
+  const { user } = useAuth();
+
+  const maxDatasets = user ? PLAN_LIMITS[user.plan].maxDatasets : 1;
+  const canUpload = maxDatasets === -1 || datasets.length < maxDatasets;
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setIsDragging(true);
+    } else if (e.type === 'dragleave') {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile && (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv'))) {
+      setFile(droppedFile);
+      setDatasetName(droppedFile.name.replace('.csv', ''));
+      setError(null);
+    } else {
+      setError('Please upload a CSV file');
+    }
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setDatasetName(selectedFile.name.replace('.csv', ''));
+      setError(null);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file || !currentWorkspace) return;
+
+    if (!canUpload) {
+      setError(`Dataset limit reached. Upgrade to Pro for unlimited datasets.`);
+      return;
+    }
+
+    if (!consumeCredits('upload-dataset')) {
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+    setError(null);
+
+    try {
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setProgress(prev => Math.min(prev + 10, 90));
+      }, 100);
+
+      const content = await file.text();
+      const data = parseCSV(content);
+
+      if (data.length === 0) {
+        throw new Error('No data found in file');
+      }
+
+      // Store data in localStorage
+      const dataset = createDataset(
+        datasetName || file.name,
+        file.name,
+        currentWorkspace.id,
+        data
+      );
+
+      localStorage.setItem(`datapulse_data_${dataset.id}`, JSON.stringify(data));
+      addDataset(dataset);
+
+      clearInterval(progressInterval);
+      setProgress(100);
+      setSuccess(true);
+
+      if (onUploadComplete) {
+        onUploadComplete(data);
+      }
+
+      // Reset after success
+      setTimeout(() => {
+        setFile(null);
+        setDatasetName('');
+        setProgress(0);
+        setSuccess(false);
+        setUploading(false);
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload dataset');
+      setUploading(false);
+      setProgress(0);
+    }
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    setDatasetName('');
+    setError(null);
+  };
+
+  return (
+    <Card className="p-6 bg-card border-border">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Upload Dataset</h3>
+          {!canUpload && (
+            <span className="text-sm text-destructive">
+              Limit: {datasets.length}/{maxDatasets} datasets
+            </span>
+          )}
+        </div>
+
+        {/* Drop Zone */}
+        <div
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          className={cn(
+            "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
+            isDragging 
+              ? "border-primary bg-primary/5" 
+              : "border-border hover:border-muted-foreground",
+            !canUpload && "opacity-50 pointer-events-none"
+          )}
+        >
+          {!file ? (
+            <div className="space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Upload className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm text-foreground">
+                  Drag and drop your CSV file here, or{' '}
+                  <label className="text-primary cursor-pointer hover:underline">
+                    browse
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      disabled={!canUpload}
+                    />
+                  </label>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Supports CSV files up to 10MB
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet className="h-8 w-8 text-primary" />
+                <div className="text-left">
+                  <p className="font-medium">{file.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={removeFile}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Dataset Name */}
+        {file && (
+          <div className="space-y-2">
+            <Label htmlFor="datasetName">Dataset Name</Label>
+            <Input
+              id="datasetName"
+              value={datasetName}
+              onChange={(e) => setDatasetName(e.target.value)}
+              placeholder="Enter dataset name"
+            />
+          </div>
+        )}
+
+        {/* Progress */}
+        {uploading && (
+          <div className="space-y-2">
+            <Progress value={progress} className="h-2" />
+            <p className="text-sm text-muted-foreground text-center">
+              {progress < 100 ? 'Processing...' : 'Complete!'}
+            </p>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-2 text-destructive text-sm">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        {/* Success */}
+        {success && (
+          <div className="flex items-center gap-2 text-emerald-500 text-sm">
+            <CheckCircle className="h-4 w-4" />
+            Dataset uploaded successfully!
+          </div>
+        )}
+
+        {/* Upload Button */}
+        {file && !uploading && !success && (
+          <Button 
+            onClick={handleUpload} 
+            className="w-full"
+            disabled={!datasetName.trim() || !canUpload}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Dataset (5 credits)
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}

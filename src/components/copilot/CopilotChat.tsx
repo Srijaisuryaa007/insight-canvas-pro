@@ -1,13 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Loader2, Lightbulb, BarChart3 } from 'lucide-react';
+import { Send, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useCopilot } from '@/hooks/useCopilot';
-import { useCredits } from '@/hooks/useCredits';
+import { askCopilot, CopilotResponse } from '@/lib/api';
+import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  metadata?: {
+    confidence?: number;
+    reasoning?: string;
+    suggestions?: string[];
+    chartRecommendation?: { type: string; reason: string };
+  };
+}
 
 interface CopilotChatProps {
   datasetId?: string;
@@ -15,9 +28,10 @@ interface CopilotChatProps {
 
 export function CopilotChat({ datasetId }: CopilotChatProps) {
   const [input, setInput] = useState('');
-  const { messages, isLoading, askCopilot } = useCopilot();
-  const { credits, getCreditCost } = useCredits();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { consumeCredits, getCreditCost, credits, isFeatureAvailable } = useSubscription();
 
   const copilotCost = getCreditCost('copilot-query');
 
@@ -31,14 +45,47 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const question = input;
+    if (!consumeCredits('copilot-query')) return;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: input,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
-    await askCopilot(question, datasetId);
+    setIsLoading(true);
+
+    try {
+      const history = messages.map(m => ({ role: m.role, content: m.content }));
+      const response = await askCopilot(input, datasetId, history);
+
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: response.answer,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          confidence: response.confidence,
+          reasoning: response.reasoning,
+          suggestions: response.suggestions,
+          chartRecommendation: response.chartRecommendation,
+        },
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Copilot error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSuggestionClick = async (suggestion: string) => {
     if (isLoading) return;
-    await askCopilot(suggestion, datasetId);
+    setInput(suggestion);
   };
 
   const quickSuggestions = [
@@ -63,7 +110,6 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-        {/* Messages */}
         <ScrollArea className="flex-1 px-4" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="py-8 text-center space-y-6">
@@ -76,8 +122,6 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
                   Ask questions about your data and get AI-powered insights
                 </p>
               </div>
-
-              {/* Quick Suggestions */}
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">Try asking:</p>
                 <div className="flex flex-wrap justify-center gap-2">
@@ -111,15 +155,48 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
                       <Sparkles className="h-4 w-4 text-primary" />
                     </div>
                   )}
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-lg px-4 py-2",
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
+                  <div className="max-w-[80%]">
+                    <div
+                      className={cn(
+                        "rounded-lg px-4 py-2",
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      )}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                    
+                    {/* AI Explainability */}
+                    {message.metadata && message.role === 'assistant' && (
+                      <div className="mt-2 space-y-2 text-xs">
+                        {message.metadata.confidence !== undefined && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <span>Confidence: {Math.round(message.metadata.confidence * 100)}%</span>
+                          </div>
+                        )}
+                        {message.metadata.reasoning && (
+                          <div className="text-muted-foreground italic">
+                            💡 {message.metadata.reasoning}
+                          </div>
+                        )}
+                        {message.metadata.suggestions && message.metadata.suggestions.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {message.metadata.suggestions.map((s, i) => (
+                              <Button
+                                key={i}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-6"
+                                onClick={() => handleSuggestionClick(s)}
+                              >
+                                {s}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                  >
-                    <p className="text-sm">{message.content}</p>
                   </div>
                 </div>
               ))}
@@ -138,7 +215,6 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
           )}
         </ScrollArea>
 
-        {/* Input */}
         <div className="p-4 border-t border-border">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
@@ -157,7 +233,7 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
             </Button>
           </form>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            {credits} credits remaining
+            {credits === Infinity ? 'Unlimited' : credits} credits remaining
           </p>
         </div>
       </CardContent>

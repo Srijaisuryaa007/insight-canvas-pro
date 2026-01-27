@@ -6,11 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { parseCSV, createDataset } from '@/lib/dataParser';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useCredits } from '@/hooks/useCredits';
-import { useAuth } from '@/contexts/AuthContext';
-import { PLAN_LIMITS } from '@/types';
+import { parseCSV, detectSchema } from '@/lib/dataParser';
+import { useData } from '@/contexts/DataContext';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface DatasetUploaderProps {
   onUploadComplete?: (data: Record<string, unknown>[]) => void;
@@ -25,12 +23,11 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const { currentWorkspace, datasets, addDataset } = useWorkspace();
-  const { consumeCredits } = useCredits();
-  const { user } = useAuth();
+  const { uploadData, datasets } = useData();
+  const { canAddDataset, getCreditCost } = useSubscription();
 
-  const maxDatasets = user ? PLAN_LIMITS[user.plan].maxDatasets : 1;
-  const canUpload = maxDatasets === -1 || datasets.length < maxDatasets;
+  const canUpload = canAddDataset(datasets.length);
+  const uploadCost = getCreditCost('upload-dataset');
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -67,14 +64,10 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
   };
 
   const handleUpload = async () => {
-    if (!file || !currentWorkspace) return;
+    if (!file) return;
 
     if (!canUpload) {
-      setError(`Dataset limit reached. Upgrade to Pro for unlimited datasets.`);
-      return;
-    }
-
-    if (!consumeCredits('upload-dataset')) {
+      setError('Dataset limit reached. Upgrade your plan.');
       return;
     }
 
@@ -83,9 +76,8 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
     setError(null);
 
     try {
-      // Simulate progress
       const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90));
+        setProgress(prev => Math.min(prev + 15, 85));
       }, 100);
 
       const content = await file.text();
@@ -95,33 +87,28 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
         throw new Error('No data found in file');
       }
 
-      // Store data in localStorage
-      const dataset = createDataset(
-        datasetName || file.name,
-        file.name,
-        currentWorkspace.id,
-        data
-      );
-
-      localStorage.setItem(`datapulse_data_${dataset.id}`, JSON.stringify(data));
-      addDataset(dataset);
-
       clearInterval(progressInterval);
-      setProgress(100);
-      setSuccess(true);
+      setProgress(90);
 
-      if (onUploadComplete) {
-        onUploadComplete(data);
-      }
+      // Upload to backend API
+      const success = await uploadData(datasetName || file.name, file.name, data);
 
-      // Reset after success
-      setTimeout(() => {
-        setFile(null);
-        setDatasetName('');
-        setProgress(0);
-        setSuccess(false);
+      if (success) {
+        setProgress(100);
+        setSuccess(true);
+        onUploadComplete?.(data);
+
+        setTimeout(() => {
+          setFile(null);
+          setDatasetName('');
+          setProgress(0);
+          setSuccess(false);
+          setUploading(false);
+        }, 2000);
+      } else {
         setUploading(false);
-      }, 2000);
+        setProgress(0);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload dataset');
       setUploading(false);
@@ -142,12 +129,11 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
           <h3 className="text-lg font-semibold">Upload Dataset</h3>
           {!canUpload && (
             <span className="text-sm text-destructive">
-              Limit: {datasets.length}/{maxDatasets} datasets
+              Dataset limit reached
             </span>
           )}
         </div>
 
-        {/* Drop Zone */}
         <div
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -203,7 +189,6 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
           )}
         </div>
 
-        {/* Dataset Name */}
         {file && (
           <div className="space-y-2">
             <Label htmlFor="datasetName">Dataset Name</Label>
@@ -216,17 +201,15 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
           </div>
         )}
 
-        {/* Progress */}
         {uploading && (
           <div className="space-y-2">
             <Progress value={progress} className="h-2" />
             <p className="text-sm text-muted-foreground text-center">
-              {progress < 100 ? 'Processing...' : 'Complete!'}
+              {progress < 100 ? 'Uploading to server...' : 'Complete!'}
             </p>
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <div className="flex items-center gap-2 text-destructive text-sm">
             <AlertCircle className="h-4 w-4" />
@@ -234,7 +217,6 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
           </div>
         )}
 
-        {/* Success */}
         {success && (
           <div className="flex items-center gap-2 text-emerald-500 text-sm">
             <CheckCircle className="h-4 w-4" />
@@ -242,7 +224,6 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
           </div>
         )}
 
-        {/* Upload Button */}
         {file && !uploading && !success && (
           <Button 
             onClick={handleUpload} 
@@ -250,7 +231,7 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
             disabled={!datasetName.trim() || !canUpload}
           >
             <Upload className="h-4 w-4 mr-2" />
-            Upload Dataset (5 credits)
+            Upload Dataset ({uploadCost} credits)
           </Button>
         )}
       </div>

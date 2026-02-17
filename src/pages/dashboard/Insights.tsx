@@ -1,111 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
-  Lightbulb, 
-  TrendingUp, 
-  AlertTriangle, 
-  BarChart3,
-  Loader2,
-  Sparkles
+  Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useCredits } from '@/hooks/useCredits';
-import { Insight, ChartType, CHART_LABELS } from '@/types';
-import { generateMockData } from '@/lib/dataParser';
+import { useData } from '@/contexts/DataContext';
+import { useInsights } from '@/hooks/useInsights';
+import { useSubscription } from '@/hooks/useSubscription';
+import { Insight } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 export default function Insights() {
-  const { currentDataset, datasets, selectDataset, insights, setInsights } = useWorkspace();
-  const { consumeCredits, getCreditCost } = useCredits();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [demoInsights, setDemoInsights] = useState<Insight[]>([]);
+  const { datasets, currentDataset, selectDataset } = useData();
+  const { isGenerating, insights, generateInsights } = useInsights();
+  const { getCreditCost } = useSubscription();
 
-  useEffect(() => {
-    // Generate demo insights
-    const mockInsights: Insight[] = [
-      {
-        id: '1',
-        datasetId: 'demo',
-        type: 'trend',
-        title: 'Revenue Growing Steadily',
-        description: 'Revenue has increased by 15% over the analyzed period, with Electronics leading the growth.',
-        confidence: 0.92,
-        chartType: 'line',
-        config: {},
-      },
-      {
-        id: '2',
-        datasetId: 'demo',
-        type: 'correlation',
-        title: 'Strong Price-Quantity Relationship',
-        description: 'There is a strong negative correlation (-0.78) between quantity sold and unit price.',
-        confidence: 0.85,
-        chartType: 'scatter',
-        config: {},
-      },
-      {
-        id: '3',
-        datasetId: 'demo',
-        type: 'anomaly',
-        title: 'Unusual Spike Detected',
-        description: 'An unusual spike in sales was detected on March 15th, 3.2x above average.',
-        confidence: 0.88,
-        chartType: 'bar',
-        config: {},
-      },
-      {
-        id: '4',
-        datasetId: 'demo',
-        type: 'distribution',
-        title: 'Regional Performance Varies',
-        description: 'The North region accounts for 35% of total revenue, while East underperforms at 12%.',
-        confidence: 0.95,
-        chartType: 'pie',
-        config: {},
-      },
-    ];
-    setDemoInsights(mockInsights);
-  }, []);
-
-  const handleGenerateInsights = async () => {
+  const handleGenerate = async () => {
     if (!currentDataset) return;
-    if (!consumeCredits('generate-insights')) return;
-
-    setIsGenerating(true);
-
-    // Simulate AI processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    const generatedInsights: Insight[] = [
-      {
-        id: crypto.randomUUID(),
-        datasetId: currentDataset.id,
-        type: 'trend',
-        title: 'Upward Trend Detected',
-        description: `Analysis of ${currentDataset.name} shows a positive trend in numeric columns over time.`,
-        confidence: 0.87,
-        chartType: 'line',
-        config: {},
-      },
-      {
-        id: crypto.randomUUID(),
-        datasetId: currentDataset.id,
-        type: 'distribution',
-        title: 'Data Distribution Analysis',
-        description: `The dataset shows a varied distribution across ${currentDataset.columns.length} columns.`,
-        confidence: 0.91,
-        chartType: 'bar',
-        config: {},
-      },
-    ];
-
-    setInsights(currentDataset.id, generatedInsights);
-    setIsGenerating(false);
+    await generateInsights(currentDataset.id);
   };
 
-  const getTypeIcon = (type: Insight['type']) => {
+  const getTypeIcon = (type: string) => {
     switch (type) {
       case 'trend': return TrendingUp;
       case 'anomaly': return AlertTriangle;
@@ -114,7 +30,7 @@ export default function Insights() {
     }
   };
 
-  const getTypeBadgeColor = (type: Insight['type']) => {
+  const getTypeBadgeColor = (type: string) => {
     switch (type) {
       case 'trend': return 'bg-emerald-500/20 text-emerald-600';
       case 'anomaly': return 'bg-amber-500/20 text-amber-600';
@@ -122,10 +38,6 @@ export default function Insights() {
       default: return 'bg-primary/20 text-primary';
     }
   };
-
-  const currentInsights = currentDataset 
-    ? insights[currentDataset.id] || [] 
-    : demoInsights;
 
   return (
     <div className="space-y-6">
@@ -135,83 +47,58 @@ export default function Insights() {
             <Lightbulb className="h-7 w-7 text-amber-500" />
             AI Insights
           </h1>
-          <p className="text-muted-foreground">
-            Discover hidden patterns and trends in your data
-          </p>
+          <p className="text-muted-foreground">Discover hidden patterns and trends in your data</p>
         </div>
         {currentDataset && (
-          <Button 
-            onClick={handleGenerateInsights}
-            disabled={isGenerating}
-            className="gap-2"
-          >
+          <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2">
             {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
+              <><Loader2 className="h-4 w-4 animate-spin" />Analyzing...</>
             ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Generate Insights ({getCreditCost('generate-insights')} credits)
-              </>
+              <><Sparkles className="h-4 w-4" />Generate Insights ({getCreditCost('generate-insights')} credits)</>
             )}
           </Button>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Dataset Selection */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Select Dataset</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <button
-                onClick={() => {}}
-                className={cn(
-                  "w-full p-3 rounded-lg text-left transition-colors",
-                  !currentDataset 
-                    ? "bg-primary/10 border border-primary/20" 
-                    : "hover:bg-muted"
-                )}
-              >
-                <span className="text-sm font-medium">Demo Data</span>
-              </button>
-              {datasets.map(ds => (
-                <button
-                  key={ds.id}
-                  onClick={() => selectDataset(ds.id)}
-                  className={cn(
-                    "w-full p-3 rounded-lg text-left transition-colors",
-                    currentDataset?.id === ds.id 
-                      ? "bg-primary/10 border border-primary/20" 
-                      : "hover:bg-muted"
-                  )}
-                >
-                  <span className="text-sm font-medium">{ds.name}</span>
-                </button>
-              ))}
-            </div>
+            {datasets.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No datasets available. Upload one first.</p>
+            ) : (
+              <div className="space-y-2">
+                {datasets.map(ds => (
+                  <button key={ds.id} onClick={() => selectDataset(ds.id)}
+                    className={cn("w-full p-3 rounded-lg text-left transition-colors",
+                      currentDataset?.id === ds.id ? "bg-primary/10 border border-primary/20" : "hover:bg-muted")}>
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">{ds.name}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Insights Grid */}
         <div className="lg:col-span-3">
-          {currentInsights.length === 0 ? (
+          {insights.length === 0 ? (
             <Card className="bg-card border-border">
               <CardContent className="py-12 text-center">
                 <Lightbulb className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="font-medium text-lg">No Insights Yet</h3>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Generate insights to discover patterns in your data
+                  {currentDataset ? 'Click Generate Insights to analyze your data' : 'Select a dataset first'}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {currentInsights.map(insight => {
+              {insights.map((insight: Insight) => {
                 const Icon = getTypeIcon(insight.type);
                 return (
                   <Card key={insight.id} className="bg-card border-border">
@@ -221,23 +108,24 @@ export default function Insights() {
                           <Icon className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium truncate">{insight.title}</h3>
+                          <h3 className="font-medium truncate">{insight.title}</h3>
+                          <p className="text-sm text-muted-foreground mb-3">{insight.description}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={cn("text-xs", getTypeBadgeColor(insight.type))}>{insight.type}</Badge>
+                            <Badge variant="outline" className="text-xs">{insight.chartType}</Badge>
+                            <span className="text-xs text-muted-foreground ml-auto">{Math.round(insight.confidence * 100)}% confidence</span>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {insight.description}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Badge className={cn("text-xs", getTypeBadgeColor(insight.type))}>
-                              {insight.type}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {CHART_LABELS[insight.chartType]}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground ml-auto">
-                              {Math.round(insight.confidence * 100)}% confidence
-                            </span>
-                          </div>
+                          {/* Explainability */}
+                          {insight.reasoning && (
+                            <p className="text-xs text-muted-foreground mt-2 italic">💡 {insight.reasoning}</p>
+                          )}
+                          {insight.suggestedActions && insight.suggestedActions.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {insight.suggestedActions.map((action: string, i: number) => (
+                                <Badge key={i} variant="secondary" className="text-xs">{action}</Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>

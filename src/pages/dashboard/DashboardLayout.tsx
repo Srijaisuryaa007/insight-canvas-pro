@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { TopBar } from '@/components/dashboard/TopBar';
+import { CommandPalette } from '@/components/dashboard/CommandPalette';
+import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -24,6 +28,13 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+      <CommandPalette
+        onUploadDataset={() => navigate('/dashboard/datasets')}
+        onRunQuality={() => navigate('/dashboard/quality')}
+        onGenerateInsights={() => navigate('/dashboard/insights')}
+        onAskCopilot={() => navigate('/dashboard/copilot')}
+      />
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
   );
 }

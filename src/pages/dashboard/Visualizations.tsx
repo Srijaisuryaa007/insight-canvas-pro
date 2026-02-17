@@ -1,88 +1,66 @@
 import { useState, useEffect } from 'react';
-import { 
-  BarChart3, 
-  Plus,
-  Lock,
-  Sparkles
-} from 'lucide-react';
+import { BarChart3, Lock, Sparkles } from 'lucide-react';
 import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useVisuals } from '@/hooks/useVisuals';
-import { ChartType, CHART_LABELS } from '@/types';
+import { useData } from '@/contexts/DataContext';
+import { useSubscription } from '@/hooks/useSubscription';
+import { CHART_TYPES_BY_PLAN } from '@/types/subscription';
 import { cn } from '@/lib/utils';
-import { generateMockData } from '@/lib/dataParser';
+
+const ALL_CHART_LABELS: Record<string, string> = {
+  bar: 'Bar Chart', line: 'Line Chart', pie: 'Pie Chart', area: 'Area Chart',
+  scatter: 'Scatter Plot', radar: 'Radar Chart', heatmap: 'Heatmap', treemap: 'Treemap',
+  funnel: 'Funnel', gauge: 'Gauge', boxplot: 'Box Plot', histogram: 'Histogram',
+  waterfall: 'Waterfall', bubble: 'Bubble', candlestick: 'Candlestick', sankey: 'Sankey',
+  sunburst: 'Sunburst', polar: 'Polar', stream: 'Stream', calendar: 'Calendar',
+  geo: 'Geo Map', choropleth: 'Choropleth', network: 'Network', force: 'Force',
+  tree: 'Tree', parallel: 'Parallel', 'word-cloud': 'Word Cloud', timeline: 'Timeline',
+  '3d-scatter': '3D Scatter', '3d-surface': '3D Surface',
+};
 
 export default function Visualizations() {
-  const { currentDataset, datasets, selectDataset } = useWorkspace();
-  const { getAllCharts, getAvailableCharts, isChartAvailable, plan } = useVisuals();
-  
-  const [selectedChart, setSelectedChart] = useState<ChartType>('bar');
-  const [xAxis, setXAxis] = useState<string>('');
-  const [yAxis, setYAxis] = useState<string>('');
-  const [chartData, setChartData] = useState<Record<string, unknown>[]>([]);
+  const { datasets, currentDataset, currentData, selectDataset } = useData();
+  const { plan, isChartAvailable, getAvailableCharts } = useSubscription();
+
+  const [selectedChart, setSelectedChart] = useState('bar');
+  const [xAxis, setXAxis] = useState('');
+  const [yAxis, setYAxis] = useState('');
+
+  // All 30 chart types
+  const allCharts = Object.keys(ALL_CHART_LABELS);
+  const availableCharts = getAvailableCharts();
 
   useEffect(() => {
-    // Load demo data or actual dataset data
-    if (currentDataset) {
-      const storedData = localStorage.getItem(`datapulse_data_${currentDataset.id}`);
-      if (storedData) {
-        const data = JSON.parse(storedData);
-        setChartData(data);
-        if (currentDataset.columns.length > 0) {
-          const stringCol = currentDataset.columns.find(c => c.type === 'string');
-          const numCol = currentDataset.columns.find(c => c.type === 'number');
-          if (stringCol) setXAxis(stringCol.name);
-          if (numCol) setYAxis(numCol.name);
-        }
-      }
-    } else {
-      const { data } = generateMockData();
-      setChartData(data);
-      setXAxis('category');
-      setYAxis('revenue');
+    if (currentDataset && currentData.length > 0) {
+      const keys = Object.keys(currentData[0]);
+      const stringKey = keys.find(k => typeof currentData[0][k] === 'string');
+      const numKey = keys.find(k => typeof currentData[0][k] === 'number');
+      if (stringKey) setXAxis(stringKey);
+      if (numKey) setYAxis(numKey);
     }
-  }, [currentDataset]);
+  }, [currentDataset, currentData]);
 
-  const availableCharts = getAvailableCharts();
-  const allCharts = getAllCharts();
+  const columns = currentData.length > 0
+    ? Object.keys(currentData[0]).map(name => ({
+        name,
+        type: typeof currentData[0][name] === 'number' ? 'number' as const : 'string' as const
+      }))
+    : [];
 
-  // Get columns for axis selection
-  const columns = currentDataset?.columns || [
-    { name: 'category', type: 'string' },
-    { name: 'region', type: 'string' },
-    { name: 'revenue', type: 'number' },
-    { name: 'quantity', type: 'number' },
-    { name: 'profit', type: 'number' },
-  ];
-
-  // Aggregate data for visualization
   const getAggregatedData = () => {
-    if (!xAxis || !yAxis) return [];
-    
-    const aggregated = chartData.reduce((acc, row) => {
+    if (!xAxis || !yAxis || currentData.length === 0) return [];
+    return currentData.reduce((acc, row) => {
       const key = String(row[xAxis]);
-      const value = Number(row[yAxis]) || 0;
-      const existing = acc.find(a => a[xAxis] === key);
-      if (existing) {
-        (existing as Record<string, unknown>)[yAxis] = (Number(existing[yAxis]) || 0) + value;
-      } else {
-        acc.push({ [xAxis]: key, [yAxis]: value });
-      }
+      const val = Number(row[yAxis]) || 0;
+      const existing = acc.find((a: any) => a[xAxis] === key);
+      if (existing) existing[yAxis] = (Number(existing[yAxis]) || 0) + val;
+      else acc.push({ [xAxis]: key, [yAxis]: val });
       return acc;
     }, [] as Record<string, unknown>[]);
-
-    return aggregated;
   };
 
   return (
@@ -90,104 +68,64 @@ export default function Visualizations() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Visualizations</h1>
-          <p className="text-muted-foreground">
-            Create stunning charts from your data
-          </p>
+          <p className="text-muted-foreground">Create stunning charts from your data</p>
         </div>
-        <Badge variant="outline" className="capitalize">
-          {plan} Plan
-        </Badge>
+        <Badge variant="outline" className="capitalize">{plan} Plan • {availableCharts.length}/{allCharts.length} charts</Badge>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Chart Type Selection */}
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border max-h-[70vh] overflow-y-auto">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Chart Types</CardTitle>
+            <CardTitle className="text-base">Chart Types ({allCharts.length})</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1">
             {allCharts.map(chart => {
               const available = isChartAvailable(chart);
               return (
-                <button
-                  key={chart}
-                  onClick={() => setSelectedChart(chart)}
+                <button key={chart} onClick={() => available && setSelectedChart(chart)}
                   disabled={!available}
-                  className={cn(
-                    "w-full p-3 rounded-lg text-left transition-colors flex items-center justify-between",
-                    selectedChart === chart
-                      ? "bg-primary/10 border border-primary/20"
-                      : available
-                        ? "hover:bg-muted"
-                        : "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    <span className="text-sm">{CHART_LABELS[chart]}</span>
-                  </div>
-                  {!available && <Lock className="h-4 w-4 text-muted-foreground" />}
+                  className={cn("w-full p-2 rounded-lg text-left transition-colors flex items-center justify-between text-sm",
+                    selectedChart === chart ? "bg-primary/10 border border-primary/20"
+                      : available ? "hover:bg-muted" : "opacity-40 cursor-not-allowed")}>
+                  <span>{ALL_CHART_LABELS[chart] || chart}</span>
+                  {!available && <Lock className="h-3 w-3 text-muted-foreground" />}
                 </button>
               );
             })}
           </CardContent>
         </Card>
 
-        {/* Chart Configuration & Preview */}
         <div className="lg:col-span-3 space-y-6">
-          {/* Configuration */}
           <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Configure Chart</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Configure Chart</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Dataset</Label>
-                  <Select 
-                    value={currentDataset?.id || 'demo'} 
-                    onValueChange={(v) => v !== 'demo' && selectDataset(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select dataset" />
-                    </SelectTrigger>
+                  <Select value={currentDataset?.id || ''} onValueChange={(v) => selectDataset(v)}>
+                    <SelectTrigger><SelectValue placeholder="Select dataset" /></SelectTrigger>
                     <SelectContent className="bg-popover">
-                      <SelectItem value="demo">Demo Data</SelectItem>
                       {datasets.map(ds => (
                         <SelectItem key={ds.id} value={ds.id}>{ds.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label>X Axis</Label>
                   <Select value={xAxis} onValueChange={setXAxis}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select column" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                     <SelectContent className="bg-popover">
-                      {columns.map(col => (
-                        <SelectItem key={col.name} value={col.name}>
-                          {col.name}
-                        </SelectItem>
-                      ))}
+                      {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label>Y Axis</Label>
                   <Select value={yAxis} onValueChange={setYAxis}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select column" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                     <SelectContent className="bg-popover">
-                      {columns.filter(c => c.type === 'number').map(col => (
-                        <SelectItem key={col.name} value={col.name}>
-                          {col.name}
-                        </SelectItem>
-                      ))}
+                      {columns.filter(c => c.type === 'number').map(col => <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -195,40 +133,24 @@ export default function Visualizations() {
             </CardContent>
           </Card>
 
-          {/* Chart Preview */}
-          <VisualizationEngine
-            chartType={selectedChart}
-            data={getAggregatedData()}
-            xAxis={xAxis}
-            yAxis={yAxis}
-            title={`${CHART_LABELS[selectedChart]}: ${yAxis} by ${xAxis}`}
-            height={400}
-          />
-
-          {/* Available Charts Grid */}
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                More Visualizations
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {allCharts.filter(c => c !== selectedChart).slice(0, 4).map(chart => (
-                  <div key={chart} className="aspect-video">
-                    <VisualizationEngine
-                      chartType={chart}
-                      data={getAggregatedData().slice(0, 5)}
-                      xAxis={xAxis}
-                      yAxis={yAxis}
-                      height={120}
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {currentData.length > 0 ? (
+            <VisualizationEngine
+              chartType={selectedChart as any}
+              data={getAggregatedData()}
+              xAxis={xAxis}
+              yAxis={yAxis}
+              title={`${ALL_CHART_LABELS[selectedChart] || selectedChart}: ${yAxis} by ${xAxis}`}
+              height={400}
+            />
+          ) : (
+            <Card className="bg-card border-border">
+              <CardContent className="py-12 text-center">
+                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-medium text-lg">No Data</h3>
+                <p className="text-muted-foreground text-sm">Upload a dataset and select it to visualize</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

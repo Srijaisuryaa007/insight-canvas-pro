@@ -1,6 +1,7 @@
 import { useState, useCallback, createContext, useContext, ReactNode, useEffect } from 'react';
 import { uploadDataset, listDatasets, getDataset } from '@/lib/api';
 import { useSubscription } from '@/hooks/useSubscription';
+import { detectSchema } from '@/lib/dataParser';
 import { toast } from '@/hooks/use-toast';
 
 export interface Dataset {
@@ -50,12 +51,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const result = await listDatasets(WORKSPACE_ID);
-      setDatasets(result);
+      if (result.length > 0) {
+        setDatasets(result);
+      }
     } catch (error) {
       console.error('Failed to refresh datasets:', error);
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  /**
+   * Activate a dataset: set it as currentDataset and load its rows into currentData.
+   * This is the single convergence point for both upload and selection flows.
+   */
+  const activateDataset = useCallback((dataset: Dataset, data: Record<string, unknown>[]) => {
+    setCurrentDataset(dataset);
+    setCurrentData(data);
+    console.log('Active dataset:', dataset.name);
+    console.log('Rows loaded:', data.length);
   }, []);
 
   const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[]): Promise<boolean> => {
@@ -74,23 +88,42 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      const result = await uploadDataset(WORKSPACE_ID, name, fileName, data);
-      
-      if (result.success && result.dataset) {
-        await refreshDatasets();
-        toast({
-          title: 'Dataset Uploaded',
-          description: `${name} uploaded with ${data.length} rows.`
-        });
-        return true;
-      } else {
-        toast({
-          title: 'Upload Failed',
-          description: result.error || 'Unknown error',
-          variant: 'destructive'
-        });
-        return false;
+      // Detect schema from the parsed data
+      const columns = detectSchema(data);
+
+      // Build the dataset object locally from the parsed CSV
+      const localDataset: Dataset = {
+        id: crypto.randomUUID(),
+        name,
+        fileName,
+        rowCount: data.length,
+        columns,
+        uploadedAt: new Date().toISOString(),
+        data,
+      };
+
+      // Try sending to backend, but don't block on failure
+      try {
+        const result = await uploadDataset(WORKSPACE_ID, name, fileName, data, columns);
+        if (result.success && result.dataset) {
+          // Use backend-assigned ID if available
+          localDataset.id = result.dataset.id;
+        }
+      } catch (apiError) {
+        console.warn('[DataContext] Backend unavailable, using local-only mode:', apiError);
       }
+
+      // Add to datasets list
+      setDatasets(prev => [...prev, localDataset]);
+
+      // CRITICAL: Immediately activate the uploaded dataset
+      activateDataset(localDataset, data);
+
+      toast({
+        title: 'Dataset Uploaded',
+        description: `${name} uploaded with ${data.length} rows.`
+      });
+      return true;
     } catch (error) {
       console.error('Upload error:', error);
       toast({
@@ -102,24 +135,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [datasets.length, canAddDataset, consumeCredits, refreshDatasets]);
+  }, [datasets.length, canAddDataset, consumeCredits, activateDataset]);
 
   const selectDataset = useCallback(async (id: string) => {
+    // Check local datasets first (includes uploaded-in-session datasets)
     const dataset = datasets.find(d => d.id === id);
-    if (dataset) {
-      setCurrentDataset(dataset);
-      // Fetch full data
+    if (!dataset) return;
+
+    // If dataset already has data in memory, use it directly
+    if (dataset.data && dataset.data.length > 0) {
+      activateDataset(dataset, dataset.data);
+      return;
+    }
+
+    // Otherwise try fetching from backend
+    try {
       const fullDataset = await getDataset(WORKSPACE_ID, id);
       if (fullDataset?.data) {
-        setCurrentData(fullDataset.data);
+        activateDataset(dataset, fullDataset.data);
+        return;
       }
+    } catch (error) {
+      console.warn('[DataContext] Failed to fetch dataset from backend:', error);
     }
-  }, [datasets]);
+
+    // Fallback: activate with empty data (schema-only)
+    activateDataset(dataset, []);
+  }, [datasets, activateDataset]);
 
   const getDatasetData = useCallback(async (id: string): Promise<Record<string, unknown>[]> => {
-    const fullDataset = await getDataset(WORKSPACE_ID, id);
-    return fullDataset?.data || [];
-  }, []);
+    // Check in-memory first
+    const dataset = datasets.find(d => d.id === id);
+    if (dataset?.data && dataset.data.length > 0) {
+      return dataset.data;
+    }
+
+    try {
+      const fullDataset = await getDataset(WORKSPACE_ID, id);
+      return fullDataset?.data || [];
+    } catch {
+      return [];
+    }
+  }, [datasets]);
 
   return (
     <DataContext.Provider value={{

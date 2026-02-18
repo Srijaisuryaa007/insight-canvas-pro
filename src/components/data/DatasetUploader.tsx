@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Upload, FileSpreadsheet, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,9 +25,16 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
 
   const { uploadData, datasets } = useData();
   const { canAddDataset, getCreditCost } = useSubscription();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canUpload = canAddDataset(datasets.length);
   const uploadCost = getCreditCost('upload-dataset');
+
+  const triggerFilePicker = () => {
+    if (canUpload && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -134,17 +141,29 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
           )}
         </div>
 
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleFileSelect}
+          className="hidden"
+          disabled={!canUpload}
+        />
+
         <div
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          onClick={!file ? triggerFilePicker : undefined}
           className={cn(
             "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
             isDragging 
               ? "border-primary bg-primary/5" 
               : "border-border hover:border-muted-foreground",
-            !canUpload && "opacity-50 pointer-events-none"
+            !canUpload && "opacity-50 pointer-events-none",
+            !file && canUpload && "cursor-pointer"
           )}
         >
           {!file ? (
@@ -155,16 +174,9 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
               <div>
                 <p className="text-sm text-foreground">
                   Drag and drop your CSV file here, or{' '}
-                  <label className="text-primary cursor-pointer hover:underline">
+                  <span className="text-primary cursor-pointer hover:underline">
                     browse
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      disabled={!canUpload}
-                    />
-                  </label>
+                  </span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Supports CSV files up to 10MB
@@ -182,7 +194,7 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
                   </p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={removeFile}>
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); removeFile(); }}>
                 <X className="h-4 w-4" />
               </Button>
             </div>

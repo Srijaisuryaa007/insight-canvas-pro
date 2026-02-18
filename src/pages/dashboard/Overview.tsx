@@ -41,7 +41,7 @@ export default function Overview() {
   const [showUploader, setShowUploader] = useState(false);
   const [measures, setMeasures] = useState(loadMeasures());
 
-  const hasData = datasets.length > 0;
+  const hasData = currentDataset !== null && currentData.length > 0;
 
   useEffect(() => {
     refreshDatasets();

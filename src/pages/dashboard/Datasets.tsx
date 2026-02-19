@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows } from 'lucide-react';
+import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronDown, ChevronUp } from 'lucide-react';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { ColumnInspector } from '@/components/data/ColumnInspector';
 import { Button } from '@/components/ui/button';
@@ -7,19 +7,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useData } from '@/contexts/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export default function Datasets() {
-  const { datasets, currentDataset, selectDataset } = useData();
+  const { datasets, currentDataset, currentData, selectDataset } = useData();
   const [showUploader, setShowUploader] = useState(false);
+  const [viewingDataId, setViewingDataId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleViewQuality = (id: string) => {
     selectDataset(id);
     navigate('/dashboard/quality');
   };
+
+  const handleViewDetails = (id: string) => {
+    selectDataset(id);
+    setViewingDataId(prev => prev === id ? null : id);
+  };
+
+  // Data to show when viewing details
+  const viewData = viewingDataId && currentDataset?.id === viewingDataId ? currentData : [];
 
   return (
     <div className="space-y-6">
@@ -37,7 +47,7 @@ export default function Datasets() {
       {showUploader && <DatasetUploader onUploadComplete={() => setShowUploader(false)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
           <Card className="bg-card border-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -91,15 +101,15 @@ export default function Datasets() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => e.stopPropagation()}>
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-popover">
-                              <DropdownMenuItem onClick={() => selectDataset(dataset.id)}>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewDetails(dataset.id); }}>
                                 <Eye className="h-4 w-4 mr-2" />View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleViewQuality(dataset.id)}>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewQuality(dataset.id); }}>
                                 <Shield className="h-4 w-4 mr-2" />Quality Scan
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive">
@@ -115,6 +125,58 @@ export default function Datasets() {
               )}
             </CardContent>
           </Card>
+
+          {/* Data Preview Panel - shows when "View Details" clicked */}
+          {viewingDataId && viewData.length > 0 && (
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Eye className="h-5 w-5 text-primary" />
+                    Data Preview — {currentDataset?.name} ({viewData.length} rows × {Object.keys(viewData[0]).length} columns)
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setViewingDataId(null)}>
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px] w-full">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12 text-xs">#</TableHead>
+                          {Object.keys(viewData[0]).map(col => (
+                            <TableHead key={col} className="text-xs font-medium whitespace-nowrap">{col}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewData.slice(0, 100).map((row, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                            {Object.keys(viewData[0]).map(col => (
+                              <TableCell key={col} className="text-xs whitespace-nowrap max-w-[200px] truncate">
+                                {row[col] === null || row[col] === undefined ? (
+                                  <span className="text-muted-foreground italic">null</span>
+                                ) : (
+                                  String(row[col])
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {viewData.length > 100 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">Showing first 100 of {viewData.length} rows</p>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div>

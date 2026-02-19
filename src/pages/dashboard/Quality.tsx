@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play
+  Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,38 +13,48 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 export default function Quality() {
-  const { datasets, currentDataset, selectDataset } = useData();
-  const { isScanning, report, scanDataset } = useDataQuality();
+  const { datasets, currentDataset, currentData, selectDataset, updateCurrentData } = useData();
+  const { isScanning, report, scanDataset, getFixPreview, applyFix } = useDataQuality();
   const { getCreditCost } = useSubscription();
-  const [previewFixes, setPreviewFixes] = useState<Record<string, string> | null>(null);
+  const [previewFix, setPreviewFix] = useState<{ column: string; type: string; description: string; before: string; after: string; affectedRows: number } | null>(null);
 
   const handleScan = async () => {
     if (!currentDataset) return;
-    await scanDataset(currentDataset.id);
+    await scanDataset(currentDataset.id, currentData);
   };
 
   const handlePreviewFix = (column: string, type: string) => {
-    const fixDescription: Record<string, string> = {
-      'missing': `Fill missing values in "${column}" using mean/median imputation for numbers or mode for categorical data.`,
-      'duplicate': `Remove ${report?.issues.find(i => i.column === column && i.type === 'duplicate')?.count || 0} duplicate entries in "${column}".`,
-      'outlier': `Cap outliers in "${column}" using IQR method (values beyond Q1-1.5×IQR and Q3+1.5×IQR).`,
-      'invalid': `Standardize invalid values in "${column}" using type coercion and format normalization.`,
-    };
-    setPreviewFixes({ column, type, description: fixDescription[type] || 'Apply automatic fix.' });
-    toast({ title: 'Fix Preview', description: fixDescription[type] || 'Ready to apply.' });
+    const fix = getFixPreview(currentData, column, type);
+    setPreviewFix({
+      column,
+      type,
+      description: fix.description,
+      before: fix.preview.before,
+      after: fix.preview.after,
+      affectedRows: fix.preview.affectedRows,
+    });
   };
 
-  const handleApplyFix = () => {
-    if (previewFixes) {
-      toast({ title: 'Fix Applied', description: `Auto-fixed ${previewFixes.type} issues in "${previewFixes.column}". Re-scan to verify.` });
-      setPreviewFixes(null);
+  const handleApplyFix = async (column: string, type: string) => {
+    const newData = applyFix(currentData, column, type);
+    updateCurrentData(newData);
+    setPreviewFix(null);
+    toast({ title: 'Fix Applied', description: `Fixed ${type} issues in "${column}". Re-scan to verify.` });
+    // Auto re-scan
+    if (currentDataset) {
+      await scanDataset(currentDataset.id, newData);
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-emerald-500';
-    if (score >= 50) return 'text-amber-500';
-    return 'text-destructive';
+  const handleFixAll = async () => {
+    if (!report || !currentDataset) return;
+    let data = [...currentData];
+    for (const issue of report.issues) {
+      data = applyFix(data, issue.column, issue.type);
+    }
+    updateCurrentData(data);
+    toast({ title: 'All Fixes Applied', description: `Fixed ${report.issues.length} issue types. Re-scanning...` });
+    await scanDataset(currentDataset.id, data);
   };
 
   const getScoreBg = (score: number) => {
@@ -66,8 +76,13 @@ export default function Quality() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Data Quality</h1>
-          <p className="text-muted-foreground">Scan and improve your data quality</p>
+          <p className="text-muted-foreground">Scan, analyze, and fix your data quality issues</p>
         </div>
+        {report && report.issues.length > 0 && (
+          <Button variant="outline" onClick={handleFixAll} className="gap-2">
+            <Wand2 className="h-4 w-4" />Fix All ({report.issues.length} issues)
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -121,7 +136,7 @@ export default function Quality() {
                       <div>
                         <h3 className="font-semibold text-lg">{currentDataset.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {report ? `Score: ${report.overallScore}% • ${report.issues.length} issues` : 'Not scanned'}
+                          {report ? `Score: ${report.overallScore}% • ${report.issues.length} issues` : 'Not scanned yet'}
                         </p>
                       </div>
                     </div>
@@ -129,7 +144,7 @@ export default function Quality() {
                       {isScanning ? (
                         <><Loader2 className="h-4 w-4 animate-spin" />Scanning...</>
                       ) : (
-                        <><Shield className="h-4 w-4" />Scan ({getCreditCost('quality-scan')} credits)</>
+                        <><Shield className="h-4 w-4" />{report ? 'Re-Scan' : 'Scan'} ({getCreditCost('quality-scan')} credits)</>
                       )}
                     </Button>
                   </div>
@@ -137,7 +152,7 @@ export default function Quality() {
                 </CardContent>
               </Card>
 
-              {/* Explainability */}
+              {/* AI Analysis */}
               {report && (report as any).reasoning && (
                 <Card className="bg-card border-border">
                   <CardContent className="py-4">
@@ -157,17 +172,26 @@ export default function Quality() {
               )}
 
               {/* Preview fix panel */}
-              {previewFixes && (
+              {previewFix && (
                 <Card className="bg-chart-1/5 border-chart-1/20">
                   <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">Preview Fix: {previewFixes.type} in "{previewFixes.column}"</p>
-                        <p className="text-xs text-muted-foreground mt-1">{previewFixes.description}</p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">Preview Fix: {previewFix.type} in "{previewFix.column}"</p>
+                        <p className="text-xs text-muted-foreground mt-1">{previewFix.description}</p>
+                        <div className="grid grid-cols-2 gap-4 mt-3">
+                          <div className="p-2 rounded bg-destructive/10 text-xs">
+                            <span className="font-medium text-destructive">Before: </span>{previewFix.before}
+                          </div>
+                          <div className="p-2 rounded bg-emerald-500/10 text-xs">
+                            <span className="font-medium text-emerald-600">After: </span>{previewFix.after}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">{previewFix.affectedRows} rows will be affected</p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setPreviewFixes(null)}>Cancel</Button>
-                        <Button size="sm" onClick={handleApplyFix} className="gap-1">
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => setPreviewFix(null)}>Cancel</Button>
+                        <Button size="sm" onClick={() => handleApplyFix(previewFix.column, previewFix.type)} className="gap-1">
                           <Play className="h-3 w-3" /> Apply Fix
                         </Button>
                       </div>
@@ -187,7 +211,8 @@ export default function Quality() {
                     {report.issues.length === 0 ? (
                       <div className="py-8 text-center">
                         <CheckCircle className="h-12 w-12 mx-auto text-emerald-500 mb-4" />
-                        <h3 className="font-medium">No Issues!</h3>
+                        <h3 className="font-medium">No Issues Found!</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Your data quality is excellent.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -197,7 +222,7 @@ export default function Quality() {
                               <div className="flex items-start gap-3">
                                 {getSeverityIcon(issue.severity)}
                                 <div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-medium">{issue.column}</span>
                                     <Badge variant="outline" className="text-xs capitalize">{issue.type}</Badge>
                                     <Badge variant="outline" className={cn("text-xs capitalize",
@@ -212,14 +237,11 @@ export default function Quality() {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex gap-1">
+                              <div className="flex gap-1 shrink-0">
                                 <Button variant="outline" size="sm" className="gap-1" onClick={() => handlePreviewFix(issue.column, issue.type)}>
                                   <Eye className="h-3 w-3" /> Preview
                                 </Button>
-                                <Button variant="outline" size="sm" className="gap-1" onClick={() => {
-                                  handlePreviewFix(issue.column, issue.type);
-                                  setTimeout(handleApplyFix, 100);
-                                }}>
+                                <Button variant="outline" size="sm" className="gap-1" onClick={() => handleApplyFix(issue.column, issue.type)}>
                                   <Wand2 className="h-3 w-3" /> Auto Fix
                                 </Button>
                               </div>

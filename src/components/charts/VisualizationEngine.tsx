@@ -1,6 +1,5 @@
 import { ChartType } from '@/types';
-import { useVisuals } from '@/hooks/useVisuals';
-import { useCredits } from '@/hooks/useCredits';
+import { useSubscription } from '@/hooks/useSubscription';
 import { ChartRenderer } from './ChartRenderer';
 import { LockedChart } from './LockedChart';
 import { useEffect } from 'react';
@@ -12,6 +11,10 @@ interface VisualizationEngineProps {
   yAxis?: string;
   title?: string;
   height?: number;
+  colorPalette?: string;
+  showLegend?: boolean;
+  showGrid?: boolean;
+  showLabels?: boolean;
 }
 
 export function VisualizationEngine({
@@ -21,14 +24,16 @@ export function VisualizationEngine({
   yAxis,
   title,
   height = 300,
+  colorPalette,
+  showLegend = true,
+  showGrid = true,
+  showLabels = false,
 }: VisualizationEngineProps) {
-  const { isChartAvailable } = useVisuals();
-  const { consumeCredits } = useCredits();
+  const { isChartAvailable, consumeCredits } = useSubscription();
 
   const available = isChartAvailable(chartType);
 
   useEffect(() => {
-    // Consume credits when chart is rendered (only if available)
     if (available && data.length > 0) {
       consumeCredits('render-chart');
     }
@@ -46,6 +51,10 @@ export function VisualizationEngine({
       yAxis={yAxis}
       title={title}
       height={height}
+      colorPalette={colorPalette}
+      showLegend={showLegend}
+      showGrid={showGrid}
+      showLabels={showLabels}
     />
   );
 }

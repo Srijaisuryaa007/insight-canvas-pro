@@ -1,24 +1,28 @@
 import { useState } from 'react';
 import { 
-  Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database
+  Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database, Eye, Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useData } from '@/contexts/DataContext';
 import { useInsights } from '@/hooks/useInsights';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Insight } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 export default function Insights() {
-  const { datasets, currentDataset, selectDataset } = useData();
+  const { datasets, currentDataset, currentData, selectDataset } = useData();
   const { isGenerating, insights, generateInsights } = useInsights();
   const { getCreditCost } = useSubscription();
+  const navigate = useNavigate();
+  const [expandedInsight, setExpandedInsight] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!currentDataset) return;
-    await generateInsights(currentDataset.id);
+    await generateInsights(currentDataset.id, currentData);
   };
 
   const getTypeIcon = (type: string) => {
@@ -39,6 +43,10 @@ export default function Insights() {
     }
   };
 
+  const handleVisualize = (insight: Insight) => {
+    navigate('/dashboard/visualizations');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -47,7 +55,7 @@ export default function Insights() {
             <Lightbulb className="h-7 w-7 text-amber-500" />
             AI Insights
           </h1>
-          <p className="text-muted-foreground">Discover hidden patterns and trends in your data</p>
+          <p className="text-muted-foreground">Discover hidden patterns, trends, and anomalies</p>
         </div>
         {currentDataset && (
           <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2">
@@ -67,7 +75,7 @@ export default function Insights() {
           </CardHeader>
           <CardContent>
             {datasets.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No datasets available. Upload one first.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No datasets available.</p>
             ) : (
               <div className="space-y-2">
                 {datasets.map(ds => (
@@ -92,14 +100,15 @@ export default function Insights() {
                 <Lightbulb className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="font-medium text-lg">No Insights Yet</h3>
                 <p className="text-muted-foreground text-sm mt-1">
-                  {currentDataset ? 'Click Generate Insights to analyze your data' : 'Select a dataset first'}
+                  {currentDataset ? 'Click "Generate Insights" to analyze your data' : 'Select a dataset first'}
                 </p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               {insights.map((insight: Insight) => {
                 const Icon = getTypeIcon(insight.type);
+                const isExpanded = expandedInsight === insight.id;
                 return (
                   <Card key={insight.id} className="bg-card border-border">
                     <CardContent className="p-5">
@@ -108,22 +117,48 @@ export default function Insights() {
                           <Icon className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium truncate">{insight.title}</h3>
-                          <p className="text-sm text-muted-foreground mb-3">{insight.description}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-medium">{insight.title}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">{insight.description}</p>
+                          
+                          <div className="flex items-center gap-2 flex-wrap mt-3">
                             <Badge className={cn("text-xs", getTypeBadgeColor(insight.type))}>{insight.type}</Badge>
                             <Badge variant="outline" className="text-xs">{insight.chartType}</Badge>
-                            <span className="text-xs text-muted-foreground ml-auto">{Math.round(insight.confidence * 100)}% confidence</span>
+                            <div className="flex items-center gap-1 ml-auto">
+                              <span className="text-xs text-muted-foreground">Confidence:</span>
+                              <Progress value={insight.confidence * 100} className="h-1.5 w-16" />
+                              <span className="text-xs font-medium">{Math.round(insight.confidence * 100)}%</span>
+                            </div>
                           </div>
-                          {/* Explainability */}
-                          {insight.reasoning && (
-                            <p className="text-xs text-muted-foreground mt-2 italic">💡 {insight.reasoning}</p>
-                          )}
-                          {insight.suggestedActions && insight.suggestedActions.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {insight.suggestedActions.map((action: string, i: number) => (
-                                <Badge key={i} variant="secondary" className="text-xs">{action}</Badge>
-                              ))}
+
+                          {/* Action buttons */}
+                          <div className="flex gap-2 mt-3">
+                            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => handleVisualize(insight)}>
+                              <Eye className="h-3 w-3" />Visualize
+                            </Button>
+                            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setExpandedInsight(isExpanded ? null : insight.id)}>
+                              <Lightbulb className="h-3 w-3" />{isExpanded ? 'Hide' : 'Explain'}
+                            </Button>
+                          </div>
+
+                          {/* Expanded explanation */}
+                          {isExpanded && (
+                            <div className="mt-3 p-3 rounded-lg bg-muted/50 space-y-2">
+                              {insight.reasoning && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground">Statistical Reasoning: </span>
+                                  {insight.reasoning}
+                                </p>
+                              )}
+                              {insight.suggestedActions && insight.suggestedActions.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-foreground mb-1">Recommended Actions:</p>
+                                  <ul className="list-disc list-inside space-y-1">
+                                    {insight.suggestedActions.map((action, i) => (
+                                      <li key={i} className="text-xs text-muted-foreground">{action}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

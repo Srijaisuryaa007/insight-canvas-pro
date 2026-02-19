@@ -26,7 +26,7 @@ import Reports from "./pages/dashboard/Reports";
 import Settings from "./pages/dashboard/Settings";
 
 import NotFound from "./pages/NotFound";
-
+import DashboardView from "./pages/dashboard/DashboardView";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -55,6 +55,9 @@ const App = () => (
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
+                
+                {/* Standalone Dashboard View */}
+                <Route path="/dashboard/view" element={<DashboardView />} />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>

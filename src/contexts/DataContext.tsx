@@ -29,6 +29,7 @@ interface DataContextType {
   refreshDatasets: () => Promise<void>;
   selectDataset: (id: string) => Promise<void>;
   getDatasetData: (id: string) => Promise<Record<string, unknown>[]>;
+  updateCurrentData: (data: Record<string, unknown>[]) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -164,12 +165,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [datasets, activateDataset]);
 
   const getDatasetData = useCallback(async (id: string): Promise<Record<string, unknown>[]> => {
-    // Check in-memory first
     const dataset = datasets.find(d => d.id === id);
     if (dataset?.data && dataset.data.length > 0) {
       return dataset.data;
     }
-
     try {
       const fullDataset = await getDataset(WORKSPACE_ID, id);
       return fullDataset?.data || [];
@@ -177,6 +176,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return [];
     }
   }, [datasets]);
+
+  const updateCurrentData = useCallback((data: Record<string, unknown>[]) => {
+    setCurrentData(data);
+    if (currentDataset) {
+      setDatasets(prev => prev.map(d => d.id === currentDataset.id ? { ...d, data, rowCount: data.length } : d));
+    }
+    console.log('Data updated:', data.length, 'rows');
+  }, [currentDataset]);
 
   return (
     <DataContext.Provider value={{
@@ -187,7 +194,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       uploadData,
       refreshDatasets,
       selectDataset,
-      getDatasetData
+      getDatasetData,
+      updateCurrentData,
     }}>
       {children}
     </DataContext.Provider>

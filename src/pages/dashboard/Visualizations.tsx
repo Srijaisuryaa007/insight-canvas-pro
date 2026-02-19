@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { BarChart3, Lock, Sparkles } from 'lucide-react';
+import { BarChart3, Lock, Sparkles, Palette, SlidersHorizontal } from 'lucide-react';
 import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
-import { CHART_TYPES_BY_PLAN } from '@/types/subscription';
 import { cn } from '@/lib/utils';
 
 const ALL_CHART_LABELS: Record<string, string> = {
@@ -20,6 +21,9 @@ const ALL_CHART_LABELS: Record<string, string> = {
   geo: 'Geo Map', choropleth: 'Choropleth', network: 'Network', force: 'Force',
   tree: 'Tree', parallel: 'Parallel', 'word-cloud': 'Word Cloud', timeline: 'Timeline',
   '3d-scatter': '3D Scatter', '3d-surface': '3D Surface',
+  donut: 'Donut Chart', 'stacked-bar': 'Stacked Bar', 'grouped-bar': 'Grouped Bar',
+  'stacked-area': 'Stacked Area', pareto: 'Pareto Chart', bullet: 'Bullet',
+  progress: 'Progress', 'kpi-card': 'KPI Card',
 };
 
 export default function Visualizations() {
@@ -29,8 +33,12 @@ export default function Visualizations() {
   const [selectedChart, setSelectedChart] = useState('bar');
   const [xAxis, setXAxis] = useState('');
   const [yAxis, setYAxis] = useState('');
+  const [colorPalette, setColorPalette] = useState('default');
+  const [aggregation, setAggregation] = useState('sum');
+  const [showLegend, setShowLegend] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
 
-  // All 30 chart types
   const allCharts = Object.keys(ALL_CHART_LABELS);
   const availableCharts = getAvailableCharts();
 
@@ -57,10 +65,22 @@ export default function Visualizations() {
       const key = String(row[xAxis]);
       const val = Number(row[yAxis]) || 0;
       const existing = acc.find((a: any) => a[xAxis] === key);
-      if (existing) existing[yAxis] = (Number(existing[yAxis]) || 0) + val;
-      else acc.push({ [xAxis]: key, [yAxis]: val });
+      if (existing) {
+        const prev = Number(existing[yAxis]) || 0;
+        switch (aggregation) {
+          case 'sum': existing[yAxis] = prev + val; break;
+          case 'avg': existing[yAxis] = (prev * (existing._count - 1) + val) / existing._count; break;
+          case 'count': existing[yAxis] = existing._count; break;
+          case 'min': existing[yAxis] = Math.min(prev, val); break;
+          case 'max': existing[yAxis] = Math.max(prev, val); break;
+          default: existing[yAxis] = prev + val;
+        }
+        existing._count = (existing._count || 1) + 1;
+      } else {
+        acc.push({ [xAxis]: key, [yAxis]: val, _count: 1 });
+      }
       return acc;
-    }, [] as Record<string, unknown>[]);
+    }, [] as any[]).map(({ _count, ...rest }: any) => rest);
   };
 
   return (
@@ -96,6 +116,7 @@ export default function Visualizations() {
         </Card>
 
         <div className="lg:col-span-3 space-y-6">
+          {/* Configure Chart */}
           <Card className="bg-card border-border">
             <CardHeader className="pb-3"><CardTitle className="text-base">Configure Chart</CardTitle></CardHeader>
             <CardContent>
@@ -112,7 +133,7 @@ export default function Visualizations() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>X Axis</Label>
+                  <Label>X Axis (Dimension)</Label>
                   <Select value={xAxis} onValueChange={setXAxis}>
                     <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                     <SelectContent className="bg-popover">
@@ -121,13 +142,69 @@ export default function Visualizations() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Y Axis</Label>
+                  <Label>Y Axis (Measure)</Label>
                   <Select value={yAxis} onValueChange={setYAxis}>
                     <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                     <SelectContent className="bg-popover">
                       {columns.filter(c => c.type === 'number').map(col => <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Customization Panel */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Palette className="h-5 w-5" />Chart Customization
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Color Theme</Label>
+                  <Select value={colorPalette} onValueChange={setColorPalette}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="pastel">Pastel</SelectItem>
+                      <SelectItem value="bold">Bold</SelectItem>
+                      <SelectItem value="monochrome">Monochrome</SelectItem>
+                      <SelectItem value="ocean">Ocean</SelectItem>
+                      <SelectItem value="sunset">Sunset</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Aggregation</Label>
+                  <Select value={aggregation} onValueChange={setAggregation}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      <SelectItem value="sum">Sum</SelectItem>
+                      <SelectItem value="avg">Average</SelectItem>
+                      <SelectItem value="count">Count</SelectItem>
+                      <SelectItem value="min">Min</SelectItem>
+                      <SelectItem value="max">Max</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Legend</Label>
+                    <Switch checked={showLegend} onCheckedChange={setShowLegend} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Grid</Label>
+                    <Switch checked={showGrid} onCheckedChange={setShowGrid} />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Labels</Label>
+                    <Switch checked={showLabels} onCheckedChange={setShowLabels} />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -141,6 +218,10 @@ export default function Visualizations() {
               yAxis={yAxis}
               title={`${ALL_CHART_LABELS[selectedChart] || selectedChart}: ${yAxis} by ${xAxis}`}
               height={400}
+              colorPalette={colorPalette}
+              showLegend={showLegend}
+              showGrid={showGrid}
+              showLabels={showLabels}
             />
           ) : (
             <Card className="bg-card border-border">

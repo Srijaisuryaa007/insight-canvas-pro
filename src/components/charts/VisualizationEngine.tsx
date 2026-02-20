@@ -5,7 +5,7 @@ import { LockedChart } from './LockedChart';
 import { useEffect } from 'react';
 
 interface VisualizationEngineProps {
-  chartType: ChartType;
+  chartType: ChartType | string;
   data: Record<string, unknown>[];
   xAxis?: string;
   yAxis?: string;
@@ -15,6 +15,7 @@ interface VisualizationEngineProps {
   showLegend?: boolean;
   showGrid?: boolean;
   showLabels?: boolean;
+  onDataClick?: (dataPoint: Record<string, unknown>) => void;
 }
 
 export function VisualizationEngine({
@@ -28,6 +29,7 @@ export function VisualizationEngine({
   showLegend = true,
   showGrid = true,
   showLabels = false,
+  onDataClick,
 }: VisualizationEngineProps) {
   const { isChartAvailable, consumeCredits } = useSubscription();
 
@@ -55,6 +57,7 @@ export function VisualizationEngine({
       showLegend={showLegend}
       showGrid={showGrid}
       showLabels={showLabels}
+      onDataClick={onDataClick}
     />
   );
 }

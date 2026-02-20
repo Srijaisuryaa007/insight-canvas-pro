@@ -1,16 +1,34 @@
-import { FileText, Download, ExternalLink, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, Download, ExternalLink, Lock, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useExport } from '@/hooks/useExport';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/hooks/use-toast';
+
+const CHART_OPTIONS = [
+  { id: 'bar', label: 'Bar Chart' },
+  { id: 'pie', label: 'Pie / Donut' },
+  { id: 'line', label: 'Line Chart' },
+  { id: 'area', label: 'Area Chart' },
+  { id: 'table', label: 'Data Table' },
+  { id: 'kpis', label: 'KPI Cards' },
+];
 
 export default function Reports() {
   const { isFeatureAvailable } = useSubscription();
   const { exportCSV, exportPDF, canExportPDF } = useExport();
   const { currentData, currentDataset } = useData();
   const canExport = isFeatureAvailable('export-pdf');
+  const [selectedCharts, setSelectedCharts] = useState<string[]>(['bar', 'pie', 'kpis', 'table']);
+  const [showChartPicker, setShowChartPicker] = useState(false);
+
+  const toggleChart = (id: string) => {
+    setSelectedCharts(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
 
   const handleExportCSV = () => {
     if (currentData.length === 0) {
@@ -36,10 +54,10 @@ export default function Reports() {
       toast({ title: 'No data', description: 'Select a dataset first.', variant: 'destructive' });
       return;
     }
-    // Store data for cross-tab sharing
     localStorage.setItem('datapulse_dashboard_view', JSON.stringify({
       dataset: currentDataset,
       data: currentData.slice(0, 500),
+      charts: selectedCharts,
     }));
     window.open('/dashboard/view', '_blank');
   };
@@ -56,7 +74,6 @@ export default function Reports() {
     const catKey = strCols[0] || columns[0];
     const valKey = numCols[0] || columns[1];
 
-    // Aggregate
     const grouped: Record<string, number> = {};
     currentData.forEach(row => {
       const k = String(row[catKey]);
@@ -65,6 +82,26 @@ export default function Reports() {
 
     const totalSum = Object.values(grouped).reduce((a, b) => a + b, 0);
     const avgVal = totalSum / Object.keys(grouped).length;
+
+    const showKPIs = selectedCharts.includes('kpis');
+    const showBar = selectedCharts.includes('bar');
+    const showPie = selectedCharts.includes('pie');
+    const showLine = selectedCharts.includes('line');
+    const showArea = selectedCharts.includes('area');
+    const showTable = selectedCharts.includes('table');
+
+    const chartScripts: string[] = [];
+    if (showBar) chartScripts.push(`new Chart(document.getElementById('barChart'),{type:'bar',data:{labels,datasets:[{label:'${valKey}',data:values,backgroundColor:colors}]},options:{responsive:true,plugins:{legend:{display:false,position:'bottom'}}}});`);
+    if (showPie) chartScripts.push(`new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});`);
+    if (showLine) chartScripts.push(`new Chart(document.getElementById('lineChart'),{type:'line',data:{labels,datasets:[{label:'${valKey}',data:values,borderColor:colors[0],tension:0.3,fill:false}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});`);
+    if (showArea) chartScripts.push(`new Chart(document.getElementById('areaChart'),{type:'line',data:{labels,datasets:[{label:'${valKey}',data:values,borderColor:colors[0],backgroundColor:colors[0]+'33',tension:0.3,fill:true}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});`);
+
+    const chartCanvases = [
+      showBar ? '<div class="chart-card"><canvas id="barChart"></canvas></div>' : '',
+      showPie ? '<div class="chart-card"><canvas id="pieChart"></canvas></div>' : '',
+      showLine ? '<div class="chart-card"><canvas id="lineChart"></canvas></div>' : '',
+      showArea ? '<div class="chart-card"><canvas id="areaChart"></canvas></div>' : '',
+    ].filter(Boolean).join('\n');
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -90,26 +127,22 @@ th{color:#888;text-transform:uppercase;font-size:.7rem;letter-spacing:.05em}
 </head>
 <body>
 <h1>📊 ${currentDataset?.name || 'Dashboard'}</h1>
-<div class="kpis">
+${showKPIs ? `<div class="kpis">
   <div class="kpi"><div class="kpi-label">Total Rows</div><div class="kpi-value">${currentData.length.toLocaleString()}</div></div>
   <div class="kpi"><div class="kpi-label">Total ${valKey}</div><div class="kpi-value">${totalSum.toLocaleString()}</div></div>
   <div class="kpi"><div class="kpi-label">Average ${valKey}</div><div class="kpi-value">${avgVal.toFixed(1)}</div></div>
   <div class="kpi"><div class="kpi-label">Categories</div><div class="kpi-value">${Object.keys(grouped).length}</div></div>
-</div>
-<div class="charts">
-  <div class="chart-card"><canvas id="barChart"></canvas></div>
-  <div class="chart-card"><canvas id="pieChart"></canvas></div>
-</div>
-<table>
+</div>` : ''}
+<div class="charts">${chartCanvases}</div>
+${showTable ? `<table>
 <thead><tr>${columns.slice(0, 8).map(c => `<th>${c}</th>`).join('')}</tr></thead>
 <tbody>${currentData.slice(0, 20).map(r => `<tr>${columns.slice(0, 8).map(c => `<td>${r[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
-</table>
+</table>` : ''}
 <script>
 const labels=${JSON.stringify(Object.keys(grouped).slice(0, 15))};
 const values=${JSON.stringify(Object.values(grouped).slice(0, 15))};
 const colors=['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#ddd6fe','#ede9fe','#f5f3ff','#818cf8','#4f46e5','#4338ca','#3730a3','#312e81','#e0e7ff','#c7d2fe','#a5b4fc'];
-new Chart(document.getElementById('barChart'),{type:'bar',data:{labels,datasets:[{label:'${valKey}',data:values,backgroundColor:colors}]},options:{responsive:true,plugins:{legend:{display:false}}}});
-new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors}]},options:{responsive:true}});
+${chartScripts.join('\n')}
 </script>
 </body>
 </html>`;
@@ -162,6 +195,31 @@ new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels,data
           </CardContent>
         </Card>
       )}
+
+      {/* Chart Selection for Dashboard */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckSquare className="h-5 w-5" />
+            Select Dashboard Components
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">Choose which charts to include in the dashboard and download</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {CHART_OPTIONS.map(opt => (
+              <div key={opt.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={opt.id}
+                  checked={selectedCharts.includes(opt.id)}
+                  onCheckedChange={() => toggleChart(opt.id)}
+                />
+                <Label htmlFor={opt.id} className="text-sm cursor-pointer">{opt.label}</Label>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="bg-card border-border">

@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { ChartType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface ChartRendererProps {
   type: ChartType | string;
@@ -19,6 +20,7 @@ interface ChartRendererProps {
   showLegend?: boolean;
   showGrid?: boolean;
   showLabels?: boolean;
+  onDataClick?: (dataPoint: Record<string, unknown>) => void;
 }
 
 const COLOR_PALETTES: Record<string, string[]> = {
@@ -36,26 +38,75 @@ const tooltipStyle = {
   borderRadius: 'var(--radius)',
 };
 
+// Check data suitability for chart type
+function checkSuitability(type: string, data: Record<string, unknown>[], xAxis?: string, yAxis?: string): string | null {
+  if (!data.length) return 'No data available.';
+  if (!xAxis && !yAxis) return null;
+
+  const hasNumericY = yAxis && data.some(d => typeof d[yAxis] === 'number');
+  const hasStringX = xAxis && data.some(d => typeof d[xAxis] === 'string');
+  const hasNumericX = xAxis && data.some(d => typeof d[xAxis] === 'number');
+
+  switch (type) {
+    case 'scatter':
+    case 'bubble':
+      if (!hasNumericX || !hasNumericY) return `Scatter/Bubble requires numeric X and Y axes. Current: X="${xAxis}" (${hasNumericX ? 'numeric' : 'non-numeric'}), Y="${yAxis}" (${hasNumericY ? 'numeric' : 'non-numeric'}). Change column types or select numeric columns.`;
+      break;
+    case 'histogram':
+    case 'boxplot':
+      if (!hasNumericY) return `${type} requires a numeric column. "${yAxis}" is not numeric.`;
+      if (data.length < 5) return `${type} needs at least 5 data points. You have ${data.length}.`;
+      break;
+    case 'radar':
+    case 'polar':
+      if (data.length < 3) return `${type} needs at least 3 categories. You have ${data.length}.`;
+      break;
+    case 'pie':
+    case 'donut':
+      if (!hasNumericY) return `Pie/Donut requires numeric values. "${yAxis}" is not numeric.`;
+      break;
+  }
+  return null;
+}
+
 export function ChartRenderer({
   type, data, xAxis, yAxis, title, height = 300,
   colorPalette = 'default', showLegend = true, showGrid = true, showLabels = false,
+  onDataClick,
 }: ChartRendererProps) {
   const colors = COLOR_PALETTES[colorPalette] || COLOR_PALETTES.default;
 
+  const suitabilityIssue = useMemo(() => checkSuitability(type, data, xAxis, yAxis), [type, data, xAxis, yAxis]);
+
+  const handleClick = (payload: any) => {
+    if (onDataClick && payload) {
+      const point = payload.payload || payload;
+      onDataClick(point);
+    }
+  };
+
+  // Legend config: placed outside chart, wrapping enabled
+  const legendProps = showLegend ? {
+    verticalAlign: 'bottom' as const,
+    align: 'center' as const,
+    wrapperStyle: { paddingTop: '12px', fontSize: '12px', lineHeight: '20px' },
+    iconSize: 10,
+  } : null;
+
   const chartContent = useMemo(() => {
-    const commonProps = { data, margin: { top: 20, right: 30, left: 20, bottom: 20 } };
+    const commonProps = { data, margin: { top: 10, right: 20, left: 10, bottom: showLegend ? 30 : 10 } };
     const gridEl = showGrid ? <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /> : null;
-    const xEl = <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} />;
-    const yEl = <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />;
+    const xEl = <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />;
+    const yEl = <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} width={50} />;
     const ttEl = <Tooltip contentStyle={tooltipStyle} />;
-    const lgEl = showLegend ? <Legend /> : null;
+    const lgEl = legendProps ? <Legend {...legendProps} /> : null;
 
     switch (type) {
       case 'bar':
         return (
           <BarChart {...commonProps}>
             {gridEl}{xEl}{yEl}{ttEl}{lgEl}
-            <Bar dataKey={yAxis} fill={colors[0]} radius={[4, 4, 0, 0]}>
+            <Bar dataKey={yAxis} fill={colors[0]} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => handleClick(d)}>
               {showLabels && <LabelList dataKey={yAxis} position="top" fontSize={10} />}
             </Bar>
           </BarChart>
@@ -68,7 +119,7 @@ export function ChartRenderer({
           <BarChart {...commonProps}>
             {gridEl}{xEl}{yEl}{ttEl}{lgEl}
             {keys.slice(0, 5).map((k, i) => (
-              <Bar key={k} dataKey={k} fill={colors[i % colors.length]} stackId={type === 'stacked-bar' ? 'stack' : undefined} radius={[2, 2, 0, 0]} />
+              <Bar key={k} dataKey={k} fill={colors[i % colors.length]} stackId={type === 'stacked-bar' ? 'stack' : undefined} radius={[2, 2, 0, 0]} cursor="pointer" onClick={(d: any) => handleClick(d)} />
             ))}
           </BarChart>
         );
@@ -78,7 +129,7 @@ export function ChartRenderer({
         return (
           <LineChart {...commonProps}>
             {gridEl}{xEl}{yEl}{ttEl}{lgEl}
-            <Line type="monotone" dataKey={yAxis} stroke={colors[0]} strokeWidth={2} dot={{ fill: colors[0] }} />
+            <Line type="monotone" dataKey={yAxis} stroke={colors[0]} strokeWidth={2} dot={{ fill: colors[0], r: 3, cursor: 'pointer' }} activeDot={{ r: 5, onClick: (e: any, payload: any) => handleClick(payload) }} />
           </LineChart>
         );
 
@@ -107,56 +158,52 @@ export function ChartRenderer({
         return (
           <ScatterChart {...commonProps}>
             {gridEl}
-            <XAxis type="number" dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-            <YAxis type="number" dataKey={yAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <XAxis type="number" dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
+            <YAxis type="number" dataKey={yAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
             {ttEl}
-            <Scatter data={data} fill={colors[0]} />
+            <Scatter data={data} fill={colors[0]} cursor="pointer" onClick={(d: any) => handleClick(d)} />
           </ScatterChart>
         );
 
       case 'pie':
         return (
           <PieChart>
-            <Pie data={data} dataKey={yAxis || 'value'} nameKey={xAxis || 'name'} cx="50%" cy="50%" outerRadius={100} label={showLabels}>
+            <Pie data={data} dataKey={yAxis || 'value'} nameKey={xAxis || 'name'} cx="50%" cy="45%" outerRadius={Math.min(height * 0.3, 100)} label={showLabels} cursor="pointer" onClick={(d: any) => handleClick(d)}>
               {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
             </Pie>
-            {ttEl}{lgEl}
+            {ttEl}
+            {legendProps && <Legend {...legendProps} layout="horizontal" />}
           </PieChart>
         );
 
       case 'donut':
         return (
           <PieChart>
-            <Pie data={data} dataKey={yAxis || 'value'} nameKey={xAxis || 'name'} cx="50%" cy="50%" innerRadius={60} outerRadius={100} label={showLabels}>
+            <Pie data={data} dataKey={yAxis || 'value'} nameKey={xAxis || 'name'} cx="50%" cy="45%" innerRadius={50} outerRadius={Math.min(height * 0.3, 100)} label={showLabels} cursor="pointer" onClick={(d: any) => handleClick(d)}>
               {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
             </Pie>
-            {ttEl}{lgEl}
+            {ttEl}
+            {legendProps && <Legend {...legendProps} layout="horizontal" />}
           </PieChart>
         );
 
       case 'radar':
         return (
-          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
             <PolarGrid stroke="hsl(var(--border))" />
-            <PolarAngleAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <PolarAngleAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} />
             <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
             <Radar dataKey={yAxis} stroke={colors[0]} fill={colors[0]} fillOpacity={0.5} />
             {ttEl}
+            {lgEl}
           </RadarChart>
         );
 
       case 'treemap': {
         const treemapData = data.map((d, i) => ({ name: String(d[xAxis || 'name']), size: Number(d[yAxis || 'value']) || 0, fill: colors[i % colors.length] }));
         return (
-          <Treemap
-            data={treemapData}
-            dataKey="size"
-            aspectRatio={4 / 3}
-            stroke="hsl(var(--border))"
-          >
-            {treemapData.map((entry, i) => (
-              <Cell key={i} fill={entry.fill} />
-            ))}
+          <Treemap data={treemapData} dataKey="size" aspectRatio={4 / 3} stroke="hsl(var(--border))">
+            {treemapData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
             {ttEl}
           </Treemap>
         );
@@ -173,7 +220,6 @@ export function ChartRenderer({
         );
 
       case 'histogram': {
-        // Compute bins from raw numeric values
         const vals = data.map(d => Number(d[yAxis]) || 0);
         const min = Math.min(...vals);
         const max = Math.max(...vals);
@@ -187,10 +233,10 @@ export function ChartRenderer({
           bins.push({ range: `${lo.toFixed(0)}-${hi.toFixed(0)}`, count });
         }
         return (
-          <BarChart data={bins} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <BarChart data={bins} margin={{ top: 10, right: 20, left: 10, bottom: showLegend ? 30 : 10 }}>
             {gridEl}
-            <XAxis dataKey="range" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <XAxis dataKey="range" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} />
+            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
             {ttEl}
             <Bar dataKey="count" fill={colors[0]} radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -206,10 +252,10 @@ export function ChartRenderer({
           return { name: String(d[xAxis] || i), value: val, start, end: cumulative };
         });
         return (
-          <BarChart data={waterfallData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <BarChart data={waterfallData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
             {gridEl}
-            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
+            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
             {ttEl}
             <Bar dataKey="start" stackId="waterfall" fill="transparent" />
             <Bar dataKey="value" stackId="waterfall" fill={colors[0]} radius={[2, 2, 0, 0]}>
@@ -230,11 +276,11 @@ export function ChartRenderer({
           return { ...d, cumPercent: totalVal ? Math.round((cum / totalVal) * 100) : 0 };
         });
         return (
-          <ComposedChart data={paretoData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <ComposedChart data={paretoData} margin={{ top: 10, right: 30, left: 10, bottom: showLegend ? 30 : 10 }}>
             {gridEl}
-            <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-            <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke={colors[1]} fontSize={12} />
+            <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
+            <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
+            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke={colors[1]} fontSize={11} tickLine={false} />
             {ttEl}{lgEl}
             <Bar yAxisId="left" dataKey={yAxis} fill={colors[0]} radius={[4, 4, 0, 0]} />
             <Line yAxisId="right" type="monotone" dataKey="cumPercent" stroke={colors[1]} strokeWidth={2} dot={false} />
@@ -269,9 +315,10 @@ export function ChartRenderer({
               const val = Number(d[yAxis]) || 0;
               const intensity = val / maxVal;
               return (
-                <div key={i} className="aspect-square rounded flex items-center justify-center text-xs font-medium"
+                <div key={i} className="aspect-square rounded flex items-center justify-center text-xs font-medium cursor-pointer"
                   style={{ backgroundColor: `hsl(var(--chart-1) / ${0.1 + intensity * 0.9})`, color: intensity > 0.5 ? 'hsl(var(--background))' : 'hsl(var(--foreground))' }}
-                  title={`${d[xAxis]}: ${val}`}>
+                  title={`${d[xAxis]}: ${val}`}
+                  onClick={() => handleClick(d)}>
                   {val.toFixed(0)}
                 </div>
               );
@@ -290,21 +337,15 @@ export function ChartRenderer({
         const max = vals[vals.length - 1];
         const range = max - min || 1;
         const pct = (v: number) => ((v - min) / range) * 80 + 10;
-
         return (
           <div className="flex items-center justify-center h-full px-8">
             <svg viewBox="0 0 400 100" className="w-full h-20">
-              {/* Whiskers */}
               <line x1={`${pct(min)}%`} y1="50" x2={`${pct(q1)}%`} y2="50" stroke="hsl(var(--muted-foreground))" strokeWidth="2" />
               <line x1={`${pct(q3)}%`} y1="50" x2={`${pct(max)}%`} y2="50" stroke="hsl(var(--muted-foreground))" strokeWidth="2" />
-              {/* Min/Max caps */}
               <line x1={`${pct(min)}%`} y1="35" x2={`${pct(min)}%`} y2="65" stroke="hsl(var(--muted-foreground))" strokeWidth="2" />
               <line x1={`${pct(max)}%`} y1="35" x2={`${pct(max)}%`} y2="65" stroke="hsl(var(--muted-foreground))" strokeWidth="2" />
-              {/* Box */}
               <rect x={`${pct(q1)}%`} y="25" width={`${pct(q3) - pct(q1)}%`} height="50" fill={colors[0]} fillOpacity={0.3} stroke={colors[0]} strokeWidth="2" rx="4" />
-              {/* Median */}
               <line x1={`${pct(median)}%`} y1="25" x2={`${pct(median)}%`} y2="75" stroke={colors[0]} strokeWidth="3" />
-              {/* Labels */}
               <text x={`${pct(min)}%`} y="90" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">{min.toFixed(0)}</text>
               <text x={`${pct(q1)}%`} y="18" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize="10">Q1: {q1.toFixed(0)}</text>
               <text x={`${pct(median)}%`} y="90" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="10" fontWeight="bold">Med: {median.toFixed(0)}</text>
@@ -315,8 +356,7 @@ export function ChartRenderer({
         );
       }
 
-      case 'candlestick': {
-        // Simplified: use sequential rows as OHLC
+      case 'candlestick':
         return (
           <BarChart data={data} {...commonProps}>
             {gridEl}{xEl}{yEl}{ttEl}
@@ -329,17 +369,15 @@ export function ChartRenderer({
             </Bar>
           </BarChart>
         );
-      }
 
       case 'polar':
         return (
-          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
             <PolarGrid stroke="hsl(var(--border))" />
-            <PolarAngleAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <PolarAngleAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} />
             <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
             <Radar dataKey={yAxis} stroke={colors[0]} fill={colors[0]} fillOpacity={0.4} />
-            <Radar dataKey={yAxis} stroke={colors[1]} fill={colors[1]} fillOpacity={0.2} />
-            {ttEl}
+            {ttEl}{lgEl}
           </RadarChart>
         );
 
@@ -362,7 +400,6 @@ export function ChartRenderer({
           <div className="flex flex-col items-center justify-center h-full gap-4 px-8">
             <div className="w-full h-8 rounded-full bg-muted overflow-hidden relative">
               <div className="h-full rounded-full transition-all" style={{ width: `${pctVal}%`, backgroundColor: colors[0] }} />
-              <div className="absolute top-0 h-full w-0.5 bg-foreground" style={{ left: `${Math.min(100, Math.round((target / (Math.max(val, target) * 1.2)) * 100))}%` }} />
             </div>
             <div className="flex justify-between w-full text-sm text-muted-foreground">
               <span>Current: {val.toLocaleString()}</span>
@@ -383,7 +420,6 @@ export function ChartRenderer({
         );
       }
 
-      // Advanced placeholders
       case 'sankey':
       case 'sunburst':
       case 'word-cloud':
@@ -400,7 +436,7 @@ export function ChartRenderer({
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
               <span className="text-2xl">🔧</span>
             </div>
-            <p className="font-medium">{ALL_CHART_LABELS[type] || type}</p>
+            <p className="font-medium">{type}</p>
             <p className="text-xs">Advanced visualization — requires additional setup</p>
           </div>
         );
@@ -412,18 +448,7 @@ export function ChartRenderer({
           </div>
         );
     }
-  }, [type, data, xAxis, yAxis, colors, showGrid, showLegend, showLabels]);
-
-  const ALL_CHART_LABELS: Record<string, string> = {
-    bar: 'Bar', line: 'Line', pie: 'Pie', area: 'Area', scatter: 'Scatter',
-    radar: 'Radar', heatmap: 'Heatmap', treemap: 'Treemap', funnel: 'Funnel',
-    gauge: 'Gauge', boxplot: 'Box Plot', histogram: 'Histogram', waterfall: 'Waterfall',
-    bubble: 'Bubble', candlestick: 'Candlestick', sankey: 'Sankey', sunburst: 'Sunburst',
-    polar: 'Polar', stream: 'Stream', calendar: 'Calendar', geo: 'Geo Map',
-    donut: 'Donut', 'stacked-bar': 'Stacked Bar', 'grouped-bar': 'Grouped Bar',
-    'stacked-area': 'Stacked Area', pareto: 'Pareto', bullet: 'Bullet',
-    progress: 'Progress', 'kpi-card': 'KPI Card', 'word-cloud': 'Word Cloud',
-  };
+  }, [type, data, xAxis, yAxis, colors, showGrid, showLegend, showLabels, legendProps]);
 
   return (
     <Card className="bg-card border-border">
@@ -433,9 +458,18 @@ export function ChartRenderer({
         </CardHeader>
       )}
       <CardContent className="pt-4">
-        <ResponsiveContainer width="100%" height={height}>
-          {chartContent}
-        </ResponsiveContainer>
+        {suitabilityIssue ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-8" style={{ minHeight: height }}>
+            <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/10">
+              Not suitable for this chart
+            </Badge>
+            <p className="text-sm text-muted-foreground text-center max-w-md">{suitabilityIssue}</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={height}>
+            {chartContent}
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );

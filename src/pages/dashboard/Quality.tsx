@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play, RotateCcw
+  Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play, Undo2, Redo2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 export default function Quality() {
-  const { datasets, currentDataset, currentData, selectDataset, updateCurrentData } = useData();
+  const { datasets, currentDataset, currentData, selectDataset, updateCurrentData, undo, redo, canUndo, canRedo } = useData();
   const { isScanning, report, scanDataset, getFixPreview, applyFix } = useDataQuality();
   const { getCreditCost } = useSubscription();
   const [previewFix, setPreviewFix] = useState<{ column: string; type: string; description: string; before: string; after: string; affectedRows: number } | null>(null);
@@ -26,11 +26,8 @@ export default function Quality() {
   const handlePreviewFix = (column: string, type: string) => {
     const fix = getFixPreview(currentData, column, type);
     setPreviewFix({
-      column,
-      type,
-      description: fix.description,
-      before: fix.preview.before,
-      after: fix.preview.after,
+      column, type, description: fix.description,
+      before: fix.preview.before, after: fix.preview.after,
       affectedRows: fix.preview.affectedRows,
     });
   };
@@ -40,10 +37,7 @@ export default function Quality() {
     updateCurrentData(newData);
     setPreviewFix(null);
     toast({ title: 'Fix Applied', description: `Fixed ${type} issues in "${column}". Re-scan to verify.` });
-    // Auto re-scan
-    if (currentDataset) {
-      await scanDataset(currentDataset.id, newData);
-    }
+    if (currentDataset) await scanDataset(currentDataset.id, newData);
   };
 
   const handleFixAll = async () => {
@@ -78,18 +72,24 @@ export default function Quality() {
           <h1 className="text-2xl font-bold">Data Quality</h1>
           <p className="text-muted-foreground">Scan, analyze, and fix your data quality issues</p>
         </div>
-        {report && report.issues.length > 0 && (
-          <Button variant="outline" onClick={handleFixAll} className="gap-2">
-            <Wand2 className="h-4 w-4" />Fix All ({report.issues.length} issues)
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} title="Undo">
+            <Undo2 className="h-4 w-4" />
           </Button>
-        )}
+          <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} title="Redo">
+            <Redo2 className="h-4 w-4" />
+          </Button>
+          {report && report.issues.length > 0 && (
+            <Button variant="outline" onClick={handleFixAll} className="gap-2">
+              <Wand2 className="h-4 w-4" />Fix All ({report.issues.length} issues)
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select Dataset</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Select Dataset</CardTitle></CardHeader>
           <CardContent>
             {datasets.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No datasets available.</p>
@@ -152,7 +152,6 @@ export default function Quality() {
                 </CardContent>
               </Card>
 
-              {/* AI Analysis */}
               {report && (report as any).reasoning && (
                 <Card className="bg-card border-border">
                   <CardContent className="py-4">
@@ -171,7 +170,6 @@ export default function Quality() {
                 </Card>
               )}
 
-              {/* Preview fix panel */}
               {previewFix && (
                 <Card className="bg-chart-1/5 border-chart-1/20">
                   <CardContent className="py-4">

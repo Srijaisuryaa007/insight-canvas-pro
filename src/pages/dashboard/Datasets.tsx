@@ -1,21 +1,25 @@
 import { useState } from 'react';
-import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronDown, ChevronUp } from 'lucide-react';
+import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronUp } from 'lucide-react';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { ColumnInspector } from '@/components/data/ColumnInspector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useData } from '@/contexts/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export default function Datasets() {
-  const { datasets, currentDataset, currentData, selectDataset } = useData();
+  const { datasets, currentDataset, currentData, selectDataset, deleteDataset } = useData();
   const [showUploader, setShowUploader] = useState(false);
   const [viewingDataId, setViewingDataId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleViewQuality = (id: string) => {
@@ -28,7 +32,14 @@ export default function Datasets() {
     setViewingDataId(prev => prev === id ? null : id);
   };
 
-  // Data to show when viewing details
+  const handleDelete = () => {
+    if (deleteId) {
+      deleteDataset(deleteId);
+      if (viewingDataId === deleteId) setViewingDataId(null);
+      setDeleteId(null);
+    }
+  };
+
   const viewData = viewingDataId && currentDataset?.id === viewingDataId ? currentData : [];
 
   return (
@@ -112,7 +123,7 @@ export default function Datasets() {
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewQuality(dataset.id); }}>
                                 <Shield className="h-4 w-4 mr-2" />Quality Scan
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(dataset.id); }}>
                                 <Trash2 className="h-4 w-4 mr-2" />Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -126,7 +137,6 @@ export default function Datasets() {
             </CardContent>
           </Card>
 
-          {/* Data Preview Panel - shows when "View Details" clicked */}
           {viewingDataId && viewData.length > 0 && (
             <Card className="bg-card border-border">
               <CardHeader className="pb-3">
@@ -160,9 +170,7 @@ export default function Datasets() {
                               <TableCell key={col} className="text-xs whitespace-nowrap max-w-[200px] truncate">
                                 {row[col] === null || row[col] === undefined ? (
                                   <span className="text-muted-foreground italic">null</span>
-                                ) : (
-                                  String(row[col])
-                                )}
+                                ) : String(row[col])}
                               </TableCell>
                             ))}
                           </TableRow>
@@ -192,6 +200,24 @@ export default function Datasets() {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Dataset?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the dataset and all associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

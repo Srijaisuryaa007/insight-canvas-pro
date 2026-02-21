@@ -1,26 +1,41 @@
-import { useState } from 'react';
-import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronUp } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronUp, ArrowLeftRight } from 'lucide-react';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { ColumnInspector } from '@/components/data/ColumnInspector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useData } from '@/contexts/DataContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
+
+const ROW_LIMITS: Record<string, number> = {
+  free: 1000,
+  basic: 10000,
+  pro: 100000,
+  enterprise: Infinity,
+};
 
 export default function Datasets() {
-  const { datasets, currentDataset, currentData, selectDataset, deleteDataset } = useData();
+  const { datasets, currentDataset, currentData, selectDataset, deleteDataset, updateCurrentData } = useData();
+  const { plan } = useSubscription();
   const [showUploader, setShowUploader] = useState(false);
   const [viewingDataId, setViewingDataId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingColumnType, setEditingColumnType] = useState<{ col: string; newType: string } | null>(null);
   const navigate = useNavigate();
+
+  const rowLimit = ROW_LIMITS[plan] || 1000;
 
   const handleViewQuality = (id: string) => {
     selectDataset(id);
@@ -40,7 +55,44 @@ export default function Datasets() {
     }
   };
 
+  const handleChangeColumnType = (colName: string, newType: string) => {
+    if (!currentData.length) return;
+
+    const convertedData = currentData.map(row => {
+      const val = row[colName];
+      let converted: unknown = val;
+      switch (newType) {
+        case 'number':
+          converted = val === null || val === undefined ? null : Number(val);
+          if (isNaN(converted as number)) converted = null;
+          break;
+        case 'string':
+          converted = val === null || val === undefined ? null : String(val);
+          break;
+        case 'date':
+          if (typeof val === 'string' || typeof val === 'number') {
+            const d = new Date(val as string);
+            converted = isNaN(d.getTime()) ? null : d.toISOString();
+          }
+          break;
+        case 'boolean':
+          converted = val === true || val === 'true' || val === 1 || val === '1';
+          break;
+      }
+      return { ...row, [colName]: converted };
+    });
+
+    updateCurrentData(convertedData);
+    toast({ title: 'Column Type Changed', description: `"${colName}" converted to ${newType}. Charts and quality checks updated.` });
+    setEditingColumnType(null);
+  };
+
   const viewData = viewingDataId && currentDataset?.id === viewingDataId ? currentData : [];
+
+  const exceedsLimit = useMemo(() => {
+    if (!currentData.length) return false;
+    return currentData.length > rowLimit;
+  }, [currentData.length, rowLimit]);
 
   return (
     <div className="space-y-6">
@@ -49,13 +101,28 @@ export default function Datasets() {
           <h1 className="text-2xl font-bold">Datasets</h1>
           <p className="text-muted-foreground">Manage and explore your uploaded datasets</p>
         </div>
-        <Button onClick={() => setShowUploader(!showUploader)}>
-          <Database className="h-4 w-4 mr-2" />
-          {showUploader ? 'Cancel' : 'Upload Dataset'}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="text-xs capitalize">
+            {plan} Plan • {rowLimit === Infinity ? 'Unlimited' : `${rowLimit.toLocaleString()} rows max`}
+          </Badge>
+          <Button onClick={() => setShowUploader(!showUploader)}>
+            <Database className="h-4 w-4 mr-2" />
+            {showUploader ? 'Cancel' : 'Upload Dataset'}
+          </Button>
+        </div>
       </div>
 
       {showUploader && <DatasetUploader onUploadComplete={() => setShowUploader(false)} />}
+
+      {exceedsLimit && (
+        <Card className="bg-amber-500/10 border-amber-500/20">
+          <CardContent className="py-3">
+            <p className="text-sm text-amber-600">
+              ⚠ Dataset exceeds {rowLimit.toLocaleString()} row limit for your {plan} plan. Showing first {rowLimit.toLocaleString()} rows. Upgrade for higher limits.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -152,20 +219,38 @@ export default function Datasets() {
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px] w-full">
-                  <div className="overflow-x-auto">
+                  <div className="min-w-max">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-12 text-xs">#</TableHead>
+                          <TableHead className="w-12 text-xs sticky left-0 bg-card z-10">#</TableHead>
                           {Object.keys(viewData[0]).map(col => (
-                            <TableHead key={col} className="text-xs font-medium whitespace-nowrap">{col}</TableHead>
+                            <TableHead key={col} className="text-xs font-medium whitespace-nowrap min-w-[120px]">
+                              <div className="flex items-center gap-1">
+                                {col}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="opacity-60 hover:opacity-100" onClick={e => e.stopPropagation()}>
+                                      <ArrowLeftRight className="h-3 w-3" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent className="bg-popover">
+                                    {['string', 'number', 'date', 'boolean'].map(t => (
+                                      <DropdownMenuItem key={t} onClick={() => handleChangeColumnType(col, t)} className="text-xs capitalize">
+                                        Convert to {t}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {viewData.slice(0, 100).map((row, i) => (
+                        {viewData.slice(0, Math.min(100, rowLimit)).map((row, i) => (
                           <TableRow key={i}>
-                            <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground sticky left-0 bg-card z-10">{i + 1}</TableCell>
                             {Object.keys(viewData[0]).map(col => (
                               <TableCell key={col} className="text-xs whitespace-nowrap max-w-[200px] truncate">
                                 {row[col] === null || row[col] === undefined ? (
@@ -178,6 +263,7 @@ export default function Datasets() {
                       </TableBody>
                     </Table>
                   </div>
+                  <ScrollBar orientation="horizontal" />
                   {viewData.length > 100 && (
                     <p className="text-xs text-muted-foreground text-center py-2">Showing first 100 of {viewData.length} rows</p>
                   )}
@@ -201,7 +287,6 @@ export default function Datasets() {
         </div>
       </div>
 
-      {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

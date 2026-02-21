@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { FileText, Download, ExternalLink, Lock, CheckSquare } from 'lucide-react';
+import { FileText, Download, Lock, CheckSquare, BarChart3, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useExport } from '@/hooks/useExport';
 import { useData } from '@/contexts/DataContext';
@@ -14,8 +15,12 @@ const CHART_OPTIONS = [
   { id: 'pie', label: 'Pie / Donut' },
   { id: 'line', label: 'Line Chart' },
   { id: 'area', label: 'Area Chart' },
+  { id: 'scatter', label: 'Scatter Plot' },
   { id: 'table', label: 'Data Table' },
   { id: 'kpis', label: 'KPI Cards' },
+  { id: 'waterfall', label: 'Waterfall' },
+  { id: 'radar', label: 'Radar Chart' },
+  { id: 'treemap', label: 'Treemap' },
 ];
 
 export default function Reports() {
@@ -24,7 +29,6 @@ export default function Reports() {
   const { currentData, currentDataset } = useData();
   const canExport = isFeatureAvailable('export-pdf');
   const [selectedCharts, setSelectedCharts] = useState<string[]>(['bar', 'pie', 'kpis', 'table']);
-  const [showChartPicker, setShowChartPicker] = useState(false);
 
   const toggleChart = (id: string) => {
     setSelectedCharts(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
@@ -47,19 +51,6 @@ export default function Reports() {
       title: currentDataset?.name || 'DataPulse Report',
       sections: [{ title: 'Data Summary', data: currentData.slice(0, 50) }]
     }, currentDataset?.name || 'report');
-  };
-
-  const handleOpenDashboard = () => {
-    if (currentData.length === 0) {
-      toast({ title: 'No data', description: 'Select a dataset first.', variant: 'destructive' });
-      return;
-    }
-    localStorage.setItem('datapulse_dashboard_view', JSON.stringify({
-      dataset: currentDataset,
-      data: currentData.slice(0, 500),
-      charts: selectedCharts,
-    }));
-    window.open('/dashboard/view', '_blank');
   };
 
   const handleDownloadHTML = () => {
@@ -97,22 +88,23 @@ export default function Reports() {
     if (showArea) chartScripts.push(`new Chart(document.getElementById('areaChart'),{type:'line',data:{labels,datasets:[{label:'${valKey}',data:values,borderColor:colors[0],backgroundColor:colors[0]+'33',tension:0.3,fill:true}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});`);
 
     const chartCanvases = [
-      showBar ? '<div class="chart-card"><canvas id="barChart"></canvas></div>' : '',
-      showPie ? '<div class="chart-card"><canvas id="pieChart"></canvas></div>' : '',
-      showLine ? '<div class="chart-card"><canvas id="lineChart"></canvas></div>' : '',
-      showArea ? '<div class="chart-card"><canvas id="areaChart"></canvas></div>' : '',
+      showBar ? '<div class="chart-card"><h3>Bar Chart</h3><canvas id="barChart"></canvas></div>' : '',
+      showPie ? '<div class="chart-card"><h3>Distribution</h3><canvas id="pieChart"></canvas></div>' : '',
+      showLine ? '<div class="chart-card"><h3>Trend</h3><canvas id="lineChart"></canvas></div>' : '',
+      showArea ? '<div class="chart-card"><h3>Area</h3><canvas id="areaChart"></canvas></div>' : '',
     ].filter(Boolean).join('\n');
 
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${currentDataset?.name || 'Dashboard'} — DataPulse</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<title>${currentDataset?.name || 'Dashboard'} — DataPulse Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"><\/script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0a;color:#fafafa;padding:2rem}
 h1{font-size:1.5rem;margin-bottom:1.5rem}
+h3{font-size:.9rem;margin-bottom:.75rem;color:#888}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
 .kpi{background:#1a1a2e;border-radius:12px;padding:1.5rem;border:1px solid #2a2a3e}
 .kpi-label{font-size:.75rem;color:#888;text-transform:uppercase;letter-spacing:.05em}
@@ -123,6 +115,7 @@ canvas{max-height:300px}
 table{width:100%;border-collapse:collapse;margin-top:2rem}
 th,td{padding:.5rem 1rem;text-align:left;border-bottom:1px solid #2a2a3e;font-size:.8rem}
 th{color:#888;text-transform:uppercase;font-size:.7rem;letter-spacing:.05em}
+.footer{margin-top:3rem;text-align:center;color:#555;font-size:.7rem}
 </style>
 </head>
 <body>
@@ -136,14 +129,15 @@ ${showKPIs ? `<div class="kpis">
 <div class="charts">${chartCanvases}</div>
 ${showTable ? `<table>
 <thead><tr>${columns.slice(0, 8).map(c => `<th>${c}</th>`).join('')}</tr></thead>
-<tbody>${currentData.slice(0, 20).map(r => `<tr>${columns.slice(0, 8).map(c => `<td>${r[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
+<tbody>${currentData.slice(0, 30).map(r => `<tr>${columns.slice(0, 8).map(c => `<td>${r[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
 </table>` : ''}
+<div class="footer">Generated by DataPulse Analytics • ${new Date().toLocaleDateString()}</div>
 <script>
 const labels=${JSON.stringify(Object.keys(grouped).slice(0, 15))};
 const values=${JSON.stringify(Object.values(grouped).slice(0, 15))};
 const colors=['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#ddd6fe','#ede9fe','#f5f3ff','#818cf8','#4f46e5','#4338ca','#3730a3','#312e81','#e0e7ff','#c7d2fe','#a5b4fc'];
 ${chartScripts.join('\n')}
-</script>
+<\/script>
 </body>
 </html>`;
 
@@ -153,7 +147,14 @@ ${chartScripts.join('\n')}
     link.download = `${currentDataset?.name || 'dashboard'}.html`;
     link.click();
     URL.revokeObjectURL(link.href);
-    toast({ title: 'Dashboard Downloaded', description: 'Open the HTML file in any browser to view.' });
+    toast({ title: 'Dashboard Downloaded', description: 'Open the HTML file in any browser to view your interactive dashboard.' });
+  };
+
+  const handleConnectPowerBI = () => {
+    toast({ 
+      title: 'Power BI Integration', 
+      description: 'Export your data as CSV and import into Power BI Desktop, or use the REST API endpoint for DirectQuery.',
+    });
   };
 
   return (
@@ -163,7 +164,7 @@ ${chartScripts.join('\n')}
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="h-7 w-7" />Reports & Export
           </h1>
-          <p className="text-muted-foreground">Export data, generate reports, and share dashboards</p>
+          <p className="text-muted-foreground">Export data, generate reports, and download dashboards</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExportCSV}>
@@ -172,12 +173,6 @@ ${chartScripts.join('\n')}
           <Button variant="outline" onClick={handleExportPDF} disabled={!canExport}>
             <FileText className="h-4 w-4 mr-2" />PDF
             {!canExport && <Lock className="h-4 w-4 ml-1" />}
-          </Button>
-          <Button variant="outline" onClick={handleDownloadHTML}>
-            <Download className="h-4 w-4 mr-2" />HTML Dashboard
-          </Button>
-          <Button onClick={handleOpenDashboard}>
-            <ExternalLink className="h-4 w-4 mr-2" />Open Dashboard
           </Button>
         </div>
       </div>
@@ -196,7 +191,7 @@ ${chartScripts.join('\n')}
         </Card>
       )}
 
-      {/* Chart Selection for Dashboard */}
+      {/* Dashboard Component Selection */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -205,8 +200,8 @@ ${chartScripts.join('\n')}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">Choose which charts to include in the dashboard and download</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <p className="text-sm text-muted-foreground mb-3">Choose which components to include in the downloaded dashboard</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {CHART_OPTIONS.map(opt => (
               <div key={opt.id} className="flex items-center gap-2">
                 <Checkbox
@@ -224,18 +219,25 @@ ${chartScripts.join('\n')}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="bg-card border-border">
           <CardContent className="py-8 text-center">
-            <ExternalLink className="h-10 w-10 mx-auto text-primary mb-3" />
-            <h3 className="font-medium text-lg">Live Dashboard</h3>
-            <p className="text-muted-foreground text-sm mt-1">Open a clean, presentation-ready dashboard in a new tab</p>
-            <Button className="mt-4" onClick={handleOpenDashboard}>Open Dashboard</Button>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="py-8 text-center">
             <Download className="h-10 w-10 mx-auto text-primary mb-3" />
             <h3 className="font-medium text-lg">Download Dashboard</h3>
-            <p className="text-muted-foreground text-sm mt-1">Download a self-contained HTML file with interactive charts</p>
-            <Button className="mt-4" variant="outline" onClick={handleDownloadHTML}>Download HTML</Button>
+            <p className="text-muted-foreground text-sm mt-1">Download a self-contained HTML file with interactive charts. Opens in any browser.</p>
+            <Badge variant="outline" className="mt-2 text-xs">{selectedCharts.length} components selected</Badge>
+            <Button className="mt-4 w-full" onClick={handleDownloadHTML}>
+              <Download className="h-4 w-4 mr-2" />Download HTML Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="py-8 text-center">
+            <Link2 className="h-10 w-10 mx-auto text-primary mb-3" />
+            <h3 className="font-medium text-lg">Connect to Power BI</h3>
+            <p className="text-muted-foreground text-sm mt-1">Export your data for use in Power BI Desktop or connect via REST API</p>
+            <Badge variant="outline" className="mt-2 text-xs">Enterprise Feature</Badge>
+            <Button className="mt-4 w-full" variant="outline" onClick={handleConnectPowerBI}>
+              <BarChart3 className="h-4 w-4 mr-2" />Connect Power BI
+            </Button>
           </CardContent>
         </Card>
       </div>

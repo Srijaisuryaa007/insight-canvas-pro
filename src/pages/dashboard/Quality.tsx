@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { 
-  Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play, Undo2, Redo2
+  Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play, Undo2, Redo2, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useData } from '@/contexts/DataContext';
 import { useDataQuality } from '@/hooks/useDataQuality';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -17,6 +21,9 @@ export default function Quality() {
   const { isScanning, report, scanDataset, getFixPreview, applyFix } = useDataQuality();
   const { getCreditCost } = useSubscription();
   const [previewFix, setPreviewFix] = useState<{ column: string; type: string; description: string; before: string; after: string; affectedRows: number } | null>(null);
+  const [confirmFix, setConfirmFix] = useState<{ column: string; type: string } | null>(null);
+  const [confirmFixAll, setConfirmFixAll] = useState(false);
+  const [aiCleaningPreview, setAiCleaningPreview] = useState<string | null>(null);
 
   const handleScan = async () => {
     if (!currentDataset) return;
@@ -32,11 +39,16 @@ export default function Quality() {
     });
   };
 
+  const handleConfirmFix = (column: string, type: string) => {
+    setConfirmFix({ column, type });
+  };
+
   const handleApplyFix = async (column: string, type: string) => {
     const newData = applyFix(currentData, column, type);
     updateCurrentData(newData);
     setPreviewFix(null);
-    toast({ title: 'Fix Applied', description: `Fixed ${type} issues in "${column}". Re-scan to verify.` });
+    setConfirmFix(null);
+    toast({ title: 'Fix Applied', description: `Fixed ${type} issues in "${column}". Re-scanning...` });
     if (currentDataset) await scanDataset(currentDataset.id, newData);
   };
 
@@ -47,7 +59,37 @@ export default function Quality() {
       data = applyFix(data, issue.column, issue.type);
     }
     updateCurrentData(data);
+    setConfirmFixAll(false);
     toast({ title: 'All Fixes Applied', description: `Fixed ${report.issues.length} issue types. Re-scanning...` });
+    await scanDataset(currentDataset.id, data);
+  };
+
+  const handleAIClean = () => {
+    if (!report || report.issues.length === 0) {
+      toast({ title: 'No issues', description: 'Data is clean. No AI cleaning needed.' });
+      return;
+    }
+    const actions = report.issues.map(issue => {
+      switch (issue.type) {
+        case 'missing': return `• Fill ${issue.count} missing values in "${issue.column}" using median/mode imputation`;
+        case 'duplicate': return `• Remove ${issue.count} duplicate entries in "${issue.column}"`;
+        case 'outlier': return `• Cap ${issue.count} outliers in "${issue.column}" using IQR boundaries`;
+        case 'invalid': return `• Standardize ${issue.count} invalid values in "${issue.column}"`;
+        default: return `• Fix ${issue.count} ${issue.type} issues in "${issue.column}"`;
+      }
+    });
+    setAiCleaningPreview(actions.join('\n'));
+  };
+
+  const handleApplyAIClean = async () => {
+    if (!report || !currentDataset) return;
+    let data = [...currentData];
+    for (const issue of report.issues) {
+      data = applyFix(data, issue.column, issue.type);
+    }
+    updateCurrentData(data);
+    setAiCleaningPreview(null);
+    toast({ title: 'AI Cleaning Complete', description: 'All issues resolved. Re-scanning...' });
     await scanDataset(currentDataset.id, data);
   };
 
@@ -80,9 +122,14 @@ export default function Quality() {
             <Redo2 className="h-4 w-4" />
           </Button>
           {report && report.issues.length > 0 && (
-            <Button variant="outline" onClick={handleFixAll} className="gap-2">
-              <Wand2 className="h-4 w-4" />Fix All ({report.issues.length} issues)
-            </Button>
+            <>
+              <Button variant="outline" onClick={handleAIClean} className="gap-2">
+                <Sparkles className="h-4 w-4" />Clean using AI
+              </Button>
+              <Button variant="outline" onClick={() => setConfirmFixAll(true)} className="gap-2">
+                <Wand2 className="h-4 w-4" />Fix All ({report.issues.length})
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -170,6 +217,30 @@ export default function Quality() {
                 </Card>
               )}
 
+              {/* AI Cleaning Preview */}
+              {aiCleaningPreview && (
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="py-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <p className="font-medium text-sm">AI Cleaning Plan</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">The AI will perform the following operations (all reversible with Undo):</p>
+                        <pre className="text-xs text-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-lg">{aiCleaningPreview}</pre>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => setAiCleaningPreview(null)}>Cancel</Button>
+                        <Button size="sm" onClick={handleApplyAIClean} className="gap-1">
+                          <Sparkles className="h-3 w-3" /> Apply AI Clean
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {previewFix && (
                 <Card className="bg-chart-1/5 border-chart-1/20">
                   <CardContent className="py-4">
@@ -189,7 +260,7 @@ export default function Quality() {
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <Button size="sm" variant="outline" onClick={() => setPreviewFix(null)}>Cancel</Button>
-                        <Button size="sm" onClick={() => handleApplyFix(previewFix.column, previewFix.type)} className="gap-1">
+                        <Button size="sm" onClick={() => handleConfirmFix(previewFix.column, previewFix.type)} className="gap-1">
                           <Play className="h-3 w-3" /> Apply Fix
                         </Button>
                       </div>
@@ -239,7 +310,7 @@ export default function Quality() {
                                 <Button variant="outline" size="sm" className="gap-1" onClick={() => handlePreviewFix(issue.column, issue.type)}>
                                   <Eye className="h-3 w-3" /> Preview
                                 </Button>
-                                <Button variant="outline" size="sm" className="gap-1" onClick={() => handleApplyFix(issue.column, issue.type)}>
+                                <Button variant="outline" size="sm" className="gap-1" onClick={() => handleConfirmFix(issue.column, issue.type)}>
                                   <Wand2 className="h-3 w-3" /> Auto Fix
                                 </Button>
                               </div>
@@ -255,6 +326,40 @@ export default function Quality() {
           )}
         </div>
       </div>
+
+      {/* Fix Confirmation Dialog */}
+      <AlertDialog open={!!confirmFix} onOpenChange={() => setConfirmFix(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apply Fix?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will fix {confirmFix?.type} issues in column "{confirmFix?.column}". The operation is reversible using Undo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmFix && handleApplyFix(confirmFix.column, confirmFix.type)}>
+              Apply Fix
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Fix All Confirmation Dialog */}
+      <AlertDialog open={confirmFixAll} onOpenChange={setConfirmFixAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fix All Issues?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will apply fixes for all {report?.issues.length} issue types. All changes are reversible using Undo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFixAll}>Fix All</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

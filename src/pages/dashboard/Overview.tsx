@@ -1,17 +1,19 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
-  Database, BarChart3, Sparkles, TrendingUp, Upload, DollarSign, ShoppingCart, Hash, Users, Percent,
-  Search, CalendarDays, X, Filter
+  Database, Sparkles, TrendingUp, Upload, DollarSign, ShoppingCart, Hash, Users, Percent,
+  Search, CalendarDays, X, Filter, Code, FileSpreadsheet, Link2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { DAXBot } from '@/components/copilot/DAXBot';
+import { ExcelBot } from '@/components/copilot/ExcelBot';
+import { ConnectorPanel } from '@/components/connectors/ConnectorPanel';
 import { EmptyStateCharacter } from '@/components/dashboard/EmptyStateCharacter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -61,6 +63,8 @@ export default function Overview() {
   const { datasets, currentDataset, currentData, refreshDatasets } = useData();
   const [showUploader, setShowUploader] = useState(false);
   const [measures, setMeasures] = useState(loadMeasures());
+  const [activeAI, setActiveAI] = useState<'dax' | 'excel'>('dax');
+  const [showConnectors, setShowConnectors] = useState(false);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,12 +76,10 @@ export default function Overview() {
 
   const dateColumn = useMemo(() => hasData ? detectDateColumn(currentData) : null, [currentData, hasData]);
 
-  // Filtered data - centralized, immutable original
   const filteredData = useMemo(() => {
     if (!hasData) return [];
     let result = currentData;
 
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(row =>
@@ -85,7 +87,6 @@ export default function Overview() {
       );
     }
 
-    // Date filter
     if (dateColumn && dateFrom) {
       const from = new Date(dateFrom).getTime();
       result = result.filter(row => {
@@ -101,7 +102,6 @@ export default function Overview() {
       });
     }
 
-    // Cross-filter
     if (crossFilter) {
       result = result.filter(row => String(row[crossFilter.key]) === crossFilter.value);
     }
@@ -117,15 +117,6 @@ export default function Overview() {
     setDateTo('');
     setCrossFilter(null);
   };
-
-  const handleChartClick = useCallback((dataPoint: Record<string, unknown>, catKey: string) => {
-    const val = String(dataPoint[catKey]);
-    if (crossFilter && crossFilter.key === catKey && crossFilter.value === val) {
-      setCrossFilter(null); // toggle off
-    } else {
-      setCrossFilter({ key: catKey, value: val });
-    }
-  }, [crossFilter]);
 
   useEffect(() => { refreshDatasets(); }, []);
 
@@ -177,27 +168,6 @@ export default function Overview() {
     return results;
   }, [filteredData]);
 
-  // Chart data from filtered data
-  const chartData = useMemo(() => {
-    if (!filteredData || filteredData.length === 0) return { byCategory: [], catKey: '', valKey: '' };
-    const keys = Object.keys(filteredData[0]);
-    const numericKeys = keys.filter(k => typeof filteredData[0][k] === 'number');
-    const stringKeys = keys.filter(k => typeof filteredData[0][k] === 'string');
-    const catKey = stringKeys[0] || keys[0];
-    const valKey = numericKeys[0] || keys[1] || keys[0];
-
-    const byCategory = filteredData.reduce((acc, row) => {
-      const cat = String(row[catKey]);
-      const val = Number(row[valKey]) || 0;
-      const existing = acc.find((a: Record<string, unknown>) => a[catKey] === cat);
-      if (existing) (existing as any)[valKey] = (Number(existing[valKey]) || 0) + val;
-      else acc.push({ [catKey]: cat, [valKey]: val });
-      return acc;
-    }, [] as Record<string, unknown>[]);
-
-    return { byCategory, catKey, valKey };
-  }, [filteredData]);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -205,12 +175,18 @@ export default function Overview() {
           <h1 className="text-2xl font-bold">Welcome back, {user?.name?.split(' ')[0] || 'User'}!</h1>
           <p className="text-muted-foreground">Here's what's happening with your data today.</p>
         </div>
-        <Button onClick={() => setShowUploader(!showUploader)}>
-          <Upload className="h-4 w-4 mr-2" />Upload Data
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowConnectors(!showConnectors)}>
+            <Link2 className="h-4 w-4 mr-2" />Connect Data
+          </Button>
+          <Button onClick={() => setShowUploader(!showUploader)}>
+            <Upload className="h-4 w-4 mr-2" />Upload Data
+          </Button>
+        </div>
       </div>
 
       {showUploader && <DatasetUploader onUploadComplete={() => { setShowUploader(false); refreshDatasets(); }} />}
+      {showConnectors && <ConnectorPanel />}
 
       <AnimatePresence mode="wait">
         {!hasData ? (
@@ -220,7 +196,7 @@ export default function Overview() {
         ) : (
           <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-6">
             
-            {/* Filter Bar */}
+            {/* Single Filter Bar */}
             <Card className="bg-card border-border">
               <CardContent className="py-3">
                 <div className="flex flex-wrap items-center gap-3">
@@ -243,7 +219,7 @@ export default function Overview() {
                   )}
                   {!dateColumn && (
                     <Badge variant="outline" className="text-xs text-muted-foreground">
-                      <CalendarDays className="h-3 w-3 mr-1" />No date column detected
+                      <CalendarDays className="h-3 w-3 mr-1" />No date column
                     </Badge>
                   )}
                   {crossFilter && (
@@ -299,63 +275,9 @@ export default function Overview() {
               ))}
             </div>
 
-            {/* Charts */}
+            {/* Semantic Model + AI Bots */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                {chartData.catKey && chartData.valKey && chartData.byCategory.length > 0 && (
-                  <>
-                    <VisualizationEngine
-                      chartType="bar"
-                      data={chartData.byCategory}
-                      xAxis={chartData.catKey}
-                      yAxis={chartData.valKey}
-                      title={`${chartData.valKey} by ${chartData.catKey}`}
-                      height={300}
-                      onDataClick={(point) => handleChartClick(point, chartData.catKey)}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <VisualizationEngine
-                        chartType="line"
-                        data={chartData.byCategory}
-                        xAxis={chartData.catKey}
-                        yAxis={chartData.valKey}
-                        title={`${chartData.valKey} Trend`}
-                        height={250}
-                        onDataClick={(point) => handleChartClick(point, chartData.catKey)}
-                      />
-                      <VisualizationEngine
-                        chartType="pie"
-                        data={chartData.byCategory.map(c => ({ name: String(c[chartData.catKey!]), value: Number(c[chartData.valKey!]) }))}
-                        xAxis="name"
-                        yAxis="value"
-                        title="Distribution"
-                        height={250}
-                        onDataClick={(point) => handleChartClick(point, 'name')}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {measures.length > 0 && (
-                  <Card className="bg-card border-border">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Semantic Model — Measures</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {measures.map((m, i) => (
-                          <div key={i} className="p-3 rounded-lg bg-muted/50 font-mono text-xs">
-                            <span className="text-foreground font-medium">{m.name}</span>
-                            <pre className="text-muted-foreground mt-1 whitespace-pre-wrap">{m.formula}</pre>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              <div className="space-y-6">
+              <div className="lg:col-span-1 space-y-4">
                 <Card className="bg-card border-border">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Workspace Overview</CardTitle>
@@ -376,9 +298,42 @@ export default function Overview() {
                   </CardContent>
                 </Card>
 
-                <div className="h-[28rem]">
-                  <DAXBot datasetId={currentDataset?.id} onApplyMeasure={handleApplyMeasure} />
-                </div>
+                {measures.length > 0 && (
+                  <Card className="bg-card border-border">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Semantic Model — Measures</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {measures.map((m, i) => (
+                          <div key={i} className="p-3 rounded-lg bg-muted/50 font-mono text-xs">
+                            <span className="text-foreground font-medium">{m.name}</span>
+                            <pre className="text-muted-foreground mt-1 whitespace-pre-wrap">{m.formula}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              <div className="lg:col-span-2">
+                <Tabs value={activeAI} onValueChange={(v) => setActiveAI(v as 'dax' | 'excel')}>
+                  <TabsList className="w-full grid grid-cols-2">
+                    <TabsTrigger value="dax" className="gap-2"><Code className="h-4 w-4" />DAX Bot</TabsTrigger>
+                    <TabsTrigger value="excel" className="gap-2"><FileSpreadsheet className="h-4 w-4" />Excel Formula Bot</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="dax" className="mt-4">
+                    <div className="h-[28rem]">
+                      <DAXBot datasetId={currentDataset?.id} onApplyMeasure={handleApplyMeasure} />
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="excel" className="mt-4">
+                    <div className="h-[28rem]">
+                      <ExcelBot datasetId={currentDataset?.id} onApplyMeasure={handleApplyMeasure} />
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           </motion.div>

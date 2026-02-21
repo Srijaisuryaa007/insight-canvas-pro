@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { BarChart3, Lock, Sparkles, Palette, SlidersHorizontal } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { BarChart3, Lock, Palette, AlertTriangle } from 'lucide-react';
 import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,39 @@ const ALL_CHART_LABELS: Record<string, string> = {
   'stacked-area': 'Stacked Area', pareto: 'Pareto Chart', bullet: 'Bullet',
   progress: 'Progress', 'kpi-card': 'KPI Card',
 };
+
+// Charts that need numeric X and Y
+const NEEDS_NUMERIC_XY = ['scatter', 'bubble'];
+const NEEDS_NUMERIC_Y = ['bar', 'line', 'area', 'histogram', 'boxplot', 'waterfall', 'pareto', 'gauge', 'bullet', 'progress', 'kpi-card', 'funnel', 'treemap', 'heatmap', 'candlestick', 'stacked-bar', 'grouped-bar', 'stacked-area'];
+const NEEDS_CATEGORIES = ['pie', 'donut', 'radar', 'polar'];
+
+function getSuitabilityWarning(chartType: string, data: Record<string, unknown>[], xAxis: string, yAxis: string): string | null {
+  if (!data.length) return 'No data available. Upload or select a dataset.';
+  if (!xAxis || !yAxis) return 'Select both X and Y axis columns.';
+  
+  const hasNumericY = data.some(d => typeof d[yAxis] === 'number');
+  const hasNumericX = data.some(d => typeof d[xAxis] === 'number');
+  const hasStringX = data.some(d => typeof d[xAxis] === 'string');
+  const uniqueX = new Set(data.map(d => String(d[xAxis]))).size;
+
+  if (NEEDS_NUMERIC_XY.includes(chartType)) {
+    if (!hasNumericX) return `"${xAxis}" must be numeric for ${ALL_CHART_LABELS[chartType]}. Change the column type in Datasets tab or select a numeric column.`;
+    if (!hasNumericY) return `"${yAxis}" must be numeric for ${ALL_CHART_LABELS[chartType]}. Select a numeric column for Y axis.`;
+  }
+  if (NEEDS_NUMERIC_Y.includes(chartType) && !hasNumericY) {
+    return `"${yAxis}" is not numeric. ${ALL_CHART_LABELS[chartType]} requires numeric Y values. Switch to a numeric column or convert the type in Datasets.`;
+  }
+  if (NEEDS_CATEGORIES.includes(chartType) && !hasStringX && uniqueX > 50) {
+    return `${ALL_CHART_LABELS[chartType]} works best with categorical data (< 50 categories). "${xAxis}" has ${uniqueX} unique values.`;
+  }
+  if (chartType === 'boxplot' && data.length < 5) {
+    return 'Box Plot requires at least 5 data points.';
+  }
+  if (['radar', 'polar'].includes(chartType) && data.length < 3) {
+    return `${ALL_CHART_LABELS[chartType]} requires at least 3 data categories.`;
+  }
+  return null;
+}
 
 export default function Visualizations() {
   const { datasets, currentDataset, currentData, selectDataset } = useData();
@@ -58,6 +91,10 @@ export default function Visualizations() {
         type: typeof currentData[0][name] === 'number' ? 'number' as const : 'string' as const
       }))
     : [];
+
+  const suitabilityWarning = useMemo(() => {
+    return getSuitabilityWarning(selectedChart, currentData, xAxis, yAxis);
+  }, [selectedChart, currentData, xAxis, yAxis]);
 
   const getAggregatedData = () => {
     if (!xAxis || !yAxis || currentData.length === 0) return [];
@@ -94,29 +131,32 @@ export default function Visualizations() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <Card className="bg-card border-border max-h-[70vh] overflow-y-auto">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Chart Types ({allCharts.length})</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {allCharts.map(chart => {
-              const available = isChartAvailable(chart);
-              return (
-                <button key={chart} onClick={() => available && setSelectedChart(chart)}
-                  disabled={!available}
-                  className={cn("w-full p-2 rounded-lg text-left transition-colors flex items-center justify-between text-sm",
-                    selectedChart === chart ? "bg-primary/10 border border-primary/20"
-                      : available ? "hover:bg-muted" : "opacity-40 cursor-not-allowed")}>
-                  <span>{ALL_CHART_LABELS[chart] || chart}</span>
-                  {!available && <Lock className="h-3 w-3 text-muted-foreground" />}
-                </button>
-              );
-            })}
+          <CardContent className="p-0">
+            <ScrollArea className="h-[60vh] px-4 pb-4">
+              <div className="space-y-1">
+                {allCharts.map(chart => {
+                  const available = isChartAvailable(chart);
+                  return (
+                    <button key={chart} onClick={() => available && setSelectedChart(chart)}
+                      disabled={!available}
+                      className={cn("w-full p-2 rounded-lg text-left transition-colors flex items-center justify-between text-sm",
+                        selectedChart === chart ? "bg-primary/10 border border-primary/20"
+                          : available ? "hover:bg-muted" : "opacity-40 cursor-not-allowed")}>
+                      <span>{ALL_CHART_LABELS[chart] || chart}</span>
+                      {!available && <Lock className="h-3 w-3 text-muted-foreground" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
 
         <div className="lg:col-span-3 space-y-6">
-          {/* Configure Chart */}
           <Card className="bg-card border-border">
             <CardHeader className="pb-3"><CardTitle className="text-base">Configure Chart</CardTitle></CardHeader>
             <CardContent>
@@ -137,7 +177,7 @@ export default function Visualizations() {
                   <Select value={xAxis} onValueChange={setXAxis}>
                     <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                     <SelectContent className="bg-popover">
-                      {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>)}
+                      {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name} ({col.type})</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -146,7 +186,7 @@ export default function Visualizations() {
                   <Select value={yAxis} onValueChange={setYAxis}>
                     <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                     <SelectContent className="bg-popover">
-                      {columns.filter(c => c.type === 'number').map(col => <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>)}
+                      {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name} ({col.type})</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -154,7 +194,6 @@ export default function Visualizations() {
             </CardContent>
           </Card>
 
-          {/* Customization Panel */}
           <Card className="bg-card border-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -162,7 +201,7 @@ export default function Visualizations() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs">Color Theme</Label>
                   <Select value={colorPalette} onValueChange={setColorPalette}>
@@ -202,7 +241,7 @@ export default function Visualizations() {
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs">Labels</Label>
+                    <Label className="text-xs">Data Labels</Label>
                     <Switch checked={showLabels} onCheckedChange={setShowLabels} />
                   </div>
                 </div>
@@ -210,7 +249,21 @@ export default function Visualizations() {
             </CardContent>
           </Card>
 
-          {currentData.length > 0 ? (
+          {suitabilityWarning && (
+            <Card className="bg-amber-500/10 border-amber-500/20">
+              <CardContent className="py-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-600">Chart Not Suitable</p>
+                    <p className="text-xs text-muted-foreground mt-1">{suitabilityWarning}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {currentData.length > 0 && !suitabilityWarning ? (
             <VisualizationEngine
               chartType={selectedChart as any}
               data={getAggregatedData()}
@@ -223,7 +276,7 @@ export default function Visualizations() {
               showGrid={showGrid}
               showLabels={showLabels}
             />
-          ) : (
+          ) : !suitabilityWarning ? (
             <Card className="bg-card border-border">
               <CardContent className="py-12 text-center">
                 <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -231,7 +284,7 @@ export default function Visualizations() {
                 <p className="text-muted-foreground text-sm">Upload a dataset and select it to visualize</p>
               </CardContent>
             </Card>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

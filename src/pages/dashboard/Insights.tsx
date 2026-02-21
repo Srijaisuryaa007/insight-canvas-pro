@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database, Eye, Share2
+  Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database, Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,8 +43,21 @@ export default function Insights() {
     }
   };
 
-  const handleVisualize = (insight: Insight) => {
+  const handleVisualize = () => {
     navigate('/dashboard/visualizations');
+  };
+
+  const getBusinessImpact = (insight: Insight): string => {
+    switch (insight.type) {
+      case 'trend':
+        return `This trend suggests a directional shift in the data. If the pattern continues, decision-makers should consider adjusting strategy accordingly. Monitor for reversal signals.`;
+      case 'anomaly':
+        return `Anomalies detected may indicate data quality issues, exceptional events, or emerging patterns. Investigate root causes to determine if corrective action is needed.`;
+      case 'correlation':
+        return `The identified correlation provides leverage for predictive modeling. Changes in one variable may reliably predict changes in the other, enabling proactive decision-making.`;
+      default:
+        return `This insight reveals an underlying pattern in your data. Use it to inform business strategy, optimize operations, or identify areas requiring attention.`;
+    }
   };
 
   return (
@@ -106,6 +119,22 @@ export default function Insights() {
             </Card>
           ) : (
             <div className="space-y-4">
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{insights.length} insights discovered</p>
+                      <p className="text-xs text-muted-foreground">
+                        {insights.filter(i => i.type === 'anomaly').length} anomalies • 
+                        {insights.filter(i => i.type === 'trend').length} trends • 
+                        {insights.filter(i => i.type === 'correlation').length} correlations
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {insights.map((insight: Insight) => {
                 const Icon = getTypeIcon(insight.type);
                 const isExpanded = expandedInsight === insight.id;
@@ -130,9 +159,8 @@ export default function Insights() {
                             </div>
                           </div>
 
-                          {/* Action buttons */}
                           <div className="flex gap-2 mt-3">
-                            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => handleVisualize(insight)}>
+                            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleVisualize}>
                               <Eye className="h-3 w-3" />Visualize
                             </Button>
                             <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setExpandedInsight(isExpanded ? null : insight.id)}>
@@ -140,15 +168,18 @@ export default function Insights() {
                             </Button>
                           </div>
 
-                          {/* Expanded explanation */}
                           {isExpanded && (
-                            <div className="mt-3 p-3 rounded-lg bg-muted/50 space-y-2">
+                            <div className="mt-3 p-3 rounded-lg bg-muted/50 space-y-3">
                               {insight.reasoning && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium text-foreground">Statistical Reasoning: </span>
-                                  {insight.reasoning}
-                                </p>
+                                <div>
+                                  <p className="text-xs font-medium text-foreground mb-1">Statistical Reasoning:</p>
+                                  <p className="text-xs text-muted-foreground">{insight.reasoning}</p>
+                                </div>
                               )}
+                              <div>
+                                <p className="text-xs font-medium text-foreground mb-1">Business Impact:</p>
+                                <p className="text-xs text-muted-foreground">{getBusinessImpact(insight)}</p>
+                              </div>
                               {insight.suggestedActions && insight.suggestedActions.length > 0 && (
                                 <div>
                                   <p className="text-xs font-medium text-foreground mb-1">Recommended Actions:</p>

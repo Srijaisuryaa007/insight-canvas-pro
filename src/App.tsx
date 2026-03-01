@@ -24,6 +24,7 @@ import Insights from "./pages/dashboard/Insights";
 import Visualizations from "./pages/dashboard/Visualizations";
 import Copilot from "./pages/dashboard/Copilot";
 import Reports from "./pages/dashboard/Reports";
+import DashboardBuilder from "./pages/dashboard/DashboardBuilder";
 import Settings from "./pages/dashboard/Settings";
 
 import NotFound from "./pages/NotFound";

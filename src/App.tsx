@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { DataProvider } from "@/contexts/DataContext";
+import { DashboardProvider } from "@/contexts/DashboardContext";
 
 // Landing Page
 import LandingPage from "./landing/LandingPage";
@@ -23,6 +24,7 @@ import Insights from "./pages/dashboard/Insights";
 import Visualizations from "./pages/dashboard/Visualizations";
 import Copilot from "./pages/dashboard/Copilot";
 import Reports from "./pages/dashboard/Reports";
+import DashboardBuilder from "./pages/dashboard/DashboardBuilder";
 import Settings from "./pages/dashboard/Settings";
 
 import NotFound from "./pages/NotFound";
@@ -34,6 +36,7 @@ const App = () => (
     <AuthProvider>
       <WorkspaceProvider>
         <DataProvider>
+          <DashboardProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -45,6 +48,7 @@ const App = () => (
                 
                 <Route path="/dashboard" element={<DashboardLayout />}>
                   <Route index element={<Overview />} />
+                  <Route path="builder" element={<DashboardBuilder />} />
                   <Route path="datasets" element={<Datasets />} />
                   <Route path="quality" element={<Quality />} />
                   <Route path="insights" element={<Insights />} />
@@ -58,6 +62,7 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
+          </DashboardProvider>
         </DataProvider>
       </WorkspaceProvider>
     </AuthProvider>

@@ -48,6 +48,7 @@ const App = () => (
                 
                 <Route path="/dashboard" element={<DashboardLayout />}>
                   <Route index element={<Overview />} />
+                  <Route path="builder" element={<DashboardBuilder />} />
                   <Route path="datasets" element={<Datasets />} />
                   <Route path="quality" element={<Quality />} />
                   <Route path="insights" element={<Insights />} />

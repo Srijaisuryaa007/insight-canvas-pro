@@ -28,6 +28,7 @@ interface SidebarProps {
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
+  { path: '/dashboard/builder', icon: BarChart3, label: 'Dashboard' },
   { path: '/dashboard/datasets', icon: Database, label: 'Datasets' },
   { path: '/dashboard/quality', icon: Shield, label: 'Data Quality' },
   { path: '/dashboard/insights', icon: Lightbulb, label: 'Insights' },

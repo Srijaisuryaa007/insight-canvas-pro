@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -24,6 +26,9 @@ export default function Quality() {
   const [confirmFix, setConfirmFix] = useState<{ column: string; type: string } | null>(null);
   const [confirmFixAll, setConfirmFixAll] = useState(false);
   const [aiCleaningPreview, setAiCleaningPreview] = useState<string | null>(null);
+
+  // Missing value strategy state
+  const [missingStrategy, setMissingStrategy] = useState<Record<string, string>>({});
 
   const handleScan = async () => {
     if (!currentDataset) return;
@@ -52,6 +57,35 @@ export default function Quality() {
     if (currentDataset) await scanDataset(currentDataset.id, newData);
   };
 
+  const handleApplyMissingStrategy = async (column: string, strategy: string) => {
+    let newData = [...currentData];
+    const isNum = newData.some(r => typeof r[column] === 'number');
+    const nonNullVals = newData.map(r => r[column]).filter(v => v !== null && v !== undefined && v !== '');
+    
+    if (strategy === 'remove') {
+      newData = newData.filter(r => r[column] !== null && r[column] !== undefined && r[column] !== '');
+    } else if (strategy === 'mean' && isNum) {
+      const nums = nonNullVals.filter(v => typeof v === 'number') as number[];
+      const mean = nums.reduce((a, b) => a + b, 0) / (nums.length || 1);
+      newData = newData.map(r => (r[column] === null || r[column] === undefined || r[column] === '') ? { ...r, [column]: Math.round(mean * 100) / 100 } : r);
+    } else if (strategy === 'median' && isNum) {
+      const nums = (nonNullVals.filter(v => typeof v === 'number') as number[]).sort((a, b) => a - b);
+      const mid = Math.floor(nums.length / 2);
+      const median = nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+      newData = newData.map(r => (r[column] === null || r[column] === undefined || r[column] === '') ? { ...r, [column]: Math.round(median * 100) / 100 } : r);
+    } else if (strategy === 'mode') {
+      const freq: Record<string, number> = {};
+      nonNullVals.forEach(v => { const k = String(v); freq[k] = (freq[k] || 0) + 1; });
+      const mode = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+      const modeVal = isNum ? Number(mode) : mode;
+      newData = newData.map(r => (r[column] === null || r[column] === undefined || r[column] === '') ? { ...r, [column]: modeVal } : r);
+    }
+
+    updateCurrentData(newData);
+    toast({ title: 'Missing Values Fixed', description: `Applied "${strategy}" strategy to "${column}". Re-scanning...` });
+    if (currentDataset) await scanDataset(currentDataset.id, newData);
+  };
+
   const handleFixAll = async () => {
     if (!report || !currentDataset) return;
     let data = [...currentData];
@@ -72,9 +106,9 @@ export default function Quality() {
     const actions = report.issues.map(issue => {
       switch (issue.type) {
         case 'missing': return `• Fill ${issue.count} missing values in "${issue.column}" using median/mode imputation`;
-        case 'duplicate': return `• Remove ${issue.count} duplicate entries in "${issue.column}"`;
+        case 'duplicate': return `• Remove ${issue.count} duplicate entries in "${issue.column}", keeping first occurrence`;
         case 'outlier': return `• Cap ${issue.count} outliers in "${issue.column}" using IQR boundaries`;
-        case 'invalid': return `• Standardize ${issue.count} invalid values in "${issue.column}"`;
+        case 'invalid': return `• Convert ${issue.count} text-formatted numbers in "${issue.column}" to numeric type`;
         default: return `• Fix ${issue.count} ${issue.type} issues in "${issue.column}"`;
       }
     });
@@ -199,24 +233,6 @@ export default function Quality() {
                 </CardContent>
               </Card>
 
-              {report && (report as any).reasoning && (
-                <Card className="bg-card border-border">
-                  <CardContent className="py-4">
-                    <p className="text-sm text-muted-foreground italic">
-                      💡 <span className="font-medium text-foreground">Analysis: </span>
-                      {(report as any).reasoning}
-                    </p>
-                    {(report as any).suggestedActions && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {(report as any).suggestedActions.map((action: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-xs">{action}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
               {/* AI Cleaning Preview */}
               {aiCleaningPreview && (
                 <Card className="bg-primary/5 border-primary/20">
@@ -288,9 +304,9 @@ export default function Quality() {
                         {report.issues.map((issue, idx) => (
                           <div key={idx} className="p-4 rounded-lg border border-border bg-muted/30">
                             <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3">
+                              <div className="flex items-start gap-3 flex-1">
                                 {getSeverityIcon(issue.severity)}
-                                <div>
+                                <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-medium">{issue.column}</span>
                                     <Badge variant="outline" className="text-xs capitalize">{issue.type}</Badge>
@@ -301,8 +317,29 @@ export default function Quality() {
                                   </div>
                                   <p className="text-sm text-muted-foreground mt-1">{issue.count} occurrences ({issue.percentage}%)</p>
                                   <p className="text-sm mt-2">💡 {issue.suggestion}</p>
-                                  {(issue as any).reasoning && (
-                                    <p className="text-xs text-muted-foreground mt-1 italic">🔍 {(issue as any).reasoning}</p>
+
+                                  {/* Missing value strategy selector */}
+                                  {issue.type === 'missing' && (
+                                    <div className="mt-3 p-3 rounded-lg bg-muted/50 space-y-2">
+                                      <Label className="text-xs font-medium">Choose fix strategy:</Label>
+                                      <div className="flex flex-wrap gap-2">
+                                        <Select value={missingStrategy[issue.column] || ''} onValueChange={v => setMissingStrategy(s => ({ ...s, [issue.column]: v }))}>
+                                          <SelectTrigger className="h-8 w-40 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                          <SelectContent className="bg-popover">
+                                            <SelectItem value="remove">Remove rows</SelectItem>
+                                            <SelectItem value="mean">Fill with Mean</SelectItem>
+                                            <SelectItem value="median">Fill with Median</SelectItem>
+                                            <SelectItem value="mode">Fill with Mode</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {missingStrategy[issue.column] && (
+                                          <Button size="sm" className="h-8 text-xs gap-1"
+                                            onClick={() => handleApplyMissingStrategy(issue.column, missingStrategy[issue.column])}>
+                                            <Play className="h-3 w-3" />Apply
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
                               </div>

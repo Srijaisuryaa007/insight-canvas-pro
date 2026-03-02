@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { 
-  Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database, Eye
+  Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database, Eye,
+  ArrowUpRight, ArrowDownRight, Activity, Zap, Target, ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,28 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Insight } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+
+const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+  trend: { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'Trend' },
+  anomaly: { icon: ShieldAlert, color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20', label: 'Anomaly' },
+  correlation: { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/20', label: 'Correlation' },
+  distribution: { icon: BarChart3, color: 'text-violet-500', bg: 'bg-violet-500/10 border-violet-500/20', label: 'Distribution' },
+  risk: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20', label: 'Risk' },
+  opportunity: { icon: Target, color: 'text-primary', bg: 'bg-primary/10 border-primary/20', label: 'Opportunity' },
+};
+
+function getBusinessImpact(insight: Insight): string {
+  switch (insight.type) {
+    case 'trend':
+      return 'Directional shift detected. If the pattern continues, consider adjusting strategy. Monitor for reversal signals.';
+    case 'anomaly':
+      return 'Anomalies may indicate data quality issues, exceptional events, or emerging patterns. Investigate root causes.';
+    case 'correlation':
+      return 'Identified correlation enables predictive modeling. Changes in one variable may predict changes in the other.';
+    default:
+      return 'This pattern reveals an underlying data structure. Use it to inform strategy or identify areas for attention.';
+  }
+}
 
 export default function Insights() {
   const { datasets, currentDataset, currentData, selectDataset } = useData();
@@ -25,41 +48,6 @@ export default function Insights() {
     await generateInsights(currentDataset.id, currentData);
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'trend': return TrendingUp;
-      case 'anomaly': return AlertTriangle;
-      case 'correlation': return BarChart3;
-      default: return Lightbulb;
-    }
-  };
-
-  const getTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'trend': return 'bg-emerald-500/20 text-emerald-600';
-      case 'anomaly': return 'bg-amber-500/20 text-amber-600';
-      case 'correlation': return 'bg-blue-500/20 text-blue-600';
-      default: return 'bg-primary/20 text-primary';
-    }
-  };
-
-  const handleVisualize = () => {
-    navigate('/dashboard/visualizations');
-  };
-
-  const getBusinessImpact = (insight: Insight): string => {
-    switch (insight.type) {
-      case 'trend':
-        return `This trend suggests a directional shift in the data. If the pattern continues, decision-makers should consider adjusting strategy accordingly. Monitor for reversal signals.`;
-      case 'anomaly':
-        return `Anomalies detected may indicate data quality issues, exceptional events, or emerging patterns. Investigate root causes to determine if corrective action is needed.`;
-      case 'correlation':
-        return `The identified correlation provides leverage for predictive modeling. Changes in one variable may reliably predict changes in the other, enabling proactive decision-making.`;
-      default:
-        return `This insight reveals an underlying pattern in your data. Use it to inform business strategy, optimize operations, or identify areas requiring attention.`;
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -68,7 +56,7 @@ export default function Insights() {
             <Lightbulb className="h-7 w-7 text-amber-500" />
             AI Insights
           </h1>
-          <p className="text-muted-foreground">Discover hidden patterns, trends, and anomalies</p>
+          <p className="text-muted-foreground">Advanced patterns, risks, and business opportunities</p>
         </div>
         {currentDataset && (
           <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2">
@@ -119,73 +107,98 @@ export default function Insights() {
             </Card>
           ) : (
             <div className="space-y-4">
-              <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">{insights.length} insights discovered</p>
-                      <p className="text-xs text-muted-foreground">
-                        {insights.filter(i => i.type === 'anomaly').length} anomalies • 
-                        {insights.filter(i => i.type === 'trend').length} trends • 
-                        {insights.filter(i => i.type === 'correlation').length} correlations
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Summary bar */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {['trend', 'anomaly', 'correlation', 'distribution'].map(type => {
+                  const count = insights.filter(i => i.type === type).length;
+                  const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.distribution;
+                  const Icon = cfg.icon;
+                  return (
+                    <Card key={type} className={cn("border", cfg.bg)}>
+                      <CardContent className="py-3 flex items-center gap-3">
+                        <Icon className={cn("h-5 w-5", cfg.color)} />
+                        <div>
+                          <p className="text-xl font-bold">{count}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{cfg.label}s</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
 
+              {/* Insight cards — structured, not paragraph */}
               {insights.map((insight: Insight) => {
-                const Icon = getTypeIcon(insight.type);
+                const cfg = TYPE_CONFIG[insight.type] || TYPE_CONFIG.distribution;
+                const Icon = cfg.icon;
                 const isExpanded = expandedInsight === insight.id;
                 return (
-                  <Card key={insight.id} className="bg-card border-border">
-                    <CardContent className="p-5">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Icon className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium">{insight.title}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">{insight.description}</p>
-                          
-                          <div className="flex items-center gap-2 flex-wrap mt-3">
-                            <Badge className={cn("text-xs", getTypeBadgeColor(insight.type))}>{insight.type}</Badge>
-                            <Badge variant="outline" className="text-xs">{insight.chartType}</Badge>
-                            <div className="flex items-center gap-1 ml-auto">
-                              <span className="text-xs text-muted-foreground">Confidence:</span>
-                              <Progress value={insight.confidence * 100} className="h-1.5 w-16" />
-                              <span className="text-xs font-medium">{Math.round(insight.confidence * 100)}%</span>
+                  <Card key={insight.id} className="bg-card border-border overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="flex">
+                        {/* Type stripe */}
+                        <div className={cn("w-1 shrink-0", cfg.color.replace('text-', 'bg-'))} />
+
+                        <div className="flex-1 p-5">
+                          {/* Header */}
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex items-start gap-3">
+                              <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", cfg.bg.split(' ')[0])}>
+                                <Icon className={cn("h-4 w-4", cfg.color)} />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-sm">{insight.title}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge className={cn("text-[10px] px-1.5 py-0", cfg.bg)} variant="outline">{cfg.label}</Badge>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">{insight.chartType}</Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Progress value={insight.confidence * 100} className="h-1.5 w-12" />
+                              <span className="text-[10px] font-medium text-muted-foreground">{Math.round(insight.confidence * 100)}%</span>
                             </div>
                           </div>
 
-                          <div className="flex gap-2 mt-3">
-                            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handleVisualize}>
+                          {/* Data Evidence */}
+                          <div className="rounded-lg bg-muted/40 p-3 mb-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Data Evidence</p>
+                            <p className="text-sm">{insight.description}</p>
+                          </div>
+
+                          {/* Explanation row */}
+                          {insight.reasoning && (
+                            <div className="rounded-lg bg-muted/30 p-3 mb-3">
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Statistical Reasoning</p>
+                              <p className="text-xs text-muted-foreground">{insight.reasoning}</p>
+                            </div>
+                          )}
+
+                          {/* Actions & expand */}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => navigate('/dashboard/visualizations')}>
                               <Eye className="h-3 w-3" />Visualize
                             </Button>
-                            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setExpandedInsight(isExpanded ? null : insight.id)}>
-                              <Lightbulb className="h-3 w-3" />{isExpanded ? 'Hide' : 'Explain'}
+                            <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => setExpandedInsight(isExpanded ? null : insight.id)}>
+                              <Zap className="h-3 w-3" />{isExpanded ? 'Collapse' : 'Impact & Actions'}
                             </Button>
                           </div>
 
                           {isExpanded && (
-                            <div className="mt-3 p-3 rounded-lg bg-muted/50 space-y-3">
-                              {insight.reasoning && (
-                                <div>
-                                  <p className="text-xs font-medium text-foreground mb-1">Statistical Reasoning:</p>
-                                  <p className="text-xs text-muted-foreground">{insight.reasoning}</p>
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-xs font-medium text-foreground mb-1">Business Impact:</p>
+                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="rounded-lg border border-border p-3">
+                                <p className="text-xs font-medium mb-1">Business Impact</p>
                                 <p className="text-xs text-muted-foreground">{getBusinessImpact(insight)}</p>
                               </div>
                               {insight.suggestedActions && insight.suggestedActions.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-medium text-foreground mb-1">Recommended Actions:</p>
-                                  <ul className="list-disc list-inside space-y-1">
+                                <div className="rounded-lg border border-border p-3">
+                                  <p className="text-xs font-medium mb-1">Recommended Actions</p>
+                                  <ul className="space-y-1">
                                     {insight.suggestedActions.map((action, i) => (
-                                      <li key={i} className="text-xs text-muted-foreground">{action}</li>
+                                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                        <ArrowUpRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                                        {action}
+                                      </li>
                                     ))}
                                   </ul>
                                 </div>

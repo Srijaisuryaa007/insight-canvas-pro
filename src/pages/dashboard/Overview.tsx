@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { 
   Database, Sparkles, TrendingUp, Upload, DollarSign, ShoppingCart, Hash, Users, Percent,
-  Search, CalendarDays, X, Filter, Code, FileSpreadsheet, Link2
+  Code, FileSpreadsheet, Link2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
@@ -11,8 +11,6 @@ import { ConnectorPanel } from '@/components/connectors/ConnectorPanel';
 import { EmptyStateCharacter } from '@/components/dashboard/EmptyStateCharacter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,23 +39,6 @@ function getKPIIcon(name: string) {
   return Hash;
 }
 
-function detectDateColumn(data: Record<string, unknown>[]): string | null {
-  if (!data.length) return null;
-  const keys = Object.keys(data[0]);
-  for (const k of keys) {
-    const sample = data[0][k];
-    if (typeof sample === 'string') {
-      const parsed = Date.parse(sample);
-      if (!isNaN(parsed) && /\d{4}[-/]\d{1,2}/.test(sample)) return k;
-    }
-    if (k.toLowerCase().includes('date') || k.toLowerCase().includes('time')) {
-      const val = String(data[0][k]);
-      if (!isNaN(Date.parse(val))) return k;
-    }
-  }
-  return null;
-}
-
 export default function Overview() {
   const { user } = useAuth();
   const { datasets, currentDataset, currentData, refreshDatasets } = useData();
@@ -66,82 +47,30 @@ export default function Overview() {
   const [activeAI, setActiveAI] = useState<'dax' | 'excel'>('dax');
   const [showConnectors, setShowConnectors] = useState(false);
 
-  // Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [crossFilter, setCrossFilter] = useState<{ key: string; value: string } | null>(null);
-
   const hasData = currentDataset !== null && currentData.length > 0;
-
-  const dateColumn = useMemo(() => hasData ? detectDateColumn(currentData) : null, [currentData, hasData]);
-
-  const filteredData = useMemo(() => {
-    if (!hasData) return [];
-    let result = currentData;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(row =>
-        Object.values(row).some(v => String(v ?? '').toLowerCase().includes(q))
-      );
-    }
-
-    if (dateColumn && dateFrom) {
-      const from = new Date(dateFrom).getTime();
-      result = result.filter(row => {
-        const d = new Date(String(row[dateColumn])).getTime();
-        return !isNaN(d) && d >= from;
-      });
-    }
-    if (dateColumn && dateTo) {
-      const to = new Date(dateTo).getTime() + 86400000;
-      result = result.filter(row => {
-        const d = new Date(String(row[dateColumn])).getTime();
-        return !isNaN(d) && d < to;
-      });
-    }
-
-    if (crossFilter) {
-      result = result.filter(row => String(row[crossFilter.key]) === crossFilter.value);
-    }
-
-    return result;
-  }, [currentData, hasData, searchQuery, dateColumn, dateFrom, dateTo, crossFilter]);
-
-  const isFiltered = searchQuery.trim() !== '' || dateFrom !== '' || dateTo !== '' || crossFilter !== null;
-
-  const handleResetFilters = () => {
-    setSearchQuery('');
-    setDateFrom('');
-    setDateTo('');
-    setCrossFilter(null);
-  };
-
-  useEffect(() => { refreshDatasets(); }, []);
 
   const handleApplyMeasure = useCallback((name: string, formula: string) => {
     saveMeasure(name, formula);
     setMeasures(loadMeasures());
   }, []);
 
-  // Dynamic KPIs based on filtered data
+  // Dynamic KPIs based on current data (no filters — filters removed per spec)
   const kpis = useMemo(() => {
-    if (!filteredData || filteredData.length === 0) return [];
-    const keys = Object.keys(filteredData[0]);
-    const numericKeys = keys.filter(k => typeof filteredData[0][k] === 'number');
+    if (!currentData || currentData.length === 0) return [];
+    const keys = Object.keys(currentData[0]);
+    const numericKeys = keys.filter(k => typeof currentData[0][k] === 'number');
 
     const results: Array<{ title: string; value: string; icon: any; sparkData: number[]; change?: number; trend?: 'up' | 'down' | 'neutral' }> = [];
 
-    results.push({ title: 'Total Rows', value: filteredData.length.toLocaleString(), icon: Database, sparkData: [] });
+    results.push({ title: 'Total Rows', value: currentData.length.toLocaleString(), icon: Database, sparkData: [] });
 
     numericKeys.slice(0, 3).forEach(key => {
-      const vals = filteredData.map(r => Number(r[key]) || 0);
+      const vals = currentData.map(r => Number(r[key]) || 0);
       const sum = vals.reduce((a, b) => a + b, 0);
       const avg = sum / vals.length;
       
       const bucketSize = Math.max(1, Math.floor(vals.length / 10));
-      const sparkData = [];
+      const sparkData: number[] = [];
       for (let i = 0; i < vals.length; i += bucketSize) {
         const bucket = vals.slice(i, i + bucketSize);
         sparkData.push(bucket.reduce((a, b) => a + b, 0) / bucket.length);
@@ -166,7 +95,7 @@ export default function Overview() {
     });
 
     return results;
-  }, [filteredData]);
+  }, [currentData]);
 
   return (
     <div className="space-y-6">
@@ -196,51 +125,6 @@ export default function Overview() {
         ) : (
           <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-6">
             
-            {/* Single Filter Bar */}
-            <Card className="bg-card border-border">
-              <CardContent className="py-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex-1 min-w-[200px] relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search all columns..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-9 h-9"
-                    />
-                  </div>
-                  {dateColumn && (
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                      <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-9 w-36" />
-                      <span className="text-xs text-muted-foreground">to</span>
-                      <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-9 w-36" />
-                    </div>
-                  )}
-                  {!dateColumn && (
-                    <Badge variant="outline" className="text-xs text-muted-foreground">
-                      <CalendarDays className="h-3 w-3 mr-1" />No date column
-                    </Badge>
-                  )}
-                  {crossFilter && (
-                    <Badge variant="secondary" className="gap-1">
-                      <Filter className="h-3 w-3" />
-                      {crossFilter.key}: {crossFilter.value}
-                      <button onClick={() => setCrossFilter(null)}><X className="h-3 w-3" /></button>
-                    </Badge>
-                  )}
-                  <Button variant={isFiltered ? "default" : "outline"} size="sm" onClick={handleResetFilters} disabled={!isFiltered}>
-                    All Data
-                  </Button>
-                  {isFiltered && (
-                    <span className="text-xs text-muted-foreground">
-                      {filteredData.length} of {currentData.length} rows
-                    </span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Dynamic KPI Cards with Sparklines */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {kpis.map((kpi, i) => (

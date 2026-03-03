@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,20 +13,65 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Bell, CheckCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 export function TopBar() {
   const { user, logout } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
+  const navigate = useNavigate();
 
   return (
     <header className="h-14 border-b border-border bg-card px-6 flex items-center justify-end gap-3">
       {/* Notifications */}
-      <Button variant="ghost" size="icon" className="relative">
-        <Bell className="h-5 w-5" />
-        <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive rounded-full text-[10px] flex items-center justify-center text-destructive-foreground">
-          3
-        </span>
-      </Button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive rounded-full text-[10px] flex items-center justify-center text-destructive-foreground">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="end">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <p className="text-sm font-medium">Notifications</p>
+            {unreadCount > 0 && (
+              <Button variant="ghost" size="sm" className="text-xs h-6" onClick={markAllRead}>
+                <CheckCheck className="h-3 w-3 mr-1" />Mark all read
+              </Button>
+            )}
+          </div>
+          <ScrollArea className="h-64">
+            {notifications.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No notifications</p>
+            ) : (
+              <div className="space-y-1 p-2">
+                {notifications.slice(0, 10).map(n => (
+                  <div key={n.id} className={cn("p-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors",
+                    !n.read && "bg-primary/5")} onClick={() => markAsRead(n.id)}>
+                    <p className={cn("text-xs", !n.read && "font-semibold")}>{n.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{n.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+          <div className="p-2 border-t border-border">
+            <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => navigate('/dashboard/profile')}>
+              View all notifications
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {/* User Menu */}
       <DropdownMenu>
@@ -43,8 +92,8 @@ export function TopBar() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem>Settings</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>Profile</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>Settings</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout} className="text-destructive">
             Log out

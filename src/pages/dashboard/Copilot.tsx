@@ -1,16 +1,29 @@
+import { useState } from 'react';
 import { CopilotChat } from '@/components/copilot/CopilotChat';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Database, Lightbulb, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Sparkles, Database, Lightbulb, BarChart3, Eye, Zap, Target } from 'lucide-react';
+import { useSubscription } from '@/hooks/useSubscription';
+import { PLANS } from '@/types/subscription';
 
 export default function Copilot() {
   const { currentDataset, datasets, selectDataset } = useData();
+  const { plan } = useSubscription();
+  const [stakeholderView, setStakeholderView] = useState(false);
+  const [aiMode, setAiMode] = useState<'fast' | 'precise'>('fast');
+
+  const planConfig = PLANS[plan];
+  const availableModels = planConfig.aiModels;
 
   const features = [
-    { icon: Lightbulb, title: 'Data Insights', description: 'Get AI-powered insights about trends, patterns, and anomalies' },
-    { icon: BarChart3, title: 'Chart Recommendations', description: 'Receive suggestions for the best visualization types' },
+    { icon: Lightbulb, title: 'Structured Insights', description: 'Key findings, evidence, risks, opportunities, and actions' },
+    { icon: BarChart3, title: 'Chart Recommendations', description: 'AI suggests the best visualization type for your query' },
     { icon: Database, title: 'Query Your Data', description: 'Ask natural language questions about your datasets' },
+    { icon: Target, title: 'Stakeholder Mode', description: 'Toggle board-ready formatting for executive presentations' },
   ];
 
   return (
@@ -22,7 +35,24 @@ export default function Copilot() {
           </h1>
           <p className="text-muted-foreground">Your intelligent data analysis assistant</p>
         </div>
-        <Badge variant="outline">5 credits per query</Badge>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-xs">Mode:</Label>
+            <Button variant={aiMode === 'fast' ? 'default' : 'outline'} size="sm" className="text-xs h-7" onClick={() => setAiMode('fast')}>
+              ⚡ Fast
+            </Button>
+            <Button variant={aiMode === 'precise' ? 'default' : 'outline'} size="sm" className="text-xs h-7" onClick={() => setAiMode('precise')}>
+              🎯 Precise
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-xs">Stakeholder</Label>
+            <Switch checked={stakeholderView} onCheckedChange={setStakeholderView} />
+          </div>
+          <Badge variant="outline">5 credits per query</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -46,6 +76,22 @@ export default function Copilot() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">Select a dataset to enable context-aware analysis</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3"><CardTitle className="text-base">AI Models</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {availableModels.map(m => (
+                <div key={m} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-sm capitalize font-medium">{m}</span>
+                  <Badge variant="outline" className="text-[10px] ml-auto">Available</Badge>
+                </div>
+              ))}
+              {plan !== 'enterprise' && (
+                <p className="text-xs text-muted-foreground mt-2">Upgrade to unlock more AI models.</p>
               )}
             </CardContent>
           </Card>

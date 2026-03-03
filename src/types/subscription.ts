@@ -12,6 +12,8 @@ export interface PlanConfig {
   credits: number;
   features: string[];
   isUnlimited?: boolean;
+  aiModels: string[];
+  maxRows: number;
 }
 
 export const PLANS: Record<PlanType, PlanConfig> = {
@@ -23,7 +25,9 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     maxDatasets: 1,
     chartTypes: 5,
     credits: 10,
-    features: ['1 dataset', '5 chart types', '10 credits']
+    maxRows: 1000,
+    aiModels: ['grok'],
+    features: ['1 dataset', '5 chart types', '10 credits', 'Grok AI', '1,000 row limit']
   },
   basic: {
     id: 'basic',
@@ -33,7 +37,9 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     maxDatasets: 3,
     chartTypes: 10,
     credits: 200,
-    features: ['3 datasets', '10 chart types', '200 credits']
+    maxRows: 10000,
+    aiModels: ['grok'],
+    features: ['3 datasets', '10 chart types', '200 credits', 'Grok AI', '10,000 row limit']
   },
   pro: {
     id: 'pro',
@@ -43,7 +49,9 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     maxDatasets: -1,
     chartTypes: 20,
     credits: 1000,
-    features: ['Unlimited datasets', '20 chart types', '1000 credits', 'PDF export', 'Copilot', 'Forecast']
+    maxRows: 100000,
+    aiModels: ['grok', 'chatgpt'],
+    features: ['Unlimited datasets', '20 chart types', '1000 credits', 'PDF export', 'Copilot', 'Forecast', 'ChatGPT AI', '100K row limit']
   },
   enterprise: {
     id: 'enterprise',
@@ -51,10 +59,12 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     price: 25,
     priceLabel: '$25/mo',
     maxDatasets: -1,
-    chartTypes: 30,
+    chartTypes: 38,
     credits: -1,
+    maxRows: -1,
     isUnlimited: true,
-    features: ['Unlimited datasets', 'ALL 30 chart types', 'Unlimited credits', 'Geo maps', 'Anomaly detection', 'Advanced explainability', 'Custom dashboards']
+    aiModels: ['grok', 'chatgpt', 'claude'],
+    features: ['Unlimited datasets', 'ALL 38 chart types', 'Unlimited credits', 'Geo maps', 'Anomaly detection', 'Advanced explainability', 'Custom dashboards', 'ChatGPT + Claude AI', 'Unlimited rows']
   }
 };
 
@@ -71,15 +81,21 @@ export const CREDIT_COSTS = {
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
+// ALL 38 chart types
+const ALL_38_CHARTS = [
+  'bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge',
+  'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar',
+  'geo', 'choropleth', 'network', 'force', 'tree', 'parallel', 'word-cloud', 'timeline', '3d-scatter', '3d-surface',
+  'donut', 'stacked-bar', 'grouped-bar', 'stacked-area', 'pareto', 'bullet', 'progress', 'kpi-card',
+];
+
 // Chart types available per plan
 export const CHART_TYPES_BY_PLAN: Record<PlanType, string[]> = {
   free: ['bar', 'line', 'pie', 'area', 'scatter'],
   basic: ['bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge'],
   pro: ['bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge', 
         'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar'],
-  enterprise: ['bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge',
-               'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar',
-               'geo', 'choropleth', 'network', 'force', 'tree', 'parallel', 'word-cloud', 'timeline', '3d-scatter', '3d-surface']
+  enterprise: ALL_38_CHARTS,
 };
 
 // Features gated by plan

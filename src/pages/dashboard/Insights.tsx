@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Lightbulb, TrendingUp, AlertTriangle, BarChart3, Loader2, Sparkles, Database, Eye,
-  ArrowUpRight, ArrowDownRight, Activity, Zap, Target, ShieldAlert
+  ArrowUpRight, Activity, Zap, Target, ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,14 +25,12 @@ const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; label:
 
 function getBusinessImpact(insight: Insight): string {
   switch (insight.type) {
-    case 'trend':
-      return 'Directional shift detected. If the pattern continues, consider adjusting strategy. Monitor for reversal signals.';
-    case 'anomaly':
-      return 'Anomalies may indicate data quality issues, exceptional events, or emerging patterns. Investigate root causes.';
-    case 'correlation':
-      return 'Identified correlation enables predictive modeling. Changes in one variable may predict changes in the other.';
-    default:
-      return 'This pattern reveals an underlying data structure. Use it to inform strategy or identify areas for attention.';
+    case 'trend': return 'Directional shift detected. If the pattern continues, consider adjusting strategy. Monitor for reversal signals.';
+    case 'anomaly': return 'Anomalies may indicate data quality issues, exceptional events, or emerging patterns. Investigate root causes.';
+    case 'correlation': return 'Identified correlation enables predictive modeling. Changes in one variable may predict changes in the other.';
+    case 'risk': return 'This risk pattern requires immediate attention. Failure to address could lead to revenue loss or operational issues.';
+    case 'opportunity': return 'This represents an untapped growth area. Allocating resources here could yield significant returns.';
+    default: return 'This pattern reveals an underlying data structure. Use it to inform strategy or identify areas for attention.';
   }
 }
 
@@ -46,6 +44,18 @@ export default function Insights() {
   const handleGenerate = async () => {
     if (!currentDataset) return;
     await generateInsights(currentDataset.id, currentData);
+  };
+
+  const handleVisualize = (insight: Insight) => {
+    // Store insight context for the visualization page to pick up
+    const vizContext = {
+      insightId: insight.id,
+      chartType: insight.chartType || 'bar',
+      title: insight.title,
+      sourceInsight: insight.description,
+    };
+    sessionStorage.setItem('datapulse_viz_context', JSON.stringify(vizContext));
+    navigate('/dashboard/visualizations');
   };
 
   return (
@@ -71,9 +81,7 @@ export default function Insights() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select Dataset</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Select Dataset</CardTitle></CardHeader>
           <CardContent>
             {datasets.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No datasets available.</p>
@@ -109,7 +117,7 @@ export default function Insights() {
             <div className="space-y-4">
               {/* Summary bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['trend', 'anomaly', 'correlation', 'distribution'].map(type => {
+                {['trend', 'anomaly', 'risk', 'opportunity'].map(type => {
                   const count = insights.filter(i => i.type === type).length;
                   const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.distribution;
                   const Icon = cfg.icon;
@@ -127,7 +135,7 @@ export default function Insights() {
                 })}
               </div>
 
-              {/* Insight cards — structured, not paragraph */}
+              {/* Insight cards */}
               {insights.map((insight: Insight) => {
                 const cfg = TYPE_CONFIG[insight.type] || TYPE_CONFIG.distribution;
                 const Icon = cfg.icon;
@@ -136,9 +144,7 @@ export default function Insights() {
                   <Card key={insight.id} className="bg-card border-border overflow-hidden">
                     <CardContent className="p-0">
                       <div className="flex">
-                        {/* Type stripe */}
                         <div className={cn("w-1 shrink-0", cfg.color.replace('text-', 'bg-'))} />
-
                         <div className="flex-1 p-5">
                           {/* Header */}
                           <div className="flex items-start justify-between gap-3 mb-3">
@@ -166,7 +172,7 @@ export default function Insights() {
                             <p className="text-sm">{insight.description}</p>
                           </div>
 
-                          {/* Explanation row */}
+                          {/* Statistical Reasoning */}
                           {insight.reasoning && (
                             <div className="rounded-lg bg-muted/30 p-3 mb-3">
                               <p className="text-xs font-medium text-muted-foreground mb-1">Statistical Reasoning</p>
@@ -174,9 +180,9 @@ export default function Insights() {
                             </div>
                           )}
 
-                          {/* Actions & expand */}
+                          {/* Actions */}
                           <div className="flex items-center gap-2 mt-2">
-                            <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => navigate('/dashboard/visualizations')}>
+                            <Button variant="default" size="sm" className="text-xs gap-1 h-7" onClick={() => handleVisualize(insight)}>
                               <Eye className="h-3 w-3" />Visualize
                             </Button>
                             <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => setExpandedInsight(isExpanded ? null : insight.id)}>

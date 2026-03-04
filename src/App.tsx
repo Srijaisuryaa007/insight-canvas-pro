@@ -38,6 +38,7 @@ const App = () => (
       <WorkspaceProvider>
         <DataProvider>
           <DashboardProvider>
+          <NotificationProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />

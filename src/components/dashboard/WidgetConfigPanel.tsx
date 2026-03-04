@@ -145,10 +145,10 @@ export function WidgetConfigPanel() {
             <Separator />
             <div className="space-y-1">
               <Label className="text-xs">Sort By</Label>
-              <Select value={widget.config.sortColumn || ''} onValueChange={v => update({ sortColumn: v })}>
+              <Select value={widget.config.sortColumn || '__none__'} onValueChange={v => update({ sortColumn: v === '__none__' ? '' : v })}>
                 <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {columns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>

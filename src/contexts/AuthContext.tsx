@@ -4,6 +4,7 @@ import { User, SubscriptionPlan, AddonType } from '@/types';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
@@ -19,12 +20,16 @@ const STORAGE_KEY = 'datapulse_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      setUser(JSON.parse(stored));
+      try {
+        setUser(JSON.parse(stored));
+      } catch { /* ignore corrupt data */ }
     }
+    setIsLoading(false);
   }, []);
 
   const persistUser = (userData: User) => {
@@ -33,7 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate login - in production, validate against backend
     const stored = localStorage.getItem(`datapulse_users_${email}`);
     if (stored) {
       const userData = JSON.parse(stored);
@@ -82,9 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deductCredits = (amount: number): boolean => {
     if (!user) return false;
-    if (user.plan === 'enterprise') return true; // unlimited
+    if (user.plan === 'enterprise') return true;
     if (user.credits < amount) return false;
-    
     const updated = { ...user, credits: user.credits - amount };
     persistUser(updated);
     localStorage.setItem(`datapulse_users_${user.email}`, JSON.stringify(updated));
@@ -103,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       user,
       isAuthenticated: !!user,
+      isLoading,
       login,
       signup,
       logout,

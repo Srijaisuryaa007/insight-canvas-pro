@@ -50,7 +50,7 @@ export interface QualityReport {
 export interface Insight {
   id: string;
   datasetId: string;
-  type: 'trend' | 'correlation' | 'anomaly' | 'distribution';
+  type: 'trend' | 'correlation' | 'anomaly' | 'distribution' | 'risk' | 'opportunity';
   title: string;
   description: string;
   confidence: number;

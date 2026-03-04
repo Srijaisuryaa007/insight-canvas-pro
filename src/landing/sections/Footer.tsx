@@ -1,11 +1,34 @@
 import { Zap, Github, Twitter, Linkedin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function Footer() {
-  const links = {
-    product: ['Features', 'Pricing', 'Dashboard', 'API'],
-    resources: ['Documentation', 'Tutorials', 'Blog', 'Changelog'],
-    company: ['About', 'Careers', 'Contact', 'Press'],
-    legal: ['Privacy', 'Terms', 'Security', 'Cookies'],
+  const navigate = useNavigate();
+
+  const links: Record<string, { label: string; action: () => void }[]> = {
+    product: [
+      { label: 'Features', action: () => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }) },
+      { label: 'Pricing', action: () => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }) },
+      { label: 'Dashboard', action: () => navigate('/dashboard') },
+      { label: 'Visualizations', action: () => navigate('/dashboard/visualizations') },
+    ],
+    resources: [
+      { label: 'Documentation', action: () => navigate('/dashboard/settings') },
+      { label: 'Tutorials', action: () => navigate('/dashboard/copilot') },
+      { label: 'Data Quality', action: () => navigate('/dashboard/quality') },
+      { label: 'Changelog', action: () => navigate('/dashboard/insights') },
+    ],
+    company: [
+      { label: 'About', action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+      { label: 'Overview', action: () => navigate('/dashboard') },
+      { label: 'Contact', action: () => navigate('/dashboard/settings') },
+      { label: 'Reports', action: () => navigate('/dashboard/reports') },
+    ],
+    legal: [
+      { label: 'Privacy', action: () => navigate('/dashboard/settings') },
+      { label: 'Terms', action: () => navigate('/dashboard/settings') },
+      { label: 'Security', action: () => navigate('/dashboard/settings') },
+      { label: 'Cookies', action: () => navigate('/dashboard/settings') },
+    ],
   };
 
   return (
@@ -24,13 +47,13 @@ export function Footer() {
               Enterprise-grade analytics, running locally.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
                 <Github className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
             </div>
@@ -42,10 +65,13 @@ export function Footer() {
               <h4 className="font-semibold mb-4 capitalize">{category}</h4>
               <ul className="space-y-2">
                 {items.map((item) => (
-                  <li key={item}>
-                    <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      {item}
-                    </a>
+                  <li key={item.label}>
+                    <button
+                      onClick={item.action}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+                    >
+                      {item.label}
+                    </button>
                   </li>
                 ))}
               </ul>

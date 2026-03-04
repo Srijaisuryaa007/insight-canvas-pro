@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 // Landing Page
 import LandingPage from "./landing/LandingPage";

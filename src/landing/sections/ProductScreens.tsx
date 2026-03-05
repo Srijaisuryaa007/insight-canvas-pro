@@ -4,8 +4,8 @@ import { BarChart3, Sparkles, Shield, Lightbulb } from 'lucide-react';
 
 const screens = [
   {
-    title: 'Interactive Dashboard',
-    description: 'Power BI-style grid with resizable charts',
+    title: 'Interactive Dashboard Builder',
+    description: 'Drag-and-drop grid with resizable charts',
     icon: BarChart3,
     gradient: 'from-blue-600 to-violet-600',
   },
@@ -40,7 +40,7 @@ export function ProductScreens() {
   const opacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 1], [0, 1, 1, 0]);
 
   return (
-    <section ref={containerRef} className="py-24 bg-muted/30 overflow-hidden">
+    <section id="product-screens" ref={containerRef} className="py-24 bg-muted/30 overflow-hidden">
       <div className="container mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -78,7 +78,7 @@ export function ProductScreens() {
                   </div>
                 </div>
 
-                {/* Mock UI elements */}
+                {/* Simulated UI elements */}
                 <div className="space-y-2 mt-4">
                   <div className="flex gap-2">
                     <div className="h-2 w-1/3 bg-muted rounded-full" />

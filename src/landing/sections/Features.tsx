@@ -1,21 +1,14 @@
 import { motion } from 'framer-motion';
 import { 
-  BarChart3, 
-  Shield, 
-  Sparkles, 
-  Zap, 
-  Database, 
-  Lock,
-  TrendingUp,
-  Lightbulb
+  BarChart3, Shield, Sparkles, Zap, Database, Lock, TrendingUp, Lightbulb
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const features = [
   {
     icon: BarChart3,
-    title: 'Power BI-Style Dashboards',
-    description: 'Interactive, resizable chart grids with 30+ visualization types. Drag, drop, and customize.',
+    title: 'Interactive Dashboards',
+    description: 'Drag-and-drop dashboard builder with 38+ visualization types. Resize, customize, and share.',
   },
   {
     icon: Sparkles,
@@ -58,9 +51,7 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
+    transition: { staggerChildren: 0.1 },
   },
 };
 

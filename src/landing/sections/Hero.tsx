@@ -3,7 +3,8 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Float } from '@react-three/drei';
 import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, BarChart3, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles, BarChart3, Play } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface HeroProps {
   onGetStarted: () => void;
@@ -44,6 +45,8 @@ function DataCubes() {
 }
 
 export function Hero({ onGetStarted }: HeroProps) {
+  const navigate = useNavigate();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background gradient */}
@@ -57,6 +60,27 @@ export function Hero({ onGetStarted }: HeroProps) {
           </Suspense>
         </Canvas>
       </div>
+
+      {/* Top Navigation Bar */}
+      <nav className="absolute top-0 left-0 right-0 z-20">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-chart-1 flex items-center justify-center">
+              <BarChart3 className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-lg text-foreground">DataPulse</span>
+          </button>
+          <div className="hidden md:flex items-center gap-6">
+            <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</button>
+            <button onClick={() => document.getElementById('use-cases')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Use Cases</button>
+            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>Log In</Button>
+            <Button size="sm" onClick={() => navigate('/signup')}>Sign Up</Button>
+          </div>
+        </div>
+      </nav>
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6 text-center">
@@ -100,8 +124,8 @@ export function Hero({ onGetStarted }: HeroProps) {
             transition={{ delay: 0.4 }}
             className="text-xl text-muted-foreground max-w-2xl mx-auto"
           >
-            DataPulse combines Power BI visualization, AI-powered analysis, and enterprise-grade 
-            data quality tools. All running locally on your machine.
+            DataPulse combines enterprise-grade visualization, AI-powered analysis, and 
+            advanced data quality tools — all running locally on your machine.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -115,9 +139,9 @@ export function Hero({ onGetStarted }: HeroProps) {
               Start Analyzing
               <ArrowRight className="h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="gap-2 text-lg px-8">
-              <BarChart3 className="h-5 w-5" />
-              Watch Demo
+            <Button size="lg" variant="outline" className="gap-2 text-lg px-8" onClick={() => document.getElementById('product-screens')?.scrollIntoView({ behavior: 'smooth' })}>
+              <Play className="h-5 w-5" />
+              See in Action
             </Button>
           </motion.div>
 
@@ -129,8 +153,8 @@ export function Hero({ onGetStarted }: HeroProps) {
             className="pt-12 grid grid-cols-3 gap-8 max-w-2xl mx-auto"
           >
             {[
-              { label: 'Chart Types', value: '30+' },
-              { label: 'AI Models', value: '5' },
+              { label: 'Chart Types', value: '38+' },
+              { label: 'AI Models', value: '3' },
               { label: 'Local First', value: '100%' },
             ].map((stat, i) => (
               <div key={i} className="text-center">

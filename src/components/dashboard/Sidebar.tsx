@@ -1,21 +1,9 @@
-import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  LayoutDashboard, 
-  Database, 
-  BarChart3, 
-  Sparkles, 
-  FileText, 
-  Settings, 
-  ChevronLeft,
-  ChevronRight,
-  Shield,
-  Lightbulb,
-  LogOut,
-  Zap,
-  Crown
+  LayoutDashboard, Database, BarChart3, Sparkles, FileText, Settings,
+  ChevronLeft, ChevronRight, Shield, Lightbulb, LogOut, Zap, Crown, User
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,13 +16,14 @@ interface SidebarProps {
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-  { path: '/dashboard/builder', icon: BarChart3, label: 'Dashboard' },
+  { path: '/dashboard/builder', icon: BarChart3, label: 'Dashboards' },
   { path: '/dashboard/datasets', icon: Database, label: 'Datasets' },
   { path: '/dashboard/quality', icon: Shield, label: 'Data Quality' },
   { path: '/dashboard/insights', icon: Lightbulb, label: 'Insights' },
   { path: '/dashboard/visualizations', icon: BarChart3, label: 'Visualizations' },
   { path: '/dashboard/copilot', icon: Sparkles, label: 'AI Copilot' },
   { path: '/dashboard/reports', icon: FileText, label: 'Reports' },
+  { path: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
 const bottomItems = [
@@ -43,6 +32,7 @@ const bottomItems = [
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const getPlanBadge = () => {
@@ -61,22 +51,24 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       "h-screen bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300",
       collapsed ? "w-16" : "w-64"
     )}>
-      {/* Header */}
+      {/* Header — clicking navigates to intro page */}
       <div className="p-4 flex items-center justify-between">
         {!collapsed && (
-          <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-chart-1 to-chart-2 flex items-center justify-center">
               <Zap className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="font-semibold text-sidebar-foreground">DataPulse</span>
-          </div>
+          </button>
         )}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8"
-          onClick={onToggle}
-        >
+        {collapsed && (
+          <button onClick={() => navigate('/')} className="hover:opacity-80 transition-opacity mx-auto">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-chart-1 to-chart-2 flex items-center justify-center">
+              <Zap className="h-5 w-5 text-primary-foreground" />
+            </div>
+          </button>
+        )}
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>

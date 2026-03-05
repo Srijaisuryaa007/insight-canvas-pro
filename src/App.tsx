@@ -27,6 +27,7 @@ import Copilot from "./pages/dashboard/Copilot";
 import Reports from "./pages/dashboard/Reports";
 import DashboardBuilder from "./pages/dashboard/DashboardBuilder";
 import Settings from "./pages/dashboard/Settings";
+import Profile from "./pages/dashboard/Profile";
 
 import NotFound from "./pages/NotFound";
 

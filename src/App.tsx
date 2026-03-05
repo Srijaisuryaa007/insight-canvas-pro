@@ -59,6 +59,7 @@ const App = () => (
                   <Route path="copilot" element={<Copilot />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="profile" element={<Profile />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />

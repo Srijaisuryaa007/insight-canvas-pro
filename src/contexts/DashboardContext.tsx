@@ -240,7 +240,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   return (
     <DashboardContext.Provider value={{
       dashboard, currentPageId, currentPage, selectedWidgetId,
-      createDashboard, loadDashboard, renameDashboard,
+      createDashboard, loadDashboard, renameDashboard, closeDashboard,
       addPage, removePage, renamePage, setCurrentPage: setCurrentPageId,
       addWidget, removeWidget, updateWidget, updateWidgetConfig, updateLayouts, selectWidget: setSelectedWidgetId,
       crossFilter, setCrossFilter,

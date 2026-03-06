@@ -144,6 +144,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setDashboard(d => d ? { ...d, name } : null);
   }, []);
 
+  const closeDashboard = useCallback(() => {
+    setDashboard(null);
+    setCurrentPageId(null);
+    setSelectedWidgetId(null);
+    setCrossFilter(null);
+    historyRef.current = [];
+    historyIdxRef.current = -1;
+  }, []);
+
   // Pages
   const addPage = useCallback((name: string) => {
     const page: DashboardPage = { id: crypto.randomUUID(), name, widgets: [] };

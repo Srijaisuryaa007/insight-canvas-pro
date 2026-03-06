@@ -29,7 +29,7 @@ const WIDGET_LIMITS: Record<string, number> = {
 export default function DashboardBuilder() {
   const {
     dashboard, currentPage, currentPageId,
-    createDashboard, loadDashboard, renameDashboard,
+    createDashboard, loadDashboard, renameDashboard, closeDashboard,
     addPage, removePage, renamePage, setCurrentPage,
     addWidget, selectedWidgetId,
     undo, redo, canUndo, canRedo,

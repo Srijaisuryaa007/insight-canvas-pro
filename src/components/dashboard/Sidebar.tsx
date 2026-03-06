@@ -1,9 +1,9 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   LayoutDashboard, Database, BarChart3, Sparkles, FileText, Settings,
-  ChevronLeft, ChevronRight, Shield, Lightbulb, LogOut, Zap, Crown, User
+  ChevronLeft, ChevronRight, Shield, Lightbulb, LogOut, Zap, Crown
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,6 @@ const navItems = [
   { path: '/dashboard/visualizations', icon: BarChart3, label: 'Visualizations' },
   { path: '/dashboard/copilot', icon: Sparkles, label: 'AI Copilot' },
   { path: '/dashboard/reports', icon: FileText, label: 'Reports' },
-  { path: '/dashboard/profile', icon: User, label: 'Profile' },
 ];
 
 const bottomItems = [
@@ -31,7 +30,6 @@ const bottomItems = [
 ];
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -143,7 +141,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           ))}
           <li>
             <button
-              onClick={logout}
+              onClick={() => { logout(); navigate('/'); }}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
                 "hover:bg-destructive/10 text-sidebar-foreground hover:text-destructive"

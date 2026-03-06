@@ -29,7 +29,7 @@ const WIDGET_LIMITS: Record<string, number> = {
 export default function DashboardBuilder() {
   const {
     dashboard, currentPage, currentPageId,
-    createDashboard, loadDashboard, renameDashboard,
+    createDashboard, loadDashboard, renameDashboard, closeDashboard,
     addPage, removePage, renamePage, setCurrentPage,
     addWidget, selectedWidgetId,
     undo, redo, canUndo, canRedo,
@@ -193,7 +193,7 @@ render();
     <div className="flex flex-col h-[calc(100vh-7rem)] gap-3">
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => { setShowTemplates(true); }}>
+        <Button variant="ghost" size="sm" onClick={() => { closeDashboard(); setShowTemplates(true); }}>
           <ChevronLeft className="h-4 w-4 mr-1" />Templates
         </Button>
         <Separator orientation="vertical" className="h-6" />

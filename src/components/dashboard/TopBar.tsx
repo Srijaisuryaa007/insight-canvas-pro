@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -27,8 +27,30 @@ export function TopBar() {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
   const navigate = useNavigate();
 
+  // Dark mode state
+  const [isDark, setIsDark] = useState(() => {
+    const stored = localStorage.getItem('datapulse_theme');
+    if (stored) return stored === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('datapulse_theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
   return (
     <header className="h-14 border-b border-border bg-card px-6 flex items-center justify-end gap-3">
+      {/* Dark Mode Toggle */}
+      <Button variant="ghost" size="icon" onClick={() => setIsDark(!isDark)} title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+        {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+      </Button>
+
       {/* Notifications */}
       <Popover>
         <PopoverTrigger asChild>
@@ -95,7 +117,7 @@ export function TopBar() {
           <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>Profile</DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>Settings</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={logout} className="text-destructive">
+          <DropdownMenuItem onClick={() => { logout(); navigate('/'); }} className="text-destructive">
             Log out
           </DropdownMenuItem>
         </DropdownMenuContent>

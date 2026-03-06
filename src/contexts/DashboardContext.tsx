@@ -13,6 +13,7 @@ interface DashboardContextType {
   createDashboard: (name: string, template?: DashboardTemplate) => void;
   loadDashboard: (schema: DashboardSchema) => void;
   renameDashboard: (name: string) => void;
+  closeDashboard: () => void;
 
   // Pages
   addPage: (name: string) => void;
@@ -143,6 +144,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setDashboard(d => d ? { ...d, name } : null);
   }, []);
 
+  const closeDashboard = useCallback(() => {
+    setDashboard(null);
+    setCurrentPageId(null);
+    setSelectedWidgetId(null);
+    setCrossFilter(null);
+    historyRef.current = [];
+    historyIdxRef.current = -1;
+  }, []);
+
   // Pages
   const addPage = useCallback((name: string) => {
     const page: DashboardPage = { id: crypto.randomUUID(), name, widgets: [] };
@@ -230,7 +240,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   return (
     <DashboardContext.Provider value={{
       dashboard, currentPageId, currentPage, selectedWidgetId,
-      createDashboard, loadDashboard, renameDashboard,
+      createDashboard, loadDashboard, renameDashboard, closeDashboard,
       addPage, removePage, renamePage, setCurrentPage: setCurrentPageId,
       addWidget, removeWidget, updateWidget, updateWidgetConfig, updateLayouts, selectWidget: setSelectedWidgetId,
       crossFilter, setCrossFilter,

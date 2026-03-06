@@ -324,10 +324,10 @@ export default function Visualizations() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs">Sort By</Label>
-                      <Select value={sortColumn} onValueChange={setSortColumn}>
+                      <Select value={sortColumn || '__none__'} onValueChange={v => setSortColumn(v === '__none__' ? '' : v)}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
                         <SelectContent className="bg-popover">
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="__none__">None</SelectItem>
                           {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>)}
                         </SelectContent>
                       </Select>

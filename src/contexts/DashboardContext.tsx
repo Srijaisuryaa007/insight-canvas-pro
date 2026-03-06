@@ -13,6 +13,7 @@ interface DashboardContextType {
   createDashboard: (name: string, template?: DashboardTemplate) => void;
   loadDashboard: (schema: DashboardSchema) => void;
   renameDashboard: (name: string) => void;
+  closeDashboard: () => void;
 
   // Pages
   addPage: (name: string) => void;

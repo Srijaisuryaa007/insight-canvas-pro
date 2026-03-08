@@ -963,7 +963,7 @@ export default function Visualizations() {
                     <span className="text-xs font-semibold text-amber-600">Pro Charts ({allCharts.length - availableCharts.length} types)</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground mb-2">Unlock all chart types with DataVora Pro</p>
-                  <Button size="sm" variant="outline" className="w-full h-6 text-[10px] border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
+                  <Button size="sm" variant="outline" className="w-full h-6 text-[10px] border-amber-500/30 text-amber-600 hover:bg-amber-500/10" onClick={() => navigate('/dashboard/settings')}>
                     Upgrade to unlock →
                   </Button>
                 </div>

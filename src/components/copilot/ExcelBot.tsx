@@ -245,18 +245,33 @@ export function ExcelBot({ datasetId, onApplyMeasure, columns = [], data = [] }:
     setIsLoading(true);
 
     try {
-      await new Promise(r => setTimeout(r, 300));
       const needsFormula = wantsFormula(question);
 
       if (needsFormula) {
+        // Try API first for formula generation
+        let apiAnswer = '';
+        try {
+          const history = messages.map(m => ({ role: m.role, content: m.content }));
+          const apiResponse = await askCopilot(`[EXCEL EXPERT MODE] You are an Excel specialist. Generate the exact Excel formula, explain what each part does, give example output. Question: ${question}`, datasetId, history);
+          apiAnswer = apiResponse.answer || '';
+        } catch {}
+
         const { formula, explanation } = generateExcelResponse(question, columns, data);
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(), role: 'assistant',
-          content: 'Here\'s the Excel formula for your request:',
+          content: apiAnswer || 'Here\'s the Excel formula for your request:',
           formula, explanation, applied: false,
         }]);
       } else {
-        const answer = generateConceptualAnswer(question);
+        // Try API first for conceptual answers
+        let apiAnswer = '';
+        try {
+          const history = messages.map(m => ({ role: m.role, content: m.content }));
+          const apiResponse = await askCopilot(`[EXCEL EXPERT MODE] You are an Excel specialist with deep knowledge. Answer this Excel question thoroughly: ${question}`, datasetId, history);
+          apiAnswer = apiResponse.answer || '';
+        } catch {}
+
+        const answer = apiAnswer || generateConceptualAnswer(question);
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(), role: 'assistant',
           content: answer,

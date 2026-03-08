@@ -59,7 +59,7 @@ export default function DashboardBuilder() {
     dashboard, currentPage, currentPageId,
     createDashboard, loadDashboard, renameDashboard, closeDashboard,
     addPage, removePage, renamePage, setCurrentPage,
-    addWidget, selectedWidgetId,
+    addWidget, removeWidget, selectedWidgetId,
     undo, redo, canUndo, canRedo,
     saveDashboard, savedDashboards, deleteSavedDashboard,
     zoom, setZoom, crossFilter, setCrossFilter,

@@ -34,14 +34,19 @@ const ALL_CHART_LABELS: Record<string, string> = {
   donut: 'Donut Chart', 'stacked-bar': 'Stacked Bar', 'grouped-bar': 'Grouped Bar',
   'stacked-area': 'Stacked Area', pareto: 'Pareto Chart', bullet: 'Bullet',
   progress: 'Progress', 'kpi-card': 'KPI Card',
+  // Advanced combinational
+  violin: 'Violin Plot', density: 'Density Plot', stripplot: 'Strip Plot',
+  swarmplot: 'Swarm Plot', jointplot: 'Joint Plot', rugplot: 'Rug Plot',
+  ridgeline: 'Ridgeline Plot', lollipop: 'Lollipop Chart', dumbbell: 'Dumbbell Chart',
+  slope: 'Slope Chart', marimekko: 'Marimekko Chart', combo: 'Combo Chart',
 };
 
 const CHART_CATEGORIES: Record<string, string[]> = {
-  'Comparison': ['bar', 'grouped-bar', 'stacked-bar', 'bullet', 'pareto'],
-  'Trend': ['line', 'area', 'stacked-area', 'stream'],
-  'Composition': ['pie', 'donut', 'treemap', 'sunburst', 'funnel'],
-  'Distribution': ['scatter', 'bubble', 'histogram', 'boxplot', 'heatmap'],
-  'Relationship': ['radar', 'polar', 'sankey', 'network', 'force', 'parallel'],
+  'Comparison': ['bar', 'grouped-bar', 'stacked-bar', 'bullet', 'pareto', 'lollipop', 'dumbbell'],
+  'Trend': ['line', 'area', 'stacked-area', 'stream', 'slope', 'combo'],
+  'Composition': ['pie', 'donut', 'treemap', 'sunburst', 'funnel', 'marimekko'],
+  'Distribution': ['scatter', 'bubble', 'histogram', 'boxplot', 'heatmap', 'violin', 'density', 'stripplot', 'swarmplot', 'ridgeline', 'rugplot'],
+  'Relationship': ['radar', 'polar', 'sankey', 'network', 'force', 'parallel', 'jointplot'],
   'Specialized': ['waterfall', 'candlestick', 'gauge', 'progress', 'kpi-card', 'calendar', 'timeline', 'tree', 'word-cloud', 'geo', 'choropleth', '3d-scatter', '3d-surface'],
 };
 

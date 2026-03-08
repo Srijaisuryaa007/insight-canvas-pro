@@ -955,6 +955,191 @@ app.delete('/api/credentials/:id', (req, res) => {
 });
 
 
+// ============ PAYMENT & CREDITS ENDPOINTS (Razorpay Ready) ============
+
+// In-memory stores for payments (replace with DB in production)
+const paymentOrders = {};
+const userCredits = {};
+
+// Credit packages configuration
+const CREDIT_PACKAGES = {
+  'pack-50': { credits: 50, priceINR: 16600 },
+  'pack-200': { credits: 200, priceINR: 58100 },
+  'pack-500': { credits: 500, priceINR: 124500 },
+  'pack-1000': { credits: 1000, priceINR: 207500 },
+};
+
+// POST /api/payments/create-order - Create Razorpay order
+app.post('/api/payments/create-order', async (req, res) => {
+  try {
+    const { userId, packageId, credits, amount } = req.body;
+
+    if (!userId || !packageId || !CREDIT_PACKAGES[packageId]) {
+      return res.status(400).json({ error: 'Invalid request parameters' });
+    }
+
+    const pkg = CREDIT_PACKAGES[packageId];
+    
+    // Validate amount matches package
+    if (amount !== pkg.priceINR) {
+      return res.status(400).json({ error: 'Amount mismatch' });
+    }
+
+    // Generate order ID (in production, use Razorpay API)
+    const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Store pending order
+    paymentOrders[orderId] = {
+      orderId,
+      userId,
+      packageId,
+      credits: pkg.credits,
+      amount: pkg.priceINR,
+      currency: 'INR',
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    console.log(`[PAYMENT] Order created: ${orderId} for ${pkg.credits} credits`);
+
+    // In production, create order via Razorpay API:
+    // const Razorpay = require('razorpay');
+    // const razorpay = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET });
+    // const order = await razorpay.orders.create({ amount: pkg.priceINR, currency: 'INR' });
+
+    res.json({
+      orderId,
+      amount: pkg.priceINR,
+      currency: 'INR',
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_DEMO' // Use test key for development
+    });
+  } catch (error) {
+    console.error('[PAYMENT CREATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/payments/verify - Verify payment and add credits
+app.post('/api/payments/verify', async (req, res) => {
+  try {
+    const { userId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!userId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Missing verification parameters' });
+    }
+
+    const order = paymentOrders[razorpay_order_id];
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.userId !== userId) {
+      return res.status(403).json({ error: 'User mismatch' });
+    }
+
+    if (order.status === 'completed') {
+      return res.status(400).json({ error: 'Order already processed' });
+    }
+
+    // In production, verify signature using Razorpay:
+    // const crypto = require('crypto');
+    // const expectedSignature = crypto
+    //   .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    //   .update(razorpay_order_id + '|' + razorpay_payment_id)
+    //   .digest('hex');
+    // if (expectedSignature !== razorpay_signature) {
+    //   return res.status(400).json({ error: 'Invalid signature' });
+    // }
+
+    // Mark order as completed
+    order.status = 'completed';
+    order.paymentId = razorpay_payment_id;
+    order.completedAt = new Date().toISOString();
+
+    // Add credits to user
+    if (!userCredits[userId]) {
+      userCredits[userId] = 0;
+    }
+    userCredits[userId] += order.credits;
+
+    console.log(`[PAYMENT VERIFIED] User ${userId} received ${order.credits} credits. New balance: ${userCredits[userId]}`);
+
+    res.json({
+      success: true,
+      credits: order.credits,
+      newBalance: userCredits[userId]
+    });
+  } catch (error) {
+    console.error('[PAYMENT VERIFY ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/payments/history/:userId - Get payment history
+app.get('/api/payments/history/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const userPayments = Object.values(paymentOrders)
+      .filter(order => order.userId === userId && order.status === 'completed')
+      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+    res.json({
+      payments: userPayments.map(p => ({
+        id: p.paymentId,
+        orderId: p.orderId,
+        credits: p.credits,
+        amount: p.amount,
+        status: p.status,
+        createdAt: p.completedAt
+      }))
+    });
+  } catch (error) {
+    console.error('[PAYMENT HISTORY ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/credits/:userId - Get user credit balance
+app.get('/api/credits/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    res.json({ credits: userCredits[userId] || 0 });
+  } catch (error) {
+    console.error('[CREDITS ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/credits/:userId/consume - Consume credits (for actions)
+app.post('/api/credits/:userId/consume', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, action } = req.body;
+
+    if (!userCredits[userId] || userCredits[userId] < amount) {
+      return res.status(400).json({ 
+        error: 'Insufficient credits',
+        required: amount,
+        available: userCredits[userId] || 0
+      });
+    }
+
+    userCredits[userId] -= amount;
+    console.log(`[CREDITS] User ${userId} consumed ${amount} for ${action}. Remaining: ${userCredits[userId]}`);
+
+    res.json({
+      success: true,
+      consumed: amount,
+      remaining: userCredits[userId]
+    });
+  } catch (error) {
+    console.error('[CREDITS CONSUME ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 // ============ HELPER FUNCTIONS ============
 
 function detectColumns(data) {

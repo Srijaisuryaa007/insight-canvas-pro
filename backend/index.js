@@ -1140,6 +1140,127 @@ app.post('/api/credits/:userId/consume', (req, res) => {
 });
 
 
+// ============ SUBSCRIPTION PAYMENT ENDPOINTS ============
+
+const subscriptionOrders = {};
+const userSubscriptions = {};
+
+// Plan configurations (must match frontend)
+const PLAN_CONFIGS = {
+  free: { credits: 5, priceINR: 0 },
+  basic: { credits: 100, priceINR: 41500 },
+  pro: { credits: 500, priceINR: 124500 },
+  enterprise: { credits: -1, priceINR: 207500 }
+};
+
+// POST /api/payments/create-subscription-order - Create subscription order
+app.post('/api/payments/create-subscription-order', async (req, res) => {
+  try {
+    const { userId, planId, amount } = req.body;
+
+    if (!userId || !planId || !PLAN_CONFIGS[planId]) {
+      return res.status(400).json({ error: 'Invalid request parameters' });
+    }
+
+    const planConfig = PLAN_CONFIGS[planId];
+    
+    if (amount !== planConfig.priceINR) {
+      return res.status(400).json({ error: 'Amount mismatch' });
+    }
+
+    const orderId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    subscriptionOrders[orderId] = {
+      orderId,
+      userId,
+      planId,
+      amount: planConfig.priceINR,
+      credits: planConfig.credits,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    console.log(`[SUBSCRIPTION] Order created: ${orderId} for ${planId} plan`);
+
+    res.json({
+      orderId,
+      amount: planConfig.priceINR,
+      currency: 'INR',
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_DEMO'
+    });
+  } catch (error) {
+    console.error('[SUBSCRIPTION CREATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/payments/verify-subscription - Verify subscription payment
+app.post('/api/payments/verify-subscription', async (req, res) => {
+  try {
+    const { userId, planId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!userId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Missing verification parameters' });
+    }
+
+    const order = subscriptionOrders[razorpay_order_id];
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.userId !== userId) {
+      return res.status(403).json({ error: 'User mismatch' });
+    }
+
+    if (order.status === 'completed') {
+      return res.status(400).json({ error: 'Order already processed' });
+    }
+
+    // In production: Verify Razorpay signature here
+
+    // Mark order as completed
+    order.status = 'completed';
+    order.paymentId = razorpay_payment_id;
+    order.completedAt = new Date().toISOString();
+
+    // Update user subscription
+    userSubscriptions[userId] = {
+      planId: order.planId,
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'active'
+    };
+
+    // Reset credits for new plan
+    const planConfig = PLAN_CONFIGS[order.planId];
+    userCredits[userId] = planConfig.credits === -1 ? 999999 : planConfig.credits;
+
+    console.log(`[SUBSCRIPTION VERIFIED] User ${userId} upgraded to ${order.planId}. Credits: ${userCredits[userId]}`);
+
+    res.json({
+      success: true,
+      planId: order.planId,
+      credits: userCredits[userId]
+    });
+  } catch (error) {
+    console.error('[SUBSCRIPTION VERIFY ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/subscription/:userId - Get user subscription status
+app.get('/api/subscription/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const subscription = userSubscriptions[userId] || { planId: 'free', status: 'active' };
+    res.json({ subscription, credits: userCredits[userId] || PLAN_CONFIGS.free.credits });
+  } catch (error) {
+    console.error('[SUBSCRIPTION GET ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 // ============ HELPER FUNCTIONS ============
 
 function detectColumns(data) {

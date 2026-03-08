@@ -15,15 +15,16 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-  { path: '/dashboard/builder', icon: BarChart3, label: 'Dashboards' },
-  { path: '/dashboard/datasets', icon: Database, label: 'Datasets' },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Overview', tour: 'sidebar' },
+  { path: '/dashboard/builder', icon: BarChart3, label: 'Dashboards', tour: 'builder' },
+  { path: '/dashboard/datasets', icon: Database, label: 'Datasets', tour: 'datasets' },
   { path: '/dashboard/quality', icon: Shield, label: 'Data Quality' },
   { path: '/dashboard/insights', icon: Lightbulb, label: 'Insights' },
   { path: '/dashboard/visualizations', icon: BarChart3, label: 'Visualizations' },
-  { path: '/dashboard/copilot', icon: Sparkles, label: 'AI Copilot' },
+  { path: '/dashboard/copilot', icon: Sparkles, label: 'AI Copilot', tour: 'copilot' },
   { path: '/dashboard/sql', icon: Terminal, label: 'SQL Engine' },
-  { path: '/dashboard/reports', icon: FileText, label: 'Reports' },
+  { path: '/dashboard/reports', icon: FileText, label: 'Reports', tour: 'reports' },
+  { path: '/dashboard/integrations', icon: Plug, label: 'Integrations' },
 ];
 
 const bottomItems = [

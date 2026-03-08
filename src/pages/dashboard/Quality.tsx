@@ -396,19 +396,161 @@ export default function Quality() {
                 </Card>
               )}
 
-              {/* Tabs for Profile / Issues / Summary */}
+              {/* Tabs for Profile / Columns / Issues / Summary */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-3">
-                  <TabsTrigger value="profile" className="gap-1">
+                <TabsList className="w-full grid grid-cols-4">
+                  <TabsTrigger value="profile" className="gap-1 text-xs">
                     <BarChart3 className="h-3 w-3" /> Profile
                   </TabsTrigger>
-                  <TabsTrigger value="issues" className="gap-1">
+                  <TabsTrigger value="columns" className="gap-1 text-xs">
+                    <Database className="h-3 w-3" /> Columns {cleaningSummary?.columnsNeedingDecision.length ? `(⚠️${cleaningSummary.columnsNeedingDecision.length})` : ''}
+                  </TabsTrigger>
+                  <TabsTrigger value="issues" className="gap-1 text-xs">
                     <AlertTriangle className="h-3 w-3" /> Issues {report ? `(${report.issues.length})` : ''}
                   </TabsTrigger>
-                  <TabsTrigger value="summary" className="gap-1">
-                    <ClipboardCheck className="h-3 w-3" /> Cleaning Report
+                  <TabsTrigger value="summary" className="gap-1 text-xs">
+                    <ClipboardCheck className="h-3 w-3" /> Report
                   </TabsTrigger>
                 </TabsList>
+
+                {/* COLUMN ANALYSIS TAB */}
+                <TabsContent value="columns">
+                  {!cleaningSummary ? (
+                    <Card className="bg-card border-border">
+                      <CardContent className="py-12 text-center">
+                        <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-medium">No Column Analysis Yet</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Click "Full 8-Step Clean" to analyze all columns</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-4">
+                      <Card className="bg-card border-border">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">🗑️ Empty Column Analysis</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b border-border">
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Column</th>
+                                  <th className="text-right p-2 font-medium text-muted-foreground">Empty%</th>
+                                  <th className="text-right p-2 font-medium text-muted-foreground">Unique</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Action</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Reason</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Scenario</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {cleaningSummary.columnAnalysis.map((col, i) => (
+                                  <tr key={i} className={cn("border-b border-border/30", col.action === 'WARN_USER' && "bg-amber-500/5")}>
+                                    <td className="p-2 font-medium">{col.column}</td>
+                                    <td className="p-2 text-right">
+                                      <span className={cn(
+                                        col.emptyPct === 0 ? "text-emerald-500" :
+                                        col.emptyPct >= 70 ? "text-destructive" :
+                                        col.emptyPct >= 50 ? "text-amber-500" : "text-muted-foreground"
+                                      )}>{col.emptyPct}%</span>
+                                    </td>
+                                    <td className="p-2 text-right">{col.uniqueValues}</td>
+                                    <td className="p-2">
+                                      <Badge variant={
+                                        col.action === 'AUTO_DROP' ? 'destructive' :
+                                        col.action === 'WARN_USER' ? 'outline' :
+                                        col.action === 'KEEP_FILL' ? 'default' : 'secondary'
+                                      } className="text-xs">
+                                        {col.action === 'AUTO_DROP' ? '🗑️ DROP' :
+                                         col.action === 'WARN_USER' ? '⚠️ DECIDE' :
+                                         col.action === 'KEEP_FILL' ? '🔧 FILL' : '✅ CLEAN'}
+                                      </Badge>
+                                    </td>
+                                    <td className="p-2 text-muted-foreground">{col.reason}</td>
+                                    <td className="p-2 text-muted-foreground">{col.scenario}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Summary counts */}
+                          <div className="mt-4 flex flex-wrap gap-3 text-xs">
+                            <span>✅ Dropped: {cleaningSummary.columnAnalysis.filter(c => c.action === 'AUTO_DROP').length}</span>
+                            <span>⚠️ Need Decision: {cleaningSummary.columnAnalysis.filter(c => c.action === 'WARN_USER').length}</span>
+                            <span>🔧 To Fill: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_FILL').length}</span>
+                            <span>✅ Clean: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_CLEAN').length}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* User decision prompts for 50-70% empty columns */}
+                      {cleaningSummary.columnsNeedingDecision.length > 0 && (
+                        <Card className="bg-amber-500/5 border-amber-500/20">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">⚠️ Columns Needing Your Decision</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-xs text-muted-foreground mb-4">
+                              These columns are 50-70% empty. Choose what to do with each, then click "Re-run with Decisions".
+                            </p>
+                            <div className="space-y-3">
+                              {cleaningSummary.columnsNeedingDecision.map(col => {
+                                const analysis = cleaningSummary.columnAnalysis.find(c => c.column === col);
+                                return (
+                                  <div key={col} className="p-3 rounded-lg border border-border bg-card">
+                                    <p className="text-sm font-medium mb-1">
+                                      Column "{col}" is {analysis?.emptyPct ?? '?'}% empty ({analysis?.emptyCount ?? '?'} of {analysis?.totalRows ?? '?'} rows)
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mb-3">Should I:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant={columnDecisions[col] === 'drop' ? 'default' : 'outline'}
+                                        className="text-xs h-7"
+                                        onClick={() => handleColumnDecision(col, 'drop')}
+                                      >
+                                        A) Drop column entirely
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant={columnDecisions[col] === 'fill' ? 'default' : 'outline'}
+                                        className="text-xs h-7"
+                                        onClick={() => handleColumnDecision(col, 'fill')}
+                                      >
+                                        B) Fill with median/mode
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant={columnDecisions[col] === 'keep' ? 'default' : 'outline'}
+                                        className="text-xs h-7"
+                                        onClick={() => handleColumnDecision(col, 'keep')}
+                                      >
+                                        C) Keep as is
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <Button
+                              className="mt-4 gap-2 w-full"
+                              disabled={cleaningSummary.columnsNeedingDecision.some(c => !columnDecisions[c]) || isCleaningRunning}
+                              onClick={handleRerunWithDecisions}
+                            >
+                              {isCleaningRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                              Re-run Cleaning with Your Decisions
+                            </Button>
+                            {cleaningSummary.columnsNeedingDecision.some(c => !columnDecisions[c]) && (
+                              <p className="text-xs text-muted-foreground mt-2 text-center">
+                                Please make a choice for all {cleaningSummary.columnsNeedingDecision.length} columns to continue
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
 
                 {/* PROFILE TAB */}
                 <TabsContent value="profile">

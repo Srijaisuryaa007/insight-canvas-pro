@@ -113,36 +113,74 @@ export function runFullCleaningPipeline(
     steps.push({ step: 2, name: 'Handle Missing Values', icon: '🔧', actions, rowsBefore: before, rowsAfter: current.length, changesMade: changes });
   }
 
-  // STEP 3: Remove Duplicates
+  // STEP 3: Remove Duplicates (keep='first' — always keep 1 original)
   {
+    const actions: string[] = [];
     const before = current.length;
-    const seen = new Set<string>();
-    const deduped: Record<string, unknown>[] = [];
+
+    // 3a. Exact duplicates (full row) — drop_duplicates(keep='first')
+    const seenExact = new Set<string>();
+    const dedupedExact: Record<string, unknown>[] = [];
     current.forEach(row => {
       const key = JSON.stringify(row);
-      if (!seen.has(key)) {
-        seen.add(key);
-        deduped.push(row);
+      if (!seenExact.has(key)) {
+        seenExact.add(key);
+        dedupedExact.push(row);
       }
     });
-    duplicatesRemoved = before - deduped.length;
-    current = deduped;
+    const exactDupes = before - dedupedExact.length;
+    if (exactDupes > 0) {
+      actions.push(`🔍 Exact Duplicates Found: ${exactDupes} rows`);
+      actions.push(`✅ Kept: 1 original row each (keep='first')`);
+      actions.push(`❌ Removed: ${exactDupes} extra copies`);
+      actions.push(`📊 Rows Before: ${before} → Rows After: ${dedupedExact.length}`);
+    }
+    current = dedupedExact;
+    duplicatesRemoved += exactDupes;
 
-    // Standardize text casing for near-duplicates
+    // 3b. Partial duplicates on key columns (email, phone, name)
+    const partialDupeCols = keys.filter(k =>
+      /email|phone|name|id|username|account/i.test(k) && strCols.includes(k)
+    );
+    let partialRemoved = 0;
+    partialDupeCols.forEach(col => {
+      const beforePartial = current.length;
+      const seenPartial = new Set<string>();
+      current = current.filter(row => {
+        const key = String(row[col] ?? '').toLowerCase().trim();
+        if (key === '') return true; // keep rows with empty key
+        if (seenPartial.has(key)) return false;
+        seenPartial.add(key);
+        return true;
+      });
+      const removed = beforePartial - current.length;
+      if (removed > 0) {
+        partialRemoved += removed;
+        actions.push(`🔍 Partial duplicates on "${col}": Found ${removed} extra copies → kept 1 original each (subset=['${col}'], keep='first')`);
+      }
+    });
+    duplicatesRemoved += partialRemoved;
+
+    // Trim whitespace in text columns
     strCols.forEach(col => {
       current = current.map(r => {
         const v = r[col];
-        if (typeof v === 'string') {
-          return { ...r, [col]: v.trim() };
-        }
+        if (typeof v === 'string') return { ...r, [col]: v.trim() };
         return r;
       });
     });
 
-    const actions = duplicatesRemoved > 0
-      ? [`Removed ${duplicatesRemoved} exact duplicate rows`, 'Trimmed whitespace in text columns']
-      : ['No duplicate rows found', 'Trimmed whitespace in text columns'];
-    steps.push({ step: 3, name: 'Remove Duplicates', icon: '🗑️', actions, rowsBefore: before, rowsAfter: current.length, changesMade: duplicatesRemoved });
+    if (exactDupes === 0 && partialRemoved === 0) {
+      actions.push('No duplicate rows found');
+    }
+    actions.push('Trimmed whitespace in text columns');
+
+    const totalDupesThisStep = exactDupes + partialRemoved;
+    steps.push({
+      step: 3, name: 'Remove Duplicates', icon: '🗑️', actions,
+      rowsBefore: before, rowsAfter: current.length,
+      changesMade: totalDupesThisStep,
+    });
   }
 
   // STEP 4: Fix Data Types

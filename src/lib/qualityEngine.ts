@@ -52,20 +52,20 @@ export function runLocalQualityScan(
       totalIssueCount += missingCount;
     }
 
-    // 2. Duplicates
+    // 2. Exact Duplicates (full-row)
     const nonNull = values.filter(v => v !== null && v !== undefined && v !== '');
     const uniqueCount = new Set(nonNull.map(String)).size;
     const dupeCount = nonNull.length - uniqueCount;
-    if (dupeCount > total * 0.5 && typeof values.find(v => v !== null && v !== undefined) !== 'boolean') {
+    if (dupeCount > 0 && typeof values.find(v => v !== null && v !== undefined) !== 'boolean') {
       issues.push({
         column: col,
         type: 'duplicate',
-        severity: 'medium',
+        severity: dupeCount > total * 0.3 ? 'high' : dupeCount > total * 0.1 ? 'medium' : 'low',
         count: dupeCount,
         percentage: Math.round((dupeCount / total) * 100),
-        suggestion: 'Verify if duplicates are valid or need deduplication.',
+        suggestion: `Found ${dupeCount} duplicates in "${col}". Will keep 1 original row each and remove ${dupeCount} extra copies (keep='first').`,
         confidence: 0.88,
-        reasoning: `${dupeCount} duplicate values found across ${total} rows.`,
+        reasoning: `🔍 Duplicates Found: ${dupeCount} rows | ✅ Will Keep: 1 original row each | ❌ Will Remove: ${dupeCount} extra copies`,
       });
     }
 
@@ -210,30 +210,39 @@ export function generateFix(
     }
 
     case 'duplicate': {
+      // keep='first': keep first occurrence, remove extra copies
       const seen = new Set<string>();
       let dupeCount = 0;
-      data.forEach(row => {
+      const duplicateRows: number[] = [];
+      data.forEach((row, idx) => {
         const key = String(row[column]);
-        if (seen.has(key)) dupeCount++;
+        if (seen.has(key)) {
+          dupeCount++;
+          duplicateRows.push(idx);
+        }
         seen.add(key);
       });
+
+      const rowsBefore = data.length;
+      const rowsAfter = rowsBefore - dupeCount;
 
       return {
         column,
         type: 'duplicate',
-        description: `Remove ${dupeCount} duplicate rows by "${column}"`,
+        description: `🔍 Duplicates Found: ${dupeCount} rows\n✅ Kept: 1 original row each (keep='first')\n❌ Removed: ${dupeCount} extra copies\n📊 Rows Before: ${rowsBefore}\n📊 Rows After: ${rowsAfter}`,
         preview: {
-          before: `${data.length} rows (${dupeCount} duplicates)`,
-          after: `${data.length - dupeCount} rows`,
+          before: `📊 ${rowsBefore} rows (🔍 ${dupeCount} duplicate copies in "${column}")`,
+          after: `📊 ${rowsAfter} rows (✅ kept 1 original each, ❌ removed ${dupeCount} extra copies)`,
           affectedRows: dupeCount,
         },
         apply: (d) => {
+          // drop_duplicates(subset=[column], keep='first')
           const seenKeys = new Set<string>();
           return d.filter(row => {
             const key = String(row[column]);
-            if (seenKeys.has(key)) return false;
+            if (seenKeys.has(key)) return false; // remove extra copy
             seenKeys.add(key);
-            return true;
+            return true; // keep first original
           });
         },
       };

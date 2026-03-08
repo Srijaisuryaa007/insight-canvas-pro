@@ -350,7 +350,7 @@ export default function Quality() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <p className="font-medium text-sm">Preview Fix: {previewFix.type} in "{previewFix.column}"</p>
-                        <p className="text-xs text-muted-foreground mt-1">{previewFix.description}</p>
+                        <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{previewFix.description}</pre>
                         <div className="grid grid-cols-2 gap-4 mt-3">
                           <div className="p-2 rounded bg-destructive/10 text-xs">
                             <span className="font-medium text-destructive">Before: </span>{previewFix.before}

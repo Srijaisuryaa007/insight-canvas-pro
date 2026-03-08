@@ -879,7 +879,7 @@ export default function Quality() {
                                         </td>
                                         <td className="p-2 text-right font-bold">{iss.count}</td>
                                         <td className="p-2 text-muted-foreground">{iss.description}</td>
-                                        <td className="p-2">{iss.autoFixable ? '✅ Auto' : '⚠️ Manual'}</td>
+                                        <td className="p-2">{iss.autoFixable ? <Badge variant="secondary" className="text-xs">Auto</Badge> : <Badge variant="outline" className="text-xs">Manual</Badge>}</td>
                                       </tr>
                                     ))}
                                   </tbody>

@@ -777,7 +777,7 @@ export default function Datasets() {
             <Card className="bg-card border-border shadow-2xl">
               <CardContent className="py-3 px-5 flex items-center gap-4">
                 <span className="text-sm font-medium">{selectedIds.size} dataset{selectedIds.size > 1 ? 's' : ''} selected</span>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => toast({ title: 'Downloaded' })}>
+                <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleBulkDownload}>
                   <Download className="h-3.5 w-3.5" />Download All
                 </Button>
                 <Button variant="destructive" size="sm" className="text-xs gap-1.5" onClick={handleBulkDelete}>

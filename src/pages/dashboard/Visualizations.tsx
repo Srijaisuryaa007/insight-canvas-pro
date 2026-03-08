@@ -606,6 +606,31 @@ export default function Visualizations() {
   const [saveDescription, setSaveDescription] = useState('');
   const [saveTags, setSaveTags] = useState('');
 
+  // Load saved charts from Supabase on mount
+  useEffect(() => {
+    const loadSavedCharts = async () => {
+      if (!supabase || !user?.id) return;
+      const { data, error } = await supabase
+        .from('saved_charts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setSavedCharts(data.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description || '',
+          tags: c.tags || '',
+          chartType: c.chart_type,
+          xAxis: c.x_axis,
+          yAxis: c.y_axis,
+          savedAt: new Date(c.created_at),
+        })));
+      }
+    };
+    loadSavedCharts();
+  }, [user?.id]);
+
   // Download state
   const [downloading, setDownloading] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);

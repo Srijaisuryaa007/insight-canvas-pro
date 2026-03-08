@@ -1499,7 +1499,7 @@ export default function Quality() {
                       {cleaningSummary.featuresAdded.length > 0 && (
                         <Card className="bg-card border-border">
                           <CardContent className="py-4">
-                            <h4 className="font-medium text-sm mb-2">⚡ New Features Added ({cleaningSummary.featuresAdded.length})</h4>
+                            <h4 className="font-medium text-sm mb-2">Engineered Features ({cleaningSummary.featuresAdded.length})</h4>
                             <div className="flex flex-wrap gap-2">
                               {cleaningSummary.featuresAdded.map((f, i) => (
                                 <Badge key={i} variant="outline" className="text-xs">{f}</Badge>

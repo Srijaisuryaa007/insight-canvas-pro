@@ -772,7 +772,213 @@ export default function Quality() {
                   })()}
                 </TabsContent>
 
-                {/* PROFILE TAB */}
+                {/* VALIDATION TAB */}
+                <TabsContent value="validation">
+                  {!cleaningSummary?.validationReport ? (
+                    <Card className="bg-card border-border">
+                      <CardContent className="py-12 text-center">
+                        <ShieldCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-medium">No Validation Report Yet</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Click "Full 8-Step Clean" to run comprehensive validation</p>
+                      </CardContent>
+                    </Card>
+                  ) : (() => {
+                    const vr = cleaningSummary.validationReport!;
+                    return (
+                      <div className="space-y-4">
+                        {/* Validation Score Banner */}
+                        <Card className="bg-primary/5 border-primary/20">
+                          <CardContent className="py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className={cn("w-16 h-16 rounded-full flex items-center justify-center text-primary-foreground font-bold text-2xl",
+                                  vr.letterGrade === 'A' ? 'bg-emerald-500' : vr.letterGrade === 'B' ? 'bg-chart-1' : vr.letterGrade === 'C' ? 'bg-amber-500' : 'bg-destructive'
+                                )}>
+                                  {vr.letterGrade}
+                                </div>
+                                <div>
+                                  <p className="text-lg font-bold">Validation Score: {vr.validationScore}/100</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {vr.letterGrade === 'A' ? 'Excellent — data is clean and valid' :
+                                     vr.letterGrade === 'B' ? 'Good — minor issues remain' :
+                                     vr.letterGrade === 'C' ? 'Fair — several issues need attention' :
+                                     'Poor — significant data quality issues'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">{vr.issues.length} issues</p>
+                                <p className="text-xs text-muted-foreground">{cleaningSummary.validationFixCount} auto-fixed</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Completeness */}
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3"><CardTitle className="text-base">📊 Completeness: {vr.completeness.overall}%</CardTitle></CardHeader>
+                          <CardContent>
+                            <Progress value={vr.completeness.overall} className="h-3 mb-3" />
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                              {Object.entries(vr.completeness.perColumn).slice(0, 12).map(([col, pct]) => (
+                                <div key={col} className="flex justify-between p-2 rounded bg-muted/30">
+                                  <span className="truncate mr-2">{col}</span>
+                                  <span className={cn("font-mono", pct < 60 ? "text-destructive" : pct < 80 ? "text-amber-500" : "text-emerald-500")}>{pct}%</span>
+                                </div>
+                              ))}
+                            </div>
+                            {vr.completeness.lowRows > 0 && (
+                              <p className="text-xs text-amber-500 mt-2">⚠️ {vr.completeness.lowRows} rows have less than 50% completeness</p>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Validation Issues */}
+                        {vr.issues.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">🔍 Validation Issues ({vr.issues.length})</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Category</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Column</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Type</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Severity</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Count</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Description</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Fixable</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {vr.issues.map((iss, i) => (
+                                      <tr key={i} className="border-b border-border/30">
+                                        <td className="p-2">{iss.category}</td>
+                                        <td className="p-2 font-medium">{iss.column}</td>
+                                        <td className="p-2"><Badge variant="outline" className="text-xs">{iss.type}</Badge></td>
+                                        <td className="p-2">
+                                          <Badge variant={iss.severity === 'high' ? 'destructive' : iss.severity === 'medium' ? 'outline' : 'secondary'} className="text-xs capitalize">{iss.severity}</Badge>
+                                        </td>
+                                        <td className="p-2 text-right font-bold">{iss.count}</td>
+                                        <td className="p-2 text-muted-foreground">{iss.description}</td>
+                                        <td className="p-2">{iss.autoFixable ? '✅ Auto' : '⚠️ Manual'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Distribution */}
+                        {vr.distribution.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">📈 Distribution Analysis</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Column</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Skewness</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Kurtosis</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Dominant Value</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Dominant %</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Rare Categories</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {vr.distribution.map((d, i) => (
+                                      <tr key={i} className="border-b border-border/30">
+                                        <td className="p-2 font-medium">{d.column}</td>
+                                        <td className="p-2 text-right">
+                                          <span className={cn(Math.abs(d.skewness) > 2 ? "text-amber-500" : "")}>{d.skewness || '—'}</span>
+                                        </td>
+                                        <td className="p-2 text-right">{d.kurtosis || '—'}</td>
+                                        <td className="p-2 text-muted-foreground">{d.dominantValue || '—'}</td>
+                                        <td className="p-2 text-right">
+                                          {d.dominantPct ? <span className={cn(d.dominantPct > 95 ? "text-destructive" : d.dominantPct > 80 ? "text-amber-500" : "")}>{d.dominantPct}%</span> : '—'}
+                                        </td>
+                                        <td className="p-2 text-right">{d.rareCategories ?? '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Uniqueness */}
+                        {vr.uniqueness.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">🔑 Uniqueness Check</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                {vr.uniqueness.map((u, i) => (
+                                  <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/30 text-xs">
+                                    <span className="font-medium">{u.column}</span>
+                                    {u.isUnique ? (
+                                      <Badge variant="secondary" className="text-xs">✅ Unique</Badge>
+                                    ) : (
+                                      <Badge variant="destructive" className="text-xs">❌ {u.duplicateCount} duplicates</Badge>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Column Name Issues */}
+                        {vr.columnNameIssues.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">📝 Column Name Fixes</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Original</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Fixed</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Reason</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {vr.columnNameIssues.map((c, i) => (
+                                      <tr key={i} className="border-b border-border/30">
+                                        <td className="p-2 text-destructive">{c.original}</td>
+                                        <td className="p-2 text-emerald-500">{c.fixed}</td>
+                                        <td className="p-2 text-muted-foreground">{c.reason}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Auto-fix details */}
+                        {cleaningSummary.validationFixDetails.length > 0 && (
+                          <Card className="bg-emerald-500/5 border-emerald-500/20">
+                            <CardContent className="py-4">
+                              <h4 className="font-medium text-sm mb-2">✅ Auto-Fixes Applied ({cleaningSummary.validationFixCount})</h4>
+                              <ul className="space-y-1">
+                                {cleaningSummary.validationFixDetails.map((d, i) => (
+                                  <li key={i} className="text-xs text-muted-foreground">{d}</li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </TabsContent>
+
                 <TabsContent value="profile">
                   {!dataProfile ? (
                     <Card className="bg-card border-border">

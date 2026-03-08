@@ -31,29 +31,54 @@ function validateSQL(sql: string): { safe: boolean; reason?: string } {
   return { safe: true };
 }
 
-/** Splits SELECT parts by comma, respecting parentheses depth */
+/** Splits SELECT parts by comma, respecting parentheses depth and backticks */
 function splitSelectParts(selectPart: string): string[] {
   const parts: string[] = [];
   let current = '';
   let depth = 0;
+  let inBacktick = false;
   for (const ch of selectPart) {
-    if (ch === '(') depth++;
-    else if (ch === ')') depth--;
-    if (ch === ',' && depth === 0) { parts.push(current); current = ''; }
-    else current += ch;
+    if (ch === '`') { inBacktick = !inBacktick; current += ch; continue; }
+    if (!inBacktick) {
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { parts.push(current); current = ''; continue; }
+    }
+    current += ch;
   }
   if (current.trim()) parts.push(current);
   return parts;
 }
 
+/** Strip backticks from a column name */
+function stripBackticks(name: string): string {
+  return name.replace(/`/g, '').trim();
+}
+
 /** Case-insensitive column value getter */
 function getColumnValue(row: Record<string, unknown>, colName: string): unknown {
-  if (row[colName] !== undefined) return row[colName];
-  const normalizedTarget = colName.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const clean = stripBackticks(colName);
+  if (row[clean] !== undefined) return row[clean];
+  const normalizedTarget = clean.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
   const matchingKey = Object.keys(row).find(
-    key => key.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') === normalizedTarget
+    key => key.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') === normalizedTarget
   );
   return matchingKey ? row[matchingKey] : null;
+}
+
+/** Resolves backtick-quoted and unquoted column names to actual data keys */
+function resolveColumnName(name: string, actualColumns: string[]): string | null {
+  const clean = stripBackticks(name);
+  // Exact match
+  const exact = actualColumns.find(c => c === clean);
+  if (exact) return exact;
+  // Case-insensitive match
+  const ci = actualColumns.find(c => c.toLowerCase() === clean.toLowerCase());
+  if (ci) return ci;
+  // Normalized match (underscores ↔ spaces)
+  const norm = clean.toLowerCase().replace(/[\s_]+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const normMatch = actualColumns.find(c => c.toLowerCase().replace(/[\s_]+/g, '_').replace(/[^a-z0-9_]/g, '') === norm);
+  return normMatch || null;
 }
 
 /** Resolves column names in a query to match actual data column names */
@@ -61,7 +86,12 @@ function resolveColumns(query: string, data: Record<string, unknown>[]): string 
   if (!data.length) return query;
   const actualColumns = Object.keys(data[0]);
   let resolved = query;
-  // For each word in the query that could be a column name, try to match it
+  // First handle backtick-quoted names: replace `col name` with actual key
+  resolved = resolved.replace(/`([^`]+)`/g, (match, inner) => {
+    const actual = resolveColumnName(inner, actualColumns);
+    return actual || match;
+  });
+  // Then handle unquoted column references
   actualColumns.forEach(actualCol => {
     const regex = new RegExp(`\\b${actualCol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
     resolved = resolved.replace(regex, actualCol);
@@ -114,17 +144,17 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
       const whereClause = query.substring(whereIdx + 7, whereEnd).trim();
 
       // Handle "IS NOT NULL"
-      const notNullMatch = whereClause.match(/(\w+)\s+IS\s+NOT\s+NULL/i);
+      const notNullMatch = whereClause.match(/`?([^`]+)`?\s+IS\s+NOT\s+NULL/i);
       if (notNullMatch) {
-        const actualCol = cols.find(c => c.toLowerCase() === notNullMatch[1].toLowerCase());
+        const actualCol = resolveColumnName(notNullMatch[1], cols);
         if (actualCol) filtered = filtered.filter(row => row[actualCol] !== null && row[actualCol] !== undefined && row[actualCol] !== '');
       }
 
       // Handle comparison operators
-      const condMatch = whereClause.match(/(\w+)\s*(=|!=|>|<|>=|<=|LIKE)\s*'?([^']*)'?/i);
+      const condMatch = whereClause.match(/`?([^`]+)`?\s*(=|!=|>|<|>=|<=|LIKE)\s*'?([^']*)'?/i);
       if (condMatch && !notNullMatch) {
         const [, col, op, val] = condMatch;
-        const actualCol = cols.find(c => c.toLowerCase() === col.toLowerCase());
+        const actualCol = resolveColumnName(col, cols);
         if (actualCol) {
           filtered = filtered.filter(row => {
             const rv = row[actualCol];
@@ -155,8 +185,8 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
     // Parse GROUP BY with aggregations
     if (groupIdx > 0) {
       const groupEnd = [orderIdx, limitIdx].filter(i => i > groupIdx).sort((a, b) => a - b)[0] || query.length;
-      const groupCol = query.substring(groupIdx + 10, groupEnd).trim();
-      const actualGroupCol = cols.find(c => c.toLowerCase() === groupCol.toLowerCase());
+      const groupCol = stripBackticks(query.substring(groupIdx + 10, groupEnd).trim());
+      const actualGroupCol = resolveColumnName(groupCol, cols);
       if (actualGroupCol) {
         const aggMatch = selectPart.match(/SUM\((\w+)\)|COUNT\((\w*|\*)\)|AVG\((\w+)\)|MIN\((\w+)\)|MAX\((\w+)\)|RANK\(\)\s*OVER|DENSE_RANK\(\)\s*OVER/gi);
         const groups: Record<string, Record<string, unknown>[]> = {};
@@ -415,12 +445,22 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
           }
         }
       } else {
-        // Select specific columns
-        const selectFields = selectPart.split(',').map(f => f.trim().replace(/\s+AS\s+\w+/i, ''));
-        const mappedCols = selectFields.map(f => cols.find(c => c.toLowerCase() === f.toLowerCase()) || f);
+        // Select specific columns — handle backtick-quoted names
+        const selectFields = splitSelectParts(selectPart).map(f => {
+          const trimmed = f.trim();
+          const aliasMatch = trimmed.match(/\s+AS\s+(\w+)\s*$/i);
+          const alias = aliasMatch?.[1];
+          const fieldName = trimmed.replace(/\s+AS\s+\w+\s*$/i, '').trim();
+          const clean = stripBackticks(fieldName);
+          const resolved = resolveColumnName(clean, cols);
+          return { name: resolved || clean, alias };
+        });
         filtered = filtered.map(row => {
           const entry: Record<string, unknown> = {};
-          mappedCols.forEach(c => { entry[c] = row[c]; });
+          selectFields.forEach(({ name, alias }) => {
+            const val = row[name] !== undefined ? row[name] : getColumnValue(row, name);
+            entry[alias || name] = val;
+          });
           return entry;
         });
       }
@@ -431,9 +471,9 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
       const orderEnd = limitIdx > orderIdx ? limitIdx : query.length;
       const orderPart = query.substring(orderIdx + 10, orderEnd).trim();
       const descending = orderPart.toUpperCase().includes('DESC');
-      const orderColName = orderPart.replace(/\s+(ASC|DESC)/i, '').trim();
+      const orderColName = stripBackticks(orderPart.replace(/\s+(ASC|DESC)/i, '').trim());
       const keys = Object.keys(filtered[0] || {});
-      const actualOrderCol = keys.find(c => c.toLowerCase() === orderColName.toLowerCase()) ||
+      const actualOrderCol = resolveColumnName(orderColName, keys) ||
         keys.find(c => c.toLowerCase().includes(orderColName.toLowerCase()));
       if (actualOrderCol) {
         filtered.sort((a, b) => {
@@ -591,7 +631,7 @@ function RecommendedQueriesPanel({ onSelect }: { onSelect: (sql: string) => void
                     <button key={i} onClick={() => onSelect(q.sql)}
                       className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-muted/60 transition-colors flex items-center justify-between group">
                       <span className="text-muted-foreground group-hover:text-foreground">{q.label}</span>
-                      <Badge variant="outline" className="text-[8px] h-4 opacity-60">{q.level}</Badge>
+                      <Badge variant="outline" className="text-[8px] h-4 opacity-60">L{q.level}</Badge>
                     </button>
                   ))}
                 </CollapsibleContent>
@@ -747,9 +787,19 @@ export default function SQLEngine() {
         {/* Main Editor + Results */}
         <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden">
           {/* SQL Editor */}
+          {/* SQL Editor with line numbers */}
           <div className="flex gap-2 items-start">
-            <Textarea value={query} onChange={e => setQuery(e.target.value)} placeholder={`SELECT * FROM ${tableName} LIMIT 10`}
-              className="font-mono text-sm min-h-[100px] flex-1 resize-y" onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRunQuery(); }} />
+            <div className="flex-1 relative">
+              <div className="absolute left-0 top-0 bottom-0 w-8 bg-muted/50 rounded-l-md border-r border-border flex flex-col items-end pt-2 pr-1 pointer-events-none overflow-hidden z-10">
+                {(query || ' ').split('\n').map((_, i) => (
+                  <span key={i} className="text-[10px] leading-[20px] text-muted-foreground/50 font-mono">{i + 1}</span>
+                ))}
+              </div>
+              <Textarea value={query} onChange={e => setQuery(e.target.value)} placeholder={`SELECT * FROM ${tableName} LIMIT 10`}
+                className="font-mono text-sm min-h-[180px] pl-10 resize-y leading-[20px]" 
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRunQuery(); }} />
+              <span className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/40">Ctrl+Enter to run</span>
+            </div>
             <div className="flex flex-col gap-2">
               <Button onClick={handleRunQuery} disabled={isRunning || !query.trim()} className="gap-1">
                 <Play className="h-4 w-4" />{isRunning ? 'Running...' : 'Run'}

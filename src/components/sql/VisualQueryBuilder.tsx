@@ -24,6 +24,13 @@ interface VisualQueryBuilderProps {
 const AGGREGATIONS = ['NONE', 'SUM', 'COUNT', 'AVG', 'MIN', 'MAX', 'COUNT DISTINCT'];
 const OPERATORS = ['=', '!=', '>', '<', '>=', '<=', 'LIKE', 'NOT LIKE', 'IS NULL', 'IS NOT NULL', 'IN', 'BETWEEN'];
 
+/** Wraps column name in backticks if it contains spaces or special chars */
+function quoteCol(col: string): string {
+  if (col === '*') return col;
+  if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(col)) return col;
+  return `\`${col}\``;
+}
+
 export default function VisualQueryBuilder({ columns, onQueryChange }: VisualQueryBuilderProps) {
   const [selectedColumns, setSelectedColumns] = useState<ColumnSelection[]>([
     { id: 1, column: columns[0] || '', aggregation: 'NONE', alias: '' }
@@ -43,9 +50,10 @@ export default function VisualQueryBuilder({ columns, onQueryChange }: VisualQue
   const buildQuery = useCallback(() => {
     const selectParts = selectedColumns.map(sc => {
       if (!sc.column) return null;
-      let expr = sc.column;
-      if (sc.aggregation === 'COUNT DISTINCT') expr = `COUNT(DISTINCT ${sc.column})`;
-      else if (sc.aggregation !== 'NONE') expr = `${sc.aggregation}(${sc.column})`;
+      const qc = quoteCol(sc.column);
+      let expr = qc;
+      if (sc.aggregation === 'COUNT DISTINCT') expr = `COUNT(DISTINCT ${qc})`;
+      else if (sc.aggregation !== 'NONE') expr = `${sc.aggregation}(${qc})`;
       if (sc.alias) expr += ` AS ${sc.alias}`;
       return expr;
     }).filter(Boolean);
@@ -55,28 +63,29 @@ export default function VisualQueryBuilder({ columns, onQueryChange }: VisualQue
     let query = `SELECT ${selectParts.join(', ')}\nFROM data`;
 
     if (whereEnabled && whereColumn) {
+      const qw = quoteCol(whereColumn);
       if (['IS NULL', 'IS NOT NULL'].includes(whereOperator)) {
-        query += `\nWHERE ${whereColumn} ${whereOperator}`;
+        query += `\nWHERE ${qw} ${whereOperator}`;
       } else if (whereOperator === 'LIKE' || whereOperator === 'NOT LIKE') {
-        query += `\nWHERE ${whereColumn} ${whereOperator} '%${whereValue}%'`;
+        query += `\nWHERE ${qw} ${whereOperator} '%${whereValue}%'`;
       } else if (whereOperator === 'BETWEEN') {
         const [v1, v2] = whereValue.split(',').map(s => s.trim());
-        query += `\nWHERE ${whereColumn} BETWEEN ${v1 || '0'} AND ${v2 || '0'}`;
+        query += `\nWHERE ${qw} BETWEEN ${v1 || '0'} AND ${v2 || '0'}`;
       } else if (whereOperator === 'IN') {
-        query += `\nWHERE ${whereColumn} IN (${whereValue})`;
+        query += `\nWHERE ${qw} IN (${whereValue})`;
       } else {
         const isNum = whereValue !== '' && !isNaN(Number(whereValue));
         const val = isNum ? whereValue : `'${whereValue}'`;
-        query += `\nWHERE ${whereColumn} ${whereOperator} ${val}`;
+        query += `\nWHERE ${qw} ${whereOperator} ${val}`;
       }
     }
 
     if (groupByEnabled && groupByColumn) {
-      query += `\nGROUP BY ${groupByColumn}`;
+      query += `\nGROUP BY ${quoteCol(groupByColumn)}`;
     }
 
     if (orderByEnabled && orderByColumn) {
-      query += `\nORDER BY ${orderByColumn} ${orderByDirection}`;
+      query += `\nORDER BY ${quoteCol(orderByColumn)} ${orderByDirection}`;
     }
 
     if (limitEnabled && limitValue && limitValue !== 'ALL') {

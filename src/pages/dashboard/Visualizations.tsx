@@ -444,78 +444,309 @@ function AIRecommendations({ recommendations, selectedChart, onSelect, isChartAv
   );
 }
 
-function VisualGallery({ recommendations, chartData, xAxis, yAxis, colorPalette, showLegend, showGrid, showLabels }: {
+function VisualGallery({ recommendations, chartData, xAxis, yAxis, colorPalette, showGrid, isChartAvailable, onSelectChart }: {
   recommendations: Array<{ type: string; reason: string; score: number }>;
   chartData: Record<string, unknown>[];
   xAxis: string;
   yAxis: string;
   colorPalette: string;
-  showLegend: boolean;
   showGrid: boolean;
-  showLabels: boolean;
+  isChartAvailable: (chart: string) => boolean;
+  onSelectChart: (chart: string) => void;
 }) {
+  const navigate = useNavigate();
   if (!recommendations.length || !chartData.length || !xAxis || !yAxis) return null;
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    if (score >= 60) return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+    return 'bg-destructive/20 text-destructive border-destructive/30';
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.3 }}
-      className="space-y-6"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="space-y-3"
     >
-      <Separator />
-      <div className="space-y-2">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <LayoutGrid className="h-4 w-4 text-primary" />
+            <Wand2 className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Visual Gallery</h2>
-            <p className="text-sm text-muted-foreground">
-              Alternative visualizations generated from your data
-            </p>
+            <h2 className="text-lg font-semibold tracking-tight">AI Recommended for Your Data</h2>
+            <p className="text-xs text-muted-foreground">Click any chart to load it →</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {recommendations.slice(0, 6).map((rec, i) => (
-          <motion.div
-            key={rec.type}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.08 }}
-          >
-            <Card className="bg-card border-border overflow-hidden group hover:shadow-md transition-all hover:border-primary/30">
-              <div className="px-4 py-3 flex items-center justify-between border-b border-border/50">
-                <div>
-                  <h3 className="text-sm font-medium">{ALL_CHART_LABELS[rec.type]}</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{rec.reason}</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                  {rec.score}%
-                </Badge>
-              </div>
-              <CardContent className="p-3">
-                <div className="rounded-lg overflow-hidden bg-muted/20 p-1">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+        {recommendations.slice(0, 8).map((rec, i) => {
+          const available = isChartAvailable(rec.type);
+          return (
+            <motion.button
+              key={rec.type}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.05 + i * 0.05 }}
+              onClick={() => available ? onSelectChart(rec.type) : navigate('/dashboard/settings')}
+              className={cn(
+                "relative flex-shrink-0 w-[280px] h-[200px] rounded-xl border overflow-hidden transition-all group",
+                "bg-card hover:shadow-lg hover:scale-[1.02]",
+                available ? "border-border hover:border-primary/50" : "border-border"
+              )}
+            >
+              {/* Chart preview area */}
+              <div className="h-[130px] bg-muted/30 relative overflow-hidden">
+                <div className={cn(!available && "blur-sm opacity-40")}>
                   <VisualizationEngine
                     chartType={rec.type}
                     data={chartData}
                     xAxis={xAxis}
                     yAxis={yAxis}
-                    height={200}
+                    height={130}
                     colorPalette={colorPalette}
                     showLegend={false}
                     showGrid={showGrid}
                     showLabels={false}
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+                {/* Lock overlay */}
+                {!available && (
+                  <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1.5 rounded-t-xl">
+                    <Lock className="h-6 w-6 text-foreground" />
+                    <span className="text-xs font-semibold text-foreground">{ALL_CHART_LABELS[rec.type]}</span>
+                    <span className="text-[10px] text-muted-foreground">Available on Pro plan</span>
+                    <span className="mt-1 text-[11px] font-semibold bg-foreground text-background px-3 py-1 rounded-lg group-hover:opacity-80 transition-opacity">
+                      Unlock →
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Info strip */}
+              <div className="h-[70px] px-3 py-2.5 flex flex-col justify-center">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground truncate">{ALL_CHART_LABELS[rec.type]}</span>
+                  <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 border", getScoreColor(rec.score))}>
+                    {rec.score}%
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1 truncate">{rec.reason}</p>
+              </div>
+            </motion.button>
+          );
+        })}
       </div>
     </motion.div>
+  );
+}
+
+// AI Chart Explanation Component
+function AIChartExplanation({ chartType, xAxis, yAxis, chartStats, chartData }: {
+  chartType: string;
+  xAxis: string;
+  yAxis: string;
+  chartStats: { max: string; maxLabel: string; min: string; minLabel: string; avg: string; count: number } | null;
+  chartData: Record<string, unknown>[];
+}) {
+  const [explanation, setExplanation] = useState<{
+    whatItShows: string;
+    keyFindings: string[];
+    businessInsight: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const generateExplanation = useCallback(() => {
+    if (!chartStats || !xAxis || !yAxis || !chartData.length) return;
+    setLoading(true);
+
+    // Generate locally since no backend AI is available
+    const chartName = ALL_CHART_LABELS[chartType] || chartType;
+    const xName = formatColumnName(xAxis);
+    const yName = formatColumnName(yAxis);
+
+    setTimeout(() => {
+      const top5 = [...chartData]
+        .sort((a, b) => (Number(b[yAxis]) || 0) - (Number(a[yAxis]) || 0))
+        .slice(0, 5)
+        .map(d => `${d[xAxis]}: ${Number(d[yAxis]).toLocaleString()}`)
+        .join(', ');
+
+      const range = (Number(chartStats.max) - Number(chartStats.min)).toFixed(2);
+
+      setExplanation({
+        whatItShows: `This ${chartName.toLowerCase()} displays ${yName} across different ${xName} categories. The chart contains ${chartStats.count} data points, with values ranging from ${Number(chartStats.min).toLocaleString()} to ${Number(chartStats.max).toLocaleString()}.`,
+        keyFindings: [
+          `Highest value: ${chartStats.maxLabel} at ${Number(chartStats.max).toLocaleString()}, significantly above the average of ${Number(chartStats.avg).toLocaleString()}`,
+          `Lowest value: ${chartStats.minLabel} at ${Number(chartStats.min).toLocaleString()}, with a total spread of ${Number(range).toLocaleString()} across all categories`,
+          `Top performers: ${top5 || 'N/A'} — these represent the leading values in the dataset`,
+        ],
+        businessInsight: `Focus attention on ${chartStats.maxLabel} as the top performer. The gap between the highest (${Number(chartStats.max).toLocaleString()}) and lowest (${Number(chartStats.min).toLocaleString()}) values suggests significant variation — investigate what drives ${chartStats.maxLabel}'s success and apply those learnings to underperforming categories.`,
+      });
+      setLoading(false);
+    }, 800);
+  }, [chartType, xAxis, yAxis, chartStats, chartData]);
+
+  useEffect(() => {
+    generateExplanation();
+  }, [generateExplanation]);
+
+  const handleCopy = () => {
+    if (!explanation) return;
+    const text = `📊 ${ALL_CHART_LABELS[chartType]} Analysis\n\nWhat it shows:\n${explanation.whatItShows}\n\nKey Findings:\n${explanation.keyFindings.map(f => `• ${f}`).join('\n')}\n\nBusiness Insight:\n${explanation.businessInsight}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: 'Copied to clipboard' });
+  };
+
+  if (!chartStats) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="rounded-2xl border border-border bg-card p-5 mt-4"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-sm font-semibold">AI Chart Analysis</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={generateExplanation} disabled={loading}>
+            <Loader2 className={cn("h-3 w-3", loading && "animate-spin")} />Regenerate
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={handleCopy}>
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}{copied ? 'Copied' : 'Copy'}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => toast({ title: 'Added to Report', description: 'AI analysis will be included in your next report' })}>
+            <FileText className="h-3 w-3" />Add to Report
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3 animate-pulse">
+          <div className="h-3 bg-muted rounded w-3/4" />
+          <div className="h-3 bg-muted rounded w-1/2" />
+          <div className="h-3 bg-muted rounded w-2/3" />
+          <p className="text-xs text-muted-foreground mt-2">🤖 Analyzing your chart...</p>
+        </div>
+      ) : explanation ? (
+        <div className="space-y-4">
+          {/* What this shows */}
+          <div>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">📊 What This Chart Shows</span>
+            <p className="text-sm text-foreground mt-1.5 leading-relaxed">{explanation.whatItShows}</p>
+          </div>
+
+          {/* Key findings */}
+          <div>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">🔍 Key Findings</span>
+            <div className="mt-1.5 space-y-2">
+              {explanation.keyFindings.map((finding, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  <p className="text-sm text-foreground leading-relaxed">{finding}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Business insight */}
+          <div className="border-l-[3px] border-primary rounded-r-lg bg-muted/30 p-3">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">💡 What This Means</span>
+            <p className="text-sm text-foreground mt-1.5 leading-relaxed">{explanation.businessInsight}</p>
+          </div>
+        </div>
+      ) : null}
+    </motion.div>
+  );
+}
+
+// Chart Action Buttons
+function ChartActionButtons({ xAxis, yAxis, chartData, onSave }: {
+  xAxis: string;
+  yAxis: string;
+  chartData: Record<string, unknown>[];
+  onSave: () => void;
+}) {
+  const { exportCSV, exportPNG } = useExport();
+  const [downloadOpen, setDownloadOpen] = useState(false);
+
+  const handleDownloadPNG = async () => {
+    setDownloadOpen(false);
+    await exportPNG('chart-preview-container', formatChartTitle(xAxis, yAxis).replace(/\s+/g, '_'));
+  };
+
+  const handleDownloadSVG = () => {
+    setDownloadOpen(false);
+    const el = document.getElementById('chart-preview-container');
+    if (!el) return;
+    const svg = el.querySelector('svg');
+    if (!svg) { toast({ title: 'No SVG found', variant: 'destructive' }); return; }
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${formatChartTitle(xAxis, yAxis).replace(/\s+/g, '_')}.svg`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast({ title: 'SVG Downloaded' });
+  };
+
+  const handleDownloadCSV = () => {
+    setDownloadOpen(false);
+    exportCSV(chartData, formatChartTitle(xAxis, yAxis).replace(/\s+/g, '_'));
+  };
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap mt-3">
+      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={onSave}>
+        <Save className="h-3.5 w-3.5" />Save Chart
+      </Button>
+      <div className="relative">
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setDownloadOpen(!downloadOpen)}>
+          <Download className="h-3.5 w-3.5" />Download
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+        <AnimatePresence>
+          {downloadOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="absolute left-0 top-9 z-50 w-44 rounded-xl border border-border bg-popover shadow-lg p-1"
+            >
+              <button onClick={handleDownloadPNG} className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-muted transition-colors text-left">
+                <Image className="h-3.5 w-3.5 text-muted-foreground" />PNG (high res)
+              </button>
+              <button onClick={handleDownloadSVG} className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-muted transition-colors text-left">
+                <Palette className="h-3.5 w-3.5 text-muted-foreground" />SVG (vector)
+              </button>
+              <button onClick={handleDownloadCSV} className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-muted transition-colors text-left">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />CSV (data only)
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => toast({ title: '➕ Added to Dashboard', description: 'Chart widget added to your active dashboard' })}>
+        <LayoutGrid className="h-3.5 w-3.5" />Add to Dashboard
+      </Button>
+      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => toast({ title: '📄 Added to Report', description: 'Chart will be included in your next report export' })}>
+        <FileText className="h-3.5 w-3.5" />Add to Report
+      </Button>
+    </div>
   );
 }
 

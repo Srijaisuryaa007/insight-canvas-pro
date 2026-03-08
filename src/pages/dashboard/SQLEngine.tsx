@@ -588,6 +588,8 @@ export default function SQLEngine() {
   const [queryError, setQueryError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('results');
+  const [manualChartType, setManualChartType] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('results');
 
   // Pick up query from AI Copilot
   useEffect(() => {

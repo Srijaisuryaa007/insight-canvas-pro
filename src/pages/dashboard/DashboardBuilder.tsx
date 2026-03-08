@@ -314,6 +314,22 @@ render();
 
         <Separator orientation="vertical" className="h-6" />
 
+        {/* Panel layout toggles */}
+        <Button variant={panelState.activePanels.includes('left') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('left')} title="Left Panel">
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+        <Button variant={panelState.activePanels.includes('right') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('right')} title="Right Panel">
+          <PanelRight className="h-4 w-4" />
+        </Button>
+        <Button variant={panelState.activePanels.includes('top') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('top')} title="Top Panel">
+          <PanelTop className="h-4 w-4" />
+        </Button>
+        <Button variant={panelState.activePanels.includes('bottom') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('bottom')} title="Bottom Panel">
+          <PanelBottom className="h-4 w-4" />
+        </Button>
+
+        <Separator orientation="vertical" className="h-6" />
+
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(50, zoom - 10))}><ZoomOut className="h-4 w-4" /></Button>

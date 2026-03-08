@@ -607,7 +607,7 @@ export default function Quality() {
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{Object.values(dr.partialDuplicates).reduce((a, b) => a + b, 0)}</p>
-                                <p className="text-xs text-muted-foreground">🟡 Partial Duplicates</p>
+                                <p className="text-xs text-muted-foreground">Partial Duplicates</p>
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{dr.caseDuplicates + dr.whitespaceDuplicates + dr.formatDuplicates}</p>

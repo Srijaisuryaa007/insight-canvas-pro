@@ -3,6 +3,28 @@
 
 import { QualityReport, QualityIssue } from '@/lib/api';
 
+// All values treated as empty/missing
+const EMPTY_VALUES = new Set([
+  'null', 'none', 'na', 'n/a', 'nan', 'nat',
+  'unknown', 'not available', 'tbd',
+  '-', '--', '---', '????', '####', '****', '////',
+  '#div/0!', '#value!', '#ref!', '#n/a!', '#name!',
+  '00/00/0000', '0000-00-00',
+]);
+
+const ZERO_IS_MISSING_PATTERNS = /revenue|sales|price|amount|salary|age|income|cost|profit|wage/i;
+
+function isEffectivelyEmpty(value: unknown, colName: string): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'number' && isNaN(value)) return true;
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed === '') return true;
+    if (EMPTY_VALUES.has(trimmed)) return true;
+  }
+  if (typeof value === 'number' && value === 0 && ZERO_IS_MISSING_PATTERNS.test(colName)) return true;
+  return false;
+}
 export interface QualityFix {
   column: string;
   type: string;

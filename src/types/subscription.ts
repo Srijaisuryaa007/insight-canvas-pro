@@ -15,6 +15,8 @@ export interface PlanConfig {
   isUnlimited?: boolean;
   aiModels: string[];
   maxRows: number;
+  maxStorageMB: number; // Storage limit in MB (-1 = unlimited, 0 = no persistent storage)
+  hasPersistentStorage: boolean; // Whether data is saved to DB/storage
 }
 
 export const PLANS: Record<PlanType, PlanConfig> = {

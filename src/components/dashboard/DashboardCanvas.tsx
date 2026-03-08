@@ -240,10 +240,26 @@ function WidgetBody({ widget, data, onDataClick }: { widget: DashboardWidget; da
   const chartData = useMemo(() => {
     if (widget.type !== 'chart') return data;
     return aggregateData(data, widget.config.xAxis, widget.config.yAxis, widget.config.aggregation, widget.config.sortColumn, widget.config.sortDirection);
-  }, [data, widget]);
+  }, [data, widget.type, widget.config.xAxis, widget.config.yAxis, widget.config.aggregation, widget.config.sortColumn, widget.config.sortDirection]);
 
   switch (widget.type) {
-    case 'chart':
+    case 'chart': {
+      if (!data.length) {
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-1">
+            <BarChart3 className="h-6 w-6 opacity-30" />
+            <span className="text-[10px]">No data — upload or select a dataset</span>
+          </div>
+        );
+      }
+      if (!widget.config.xAxis || !widget.config.yAxis) {
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-1">
+            <BarChart3 className="h-6 w-6 opacity-30" />
+            <span className="text-[10px]">Set X-Axis and Y-Axis in Field Wells</span>
+          </div>
+        );
+      }
       return (
         <ChartRenderer
           type={widget.config.chartType || 'bar'}
@@ -258,6 +274,7 @@ function WidgetBody({ widget, data, onDataClick }: { widget: DashboardWidget; da
           onDataClick={onDataClick}
         />
       );
+    }
     case 'kpi':
       return <KPIWidget widget={widget} data={data} />;
     case 'table':

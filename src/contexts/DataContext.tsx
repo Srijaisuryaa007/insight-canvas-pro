@@ -133,11 +133,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { data: ds } = await supabase.from('datasets').select('*').eq('user_id', user.id).order('created_at');
       if (ds && ds.length > 0) {
-        const mapped = ds.map(d => ({
-          id: d.id, name: d.dataset_name, fileName: d.file_name,
-          rowCount: d.row_count, columns: d.columns || [],
-          uploadedAt: d.created_at, data: [],
-        }));
+        // Merge: keep local row data if we have it, only update metadata from Supabase
+        const localCache = loadFromLocalStorage();
+        const mapped = ds.map(d => {
+          const cached = localCache.find(c => c.id === d.id);
+          return {
+            id: d.id, name: d.dataset_name, fileName: d.file_name,
+            rowCount: d.row_count, columns: d.columns || [],
+            uploadedAt: d.created_at,
+            data: cached?.data && cached.data.length > 0 ? cached.data : [],
+          };
+        });
         setDatasets(mapped as Dataset[]);
       }
     } catch (error) {
@@ -211,18 +217,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const dataset = datasets.find(d => d.id === id);
     if (!dataset) return;
 
+    // 1. Check in-memory data
     if (dataset.data && dataset.data.length > 0) {
       activateDataset(dataset, dataset.data);
       return;
     }
 
+    // 2. Check localStorage cache
+    const cached = loadFromLocalStorage().find(d => d.id === id);
+    if (cached?.data && cached.data.length > 0) {
+      activateDataset(dataset, cached.data);
+      // Also update in-memory
+      setDatasets(prev => prev.map(d => d.id === id ? { ...d, data: cached.data } : d));
+      return;
+    }
+
+    // 3. Try backend API
     try {
       const fullDataset = await getDataset(WORKSPACE_ID, id);
       if (fullDataset?.data) { activateDataset(dataset, fullDataset.data); return; }
     } catch (error) {
       console.warn('[DataContext] Failed to fetch dataset from backend:', error);
     }
+
+    // 4. No data found — inform user
     activateDataset(dataset, []);
+    toast({ title: 'No Row Data', description: 'Dataset metadata loaded but row data is not available. Please re-upload the CSV.', variant: 'destructive' });
   }, [datasets, activateDataset]);
 
   const getDatasetData = useCallback(async (id: string): Promise<Record<string, unknown>[]> => {

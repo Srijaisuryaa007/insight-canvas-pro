@@ -445,12 +445,22 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
           }
         }
       } else {
-        // Select specific columns
-        const selectFields = selectPart.split(',').map(f => f.trim().replace(/\s+AS\s+\w+/i, ''));
-        const mappedCols = selectFields.map(f => cols.find(c => c.toLowerCase() === f.toLowerCase()) || f);
+        // Select specific columns — handle backtick-quoted names
+        const selectFields = splitSelectParts(selectPart).map(f => {
+          const trimmed = f.trim();
+          const aliasMatch = trimmed.match(/\s+AS\s+(\w+)\s*$/i);
+          const alias = aliasMatch?.[1];
+          const fieldName = trimmed.replace(/\s+AS\s+\w+\s*$/i, '').trim();
+          const clean = stripBackticks(fieldName);
+          const resolved = resolveColumnName(clean, cols);
+          return { name: resolved || clean, alias };
+        });
         filtered = filtered.map(row => {
           const entry: Record<string, unknown> = {};
-          mappedCols.forEach(c => { entry[c] = row[c]; });
+          selectFields.forEach(({ name, alias }) => {
+            const val = row[name] !== undefined ? row[name] : getColumnValue(row, name);
+            entry[alias || name] = val;
+          });
           return entry;
         });
       }

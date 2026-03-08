@@ -166,6 +166,7 @@ export function runFullCleaningPipeline(
   data: Record<string, unknown>[],
   userDecisions?: Record<string, 'drop' | 'fill' | 'keep'>
 ): { cleanedData: Record<string, unknown>[]; summary: CleaningSummary } {
+  const startTime = performance.now();
   const steps: CleaningStep[] = [];
   let current = data.map(r => ({ ...r }));
   const initialRows = current.length;
@@ -182,6 +183,9 @@ export function runFullCleaningPipeline(
   const flaggedRows: CleaningSummary['flaggedRows'] = [];
   const columnsNeedingDecision: string[] = [];
   let duplicateReportData: DuplicateReport | undefined;
+  let validationReportData: ValidationReport | undefined;
+  let validationFixCount = 0;
+  let validationFixDetails: string[] = [];
 
   const keys = Object.keys(current[0] || {});
   let { numCols, strCols, dateCols } = detectColumnTypes(current, keys);

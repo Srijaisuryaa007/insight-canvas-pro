@@ -67,15 +67,38 @@ export default function Quality() {
     }
     setIsCleaningRunning(true);
     setTimeout(() => {
-      const { cleanedData, summary } = runFullCleaningPipeline(currentData);
+      const { cleanedData, summary } = runFullCleaningPipeline(currentData, columnDecisions);
+      updateCurrentData(cleanedData);
+      setCleaningSummary(summary);
+      setIsCleaningRunning(false);
+      // If columns need decisions, show analysis tab first
+      if (summary.columnsNeedingDecision.length > 0) {
+        setActiveTab('columns');
+        toast({ title: '⚠️ Columns Need Your Decision', description: `${summary.columnsNeedingDecision.length} columns are 50-70% empty. Choose: Drop, Fill, or Keep.` });
+      } else {
+        setActiveTab('summary');
+        toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | ${summary.steps.reduce((a, s) => a + s.changesMade, 0)} changes made` });
+      }
+      setDataProfile(profileData(cleanedData));
+      if (currentDataset) scanDataset(currentDataset.id, cleanedData);
+    }, 500);
+  };
+
+  const handleColumnDecision = (col: string, decision: 'drop' | 'fill' | 'keep') => {
+    setColumnDecisions(prev => ({ ...prev, [col]: decision }));
+  };
+
+  const handleRerunWithDecisions = () => {
+    if (!currentData || currentData.length === 0) return;
+    setIsCleaningRunning(true);
+    setTimeout(() => {
+      const { cleanedData, summary } = runFullCleaningPipeline(currentData, columnDecisions);
       updateCurrentData(cleanedData);
       setCleaningSummary(summary);
       setIsCleaningRunning(false);
       setActiveTab('summary');
-      // Re-profile after cleaning
       setDataProfile(profileData(cleanedData));
-      toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | ${summary.steps.reduce((a, s) => a + s.changesMade, 0)} changes made` });
-      // Re-scan
+      toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | Decisions applied.` });
       if (currentDataset) scanDataset(currentDataset.id, cleanedData);
     }, 500);
   };

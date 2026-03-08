@@ -112,7 +112,10 @@ export function ChartRenderer({
         return (
           <BarChart {...commonProps}>
             {gridEl}{xEl}{yEl}{ttEl}{lgEl}
-            <Bar dataKey={yAxis} fill={colors[0]} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => handleClick(d)}>
+            <Bar dataKey={yAxis} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => handleClick(d)}>
+              {data.map((_, index) => (
+                <Cell key={index} fill={MULTI_COLORS[index % MULTI_COLORS.length]} />
+              ))}
               {showLabels && <LabelList dataKey={yAxis} position="top" fontSize={10} />}
             </Bar>
           </BarChart>

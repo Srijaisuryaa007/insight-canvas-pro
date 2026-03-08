@@ -281,9 +281,19 @@ render();
           </Badge>
         )}
 
-        <Button variant="outline" size="sm" onClick={handleExportHTML} disabled={!currentData.length}>
-          <Download className="h-4 w-4 mr-1" />Export
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={!currentData.length}>
+              <Download className="h-4 w-4 mr-1" />Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-popover">
+            <DropdownMenuItem onClick={handleExportHTML}><File className="h-4 w-4 mr-2" />HTML (Interactive)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportDashboard('pdf')}><FileText className="h-4 w-4 mr-2" />PDF Report</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportDashboard('pptx')}><Presentation className="h-4 w-4 mr-2" />PowerPoint</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportDashboard('docx')}><FileText className="h-4 w-4 mr-2" />Word Document</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button size="sm" onClick={saveDashboard}>
           <Save className="h-4 w-4 mr-1" />Save
         </Button>

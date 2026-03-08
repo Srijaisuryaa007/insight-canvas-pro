@@ -455,34 +455,107 @@ export function processQuery(
   }
 
   const contextQ = resolveContext(question, history);
-  const { sql, level, explanation } = generateSQL(contextQ, schema);
   const chart = recommendChart(contextQ, schema);
   const insights = generateInsights(schema, data);
 
-  const answer = [
-    `### 📋 Explanation\n\n${explanation}`,
-    `### 🔍 SQL Query\n\n\`\`\`sql\n${sql}\n\`\`\`\n\n> **${level}**`,
-    `### 📊 Suggested Visualization\n\n**${chart!.type.charAt(0).toUpperCase() + chart!.type.slice(1)} Chart**${chart!.xAxis ? ` — ${chart!.yAxis || 'value'} by ${chart!.xAxis}` : ''}\n\n${chart!.reason}`,
-    `### 💡 Insights\n\n${insights.map(i => `- ${i}`).join('\n')}`,
-  ].join('\n\n---\n\n');
+  // Build natural language analysis instead of SQL
+  const q = contextQ.toLowerCase();
+  const numCols = schema.columns.filter(c => c.type === 'number');
+  const strCols = schema.columns.filter(c => c.type === 'string');
+  
+  let analysisAnswer = '';
+
+  // Summarize / show all data
+  if (/\b(summarize|summary|overview|describe|show all|display all)\b/i.test(q)) {
+    const colSummaries = numCols.slice(0, 5).map(col => {
+      const vals = data.map(r => Number(r[col.name]) || 0).filter(v => !isNaN(v));
+      if (vals.length === 0) return null;
+      const sum = vals.reduce((a, b) => a + b, 0);
+      const avg = sum / vals.length;
+      const max = Math.max(...vals);
+      const min = Math.min(...vals);
+      return `- **${col.name}**: min ${min.toLocaleString()}, max ${max.toLocaleString()}, avg ${avg.toFixed(1)}, total ${sum.toLocaleString()}`;
+    }).filter(Boolean);
+
+    analysisAnswer = `### 📊 Dataset Summary: ${schema.tableName}\n\n**${schema.rowCount} rows** across **${schema.columns.length} columns**\n\n**Columns:** ${schema.columns.map(c => `\`${c.name}\` (${c.type})`).join(', ')}\n\n### Key Statistics\n${colSummaries.join('\n') || 'No numeric columns found.'}`;
+  }
+  // Top/bottom queries
+  else if (/\b(top|bottom|highest|lowest|best|worst|most|least)\b/i.test(q)) {
+    const limitMatch = q.match(/\b(\d+)\b/);
+    const limit = limitMatch ? parseInt(limitMatch[1]) : 10;
+    const isBottom = /\b(bottom|lowest|worst|least)\b/i.test(q);
+    const measureCol = numCols[0]?.name;
+    const dimCol = strCols[0]?.name;
+
+    if (measureCol && data.length > 0) {
+      const sorted = [...data].sort((a, b) => {
+        const va = Number(a[measureCol]) || 0;
+        const vb = Number(b[measureCol]) || 0;
+        return isBottom ? va - vb : vb - va;
+      }).slice(0, limit);
+
+      const rows = sorted.map((r, i) => `${i + 1}. **${dimCol ? r[dimCol] : `Row ${i + 1}`}** — ${measureCol}: **${Number(r[measureCol] || 0).toLocaleString()}**`).join('\n');
+      analysisAnswer = `### ${isBottom ? '⬇️ Bottom' : '🏆 Top'} ${limit} by ${measureCol}\n\n${rows}`;
+    } else {
+      analysisAnswer = `I found your dataset but couldn't identify a numeric column to rank by. Your columns are: ${schema.columns.map(c => `\`${c.name}\``).join(', ')}`;
+    }
+  }
+  // Count / total / average
+  else if (/\b(count|how many|total|sum|average|avg|mean|max|min)\b/i.test(q)) {
+    const measureCol = numCols[0]?.name;
+    const groupMatch = q.match(/\b(by|per|for each)\s+(\w+)/i);
+    const groupCol = groupMatch ? schema.columns.find(c => c.name.toLowerCase() === groupMatch[2].toLowerCase())?.name : null;
+
+    if (measureCol && data.length > 0) {
+      const vals = data.map(r => Number(r[measureCol]) || 0);
+      const sum = vals.reduce((a, b) => a + b, 0);
+      const avg = sum / vals.length;
+
+      if (groupCol) {
+        const groups: Record<string, number[]> = {};
+        data.forEach(r => {
+          const key = String(r[groupCol] || 'Unknown');
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(Number(r[measureCol]) || 0);
+        });
+        const wantsAvg = /\b(average|avg|mean)\b/i.test(q);
+        const wantsCount = /\b(count|how many)\b/i.test(q);
+        const groupResults = Object.entries(groups)
+          .map(([key, vals]) => ({
+            key,
+            value: wantsCount ? vals.length : wantsAvg ? vals.reduce((a, b) => a + b, 0) / vals.length : vals.reduce((a, b) => a + b, 0)
+          }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 15);
+        
+        const label = wantsCount ? 'Count' : wantsAvg ? `Avg ${measureCol}` : `Total ${measureCol}`;
+        const rows = groupResults.map((r, i) => `${i + 1}. **${r.key}** — ${label}: **${r.value.toLocaleString(undefined, { maximumFractionDigits: 1 })}**`).join('\n');
+        analysisAnswer = `### 📊 ${label} by ${groupCol}\n\n${rows}`;
+      } else {
+        analysisAnswer = `### 📊 ${measureCol} Statistics\n\n- **Total:** ${sum.toLocaleString()}\n- **Average:** ${avg.toFixed(2)}\n- **Min:** ${Math.min(...vals).toLocaleString()}\n- **Max:** ${Math.max(...vals).toLocaleString()}\n- **Records:** ${vals.length.toLocaleString()}`;
+      }
+    } else {
+      analysisAnswer = `Your dataset has **${data.length} records**. Columns: ${schema.columns.map(c => `\`${c.name}\``).join(', ')}`;
+    }
+  }
+  // Generic data analysis
+  else {
+    analysisAnswer = `### 📊 Analysis of ${schema.tableName}\n\n**${schema.rowCount} rows** • **${schema.columns.length} columns**\n\n### 💡 Key Insights\n${insights.map(i => `- ${i}`).join('\n')}\n\n${chart ? `### 📈 Recommended Visualization\n**${chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} Chart** — ${chart.reason}` : ''}`;
+  }
 
   return {
-    answer,
+    answer: analysisAnswer,
     metadata: {
       mode: 'data-analysis',
       confidence: 0.88,
-      reasoning: `Detected data analysis intent. Generated ${level}.`,
-      sqlQuery: sql,
-      sqlLevel: level,
+      reasoning: `Analyzed data and provided natural language results.`,
       chartRecommendation: chart,
       insights,
-      explanation,
       suggestions: [
-        'Import to SQL Engine',
         `Top 5 by ${schema.columns.find(c => c.type === 'number')?.name || 'value'}`,
+        'Summarize my dataset',
         'Show trend over time',
-        'Generate CTE query',
-        'Rank analysis',
+        `Average by ${schema.columns.find(c => c.type === 'string')?.name || 'category'}`,
       ],
     },
   };

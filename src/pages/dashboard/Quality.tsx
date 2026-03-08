@@ -1310,10 +1310,10 @@ export default function Quality() {
                             <div>
                               <h3 className="text-lg font-bold">Data Health Score: {cleaningSummary.healthScore}/100 (Grade {cleaningSummary.letterGrade})</h3>
                               <p className="text-sm text-muted-foreground mt-1">
-                                {cleaningSummary.letterGrade === 'A' ? 'Excellent! Your data is analysis-ready.' :
-                                 cleaningSummary.letterGrade === 'B' ? 'Good quality. Minor improvements possible.' :
-                                 cleaningSummary.letterGrade === 'C' ? 'Fair quality. Review issues flagged below.' :
-                                 'Needs attention. Significant issues found.'}
+                                 {cleaningSummary.letterGrade === 'A' ? 'Excellent — your data is analysis-ready.' :
+                                  cleaningSummary.letterGrade === 'B' ? 'Good — minor improvements recommended.' :
+                                  cleaningSummary.letterGrade === 'C' ? 'Fair — review the flagged issues below.' :
+                                  'Needs attention — significant quality issues detected.'}
                               </p>
                             </div>
                           </div>

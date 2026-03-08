@@ -131,44 +131,40 @@ function generateDAXResponse(
 function generateConceptualAnswer(question: string): string {
   const lower = question.toLowerCase();
 
-  if (lower.includes('what is dax') || lower.includes('what\'s dax'))
-    return "**DAX (Data Analysis Expressions)** is a formula language used in Power BI, Analysis Services, and Power Pivot.\n\nIt's designed for:\n- **Measures** — dynamic aggregations (SUM, AVERAGE, etc.)\n- **Calculated columns** — row-level computations\n- **Tables** — virtual tables for advanced filtering\n\nDAX evaluates in a **filter context** — every slicer, cross-filter, or row context changes what the formula returns.";
+  // First, search the comprehensive knowledge base
+  const kbResult = searchDAXKnowledge(question);
+  if (kbResult) return kbResult;
 
-  if (lower.includes('filter context') || lower.includes('row context') || lower.includes('context'))
-    return "**Filter Context vs Row Context** in DAX:\n\n🔹 **Filter Context** — the set of active filters from slicers, visuals, and relationships. Measures always evaluate in filter context.\n\n🔹 **Row Context** — exists when DAX iterates row-by-row (calculated columns, SUMX, FILTER). Each row is evaluated individually.\n\n🔹 **Context Transition** — CALCULATE converts row context into filter context, which is essential for measures inside iterators.";
+  // Check concepts
+  for (const [key, content] of Object.entries(DAX_CONCEPTS)) {
+    if (lower.includes(key)) return content;
+  }
 
-  if (lower.includes('calculate') && !lower.includes('filter'))
-    return "**CALCULATE** is the most important DAX function. It modifies the filter context before evaluating an expression.\n\n```\nCALCULATE(<expression>, <filter1>, <filter2>, ...)\n```\n\n**Key behaviors:**\n- Overrides existing filters on specified columns\n- Works with ALL(), REMOVEFILTERS(), KEEPFILTERS()\n- Triggers **context transition** (row context → filter context)\n\n**Example:** `CALCULATE(SUM(Sales[Revenue]), Region[Name] = \"West\")`\n\nThis sums Revenue but only for the West region, regardless of other filters on Region.";
+  // Check troubleshooting
+  for (const [key, content] of Object.entries(DAX_TROUBLESHOOTING)) {
+    if (lower.includes(key)) return content;
+  }
 
-  if (lower.includes('iterator') || lower.includes('sumx') || lower.includes('averagex'))
-    return "**Iterator functions** (SUMX, AVERAGEX, COUNTX, MAXX, MINX) evaluate an expression row by row, then aggregate.\n\n```\nSUMX(<table>, <expression>)\n```\n\n**Example:**\n`Weighted Avg = SUMX(Sales, Sales[Qty] * Sales[Price]) / SUM(Sales[Qty])`\n\nIterators create a **row context**, letting you reference multiple columns per row before aggregating.";
+  // List all functions if user asks
+  if (lower.includes('list') && (lower.includes('function') || lower.includes('formula'))) {
+    const categories = [...new Set(Object.values(DAX_FORMULAS).map(f => f.category))];
+    let response = '**DAX Function Categories:**\n\n';
+    for (const cat of categories) {
+      const funcs = Object.entries(DAX_FORMULAS).filter(([, v]) => v.category === cat);
+      response += `**${cat.charAt(0).toUpperCase() + cat.slice(1)}:** ${funcs.map(([k]) => k.toUpperCase()).join(', ')}\n\n`;
+    }
+    return response + '\nAsk about any function for details!';
+  }
 
-  if (lower.includes('relationship') || lower.includes('related') || lower.includes('relatedtable'))
-    return "**Relationships in DAX:**\n\n🔹 **RELATED()** — pulls a value from the \"one\" side of a relationship (used in calculated columns on the \"many\" side).\n\n🔹 **RELATEDTABLE()** — returns all matching rows from the \"many\" side (used on the \"one\" side).\n\n**Example:**\n`Category Name = RELATED(Categories[Name])`\n`Order Count = COUNTROWS(RELATEDTABLE(Orders))`";
+  // Specific function lookup
+  for (const [key, info] of Object.entries(DAX_FORMULAS)) {
+    if (lower.includes(key) || lower.includes(key.toUpperCase())) {
+      return `**${info.formula}**\n\n${info.description}\n\n**Example:**\n\`\`\`dax\n${info.example}\n\`\`\`\n\n**Category:** ${info.category}`;
+    }
+  }
 
-  if (lower.includes('all') || lower.includes('removefilters') || lower.includes('allexcept'))
-    return "**Filter removal functions:**\n\n🔹 **ALL(table/column)** — removes all filters from a table or column. Used for ratios and percentages.\n\n🔹 **ALLEXCEPT(table, col1, col2)** — removes all filters EXCEPT the specified columns.\n\n🔹 **REMOVEFILTERS()** — alias for ALL() in modern DAX.\n\n**Example — % of Total:**\n```\n% of Total = DIVIDE(\n  SUM(Sales[Revenue]),\n  CALCULATE(SUM(Sales[Revenue]), ALL(Sales))\n)\n```";
-
-  if (lower.includes('time intelligence') || lower.includes('dateadd') || lower.includes('totalmtd') || lower.includes('totalqtd') || lower.includes('totalytd'))
-    return "**Time Intelligence** functions require a proper Date table marked as a date table.\n\n**Common functions:**\n- `TOTALYTD(expr, dates)` — Year-to-date\n- `TOTALMTD(expr, dates)` — Month-to-date\n- `DATEADD(dates, -1, YEAR)` — Shift dates\n- `SAMEPERIODLASTYEAR(dates)` — Same period last year\n- `PARALLELPERIOD(dates, -1, QUARTER)` — Previous quarter\n\n**Example:**\n```\nYTD Revenue = TOTALYTD(SUM(Sales[Revenue]), 'Date'[Date])\n```";
-
-  if (lower.includes('variable') || lower.includes('var '))
-    return "**VAR/RETURN** in DAX stores intermediate results for readability and performance.\n\n```\nProfit Margin = \nVAR TotalRevenue = SUM(Sales[Revenue])\nVAR TotalCost = SUM(Sales[Cost])\nRETURN DIVIDE(TotalRevenue - TotalCost, TotalRevenue, 0)\n```\n\n**Benefits:**\n- Avoids recalculating the same expression\n- Makes complex formulas readable\n- VAR is evaluated once in its original context";
-
-  if (lower.includes('best practice') || lower.includes('tip') || lower.includes('optimization') || lower.includes('performance'))
-    return "**DAX Best Practices:**\n\n1. **Use variables (VAR/RETURN)** — improves readability and avoids repeated calculations\n2. **Avoid calculated columns for aggregations** — use measures instead\n3. **Minimize use of FILTER()** — prefer Boolean expressions in CALCULATE\n4. **Use DIVIDE() instead of /** — handles division by zero safely\n5. **Keep your Date table clean** — mark it as a date table, ensure no gaps\n6. **Avoid bi-directional relationships** — they cause ambiguity\n7. **Test with DAX Studio** — profile query performance";
-
-  if (lower.includes('difference') && (lower.includes('measure') || lower.includes('calculated column')))
-    return "**Measures vs Calculated Columns:**\n\n| | Measure | Calculated Column |\n|---|---|---|\n| **Evaluated** | At query time | At data refresh |\n| **Context** | Filter context | Row context |\n| **Storage** | Not stored | Stored in model |\n| **Use for** | Aggregations, KPIs | Row-level labels, groups |\n\n**Rule of thumb:** If it aggregates → Measure. If it labels each row → Calculated Column.";
-
-  if (lower.includes('switch'))
-    return "**SWITCH** is cleaner than nested IFs for multiple conditions:\n\n```\nRating Label = SWITCH(\n  TRUE(),\n  Sales[Score] >= 90, \"Excellent\",\n  Sales[Score] >= 70, \"Good\",\n  Sales[Score] >= 50, \"Average\",\n  \"Below Average\"\n)\n```\n\n`SWITCH(TRUE(), ...)` evaluates each condition in order and returns the first match. The last argument is the default.";
-
-  if (lower.includes('error') || lower.includes('blank') || lower.includes('iferror') || lower.includes('isblank'))
-    return "**Error & blank handling in DAX:**\n\n- `IFERROR(expr, alt)` — returns `alt` if `expr` errors\n- `IF(ISBLANK(expr), alt, expr)` — handles blanks\n- `COALESCE(expr1, expr2, ...)` — returns first non-blank\n- `DIVIDE(num, denom, alt)` — safe division with fallback\n\n**Best practice:** Use DIVIDE() instead of `/` and COALESCE() for blank handling.";
-
-  // Generic fallback
-  return `That's a great DAX question! Here's what I can help with:\n\n- **Formula generation** — ask me to create any measure (SUM, AVERAGE, CALCULATE, etc.)\n- **Concepts** — filter context, row context, relationships, time intelligence\n- **Best practices** — optimization, naming, model design\n- **Troubleshooting** — common errors, blank handling, circular dependencies\n\nTry asking something like: *"Create a SUM measure"*, *"What is filter context?"*, or *"How does CALCULATE work?"*`;
+  // Fallback with help
+  return `**I'm your DAX Expert!** Here's what I can help with:\n\n📊 **Formula Categories:**\n- Aggregation: SUM, AVERAGE, COUNT, MAX, MIN\n- Iterators: SUMX, AVERAGEX, RANKX, COUNTX\n- Filter: CALCULATE, ALL, FILTER, KEEPFILTERS\n- Time Intelligence: TOTALYTD, SAMEPERIODLASTYEAR, DATEADD\n- Logical: IF, SWITCH, COALESCE, IFERROR\n- Text: CONCATENATE, LEFT, RIGHT, FORMAT\n- Tables: VALUES, TOPN, ADDCOLUMNS, SUMMARIZE\n\n🧠 **Concepts:**\nFilter context, Row context, Context transition, Variables, Relationships, Date tables\n\n🔧 **Troubleshooting:**\nCircular dependency, Blank results, Wrong totals, Slow performance\n\nTry: *"What is CALCULATE?"*, *"Explain filter context"*, or *"Create a YoY measure"*`;
 }
 
 export function DAXBot({ datasetId, onApplyMeasure, columns = [], data = [] }: DAXBotProps) {

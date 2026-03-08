@@ -173,43 +173,40 @@ function generateExcelResponse(
 function generateConceptualAnswer(question: string): string {
   const lower = question.toLowerCase();
 
-  if (lower.includes('what is') && (lower.includes('excel') || lower.includes('spreadsheet')))
-    return "**Microsoft Excel** is a spreadsheet application for organizing, analyzing, and visualizing data.\n\n**Key features:**\n- **Formulas** — calculations like SUM, VLOOKUP, IF\n- **Pivot Tables** — summarize large datasets\n- **Charts** — visualize data trends\n- **Conditional Formatting** — highlight patterns\n- **Data Validation** — control input\n- **Macros/VBA** — automate tasks";
+  // First, search the comprehensive knowledge base
+  const kbResult = searchExcelKnowledge(question);
+  if (kbResult) return kbResult;
 
-  if (lower.includes('pivot table') || lower.includes('pivot'))
-    return "**Pivot Tables** summarize large datasets by grouping, filtering, and aggregating.\n\n**How to create one:**\n1. Select your data range\n2. Insert → Pivot Table\n3. Drag fields to Rows, Columns, Values, and Filters\n\n**Tips:**\n- Use **Calculated Fields** for custom metrics\n- **Group dates** by month/quarter/year\n- Use **Slicers** for interactive filtering\n- Right-click → **Show Values As** for % of total, running total, etc.";
+  // Check concepts
+  for (const [key, content] of Object.entries(EXCEL_CONCEPTS)) {
+    if (lower.includes(key.split(' ')[0])) return content;
+  }
 
-  if (lower.includes('conditional format'))
-    return "**Conditional Formatting** visually highlights cells based on rules.\n\n**Common uses:**\n- **Color scales** — gradient by value\n- **Data bars** — inline bar charts\n- **Icon sets** — arrows, traffic lights\n- **Custom rules** — highlight cells > threshold\n\n**Example:** Home → Conditional Formatting → Highlight Cells Rules → Greater Than → enter value";
+  // Check troubleshooting
+  for (const [key, content] of Object.entries(EXCEL_TROUBLESHOOTING)) {
+    if (lower.includes(key)) return content;
+  }
 
-  if (lower.includes('shortcut') || lower.includes('keyboard'))
-    return "**Essential Excel Shortcuts:**\n\n| Shortcut | Action |\n|---|---|\n| Ctrl+C / Ctrl+V | Copy / Paste |\n| Ctrl+Z / Ctrl+Y | Undo / Redo |\n| Ctrl+Shift+L | Toggle Filters |\n| Ctrl+T | Create Table |\n| Alt+= | Auto SUM |\n| Ctrl+; | Insert today's date |\n| Ctrl+D | Fill Down |\n| Ctrl+Shift+$ | Currency format |\n| F4 | Toggle absolute reference |\n| Ctrl+` | Show/hide formulas |";
+  // List all functions if user asks
+  if (lower.includes('list') && (lower.includes('function') || lower.includes('formula'))) {
+    const categories = [...new Set(Object.values(EXCEL_FORMULAS).map(f => f.category))];
+    let response = '**Excel Function Categories:**\n\n';
+    for (const cat of categories) {
+      const funcs = Object.entries(EXCEL_FORMULAS).filter(([, v]) => v.category === cat);
+      response += `**${cat.charAt(0).toUpperCase() + cat.slice(1)}:** ${funcs.map(([k]) => k.toUpperCase()).join(', ')}\n\n`;
+    }
+    return response + '\nAsk about any function for details!';
+  }
 
-  if (lower.includes('array') || lower.includes('dynamic array') || lower.includes('spill'))
-    return "**Dynamic Arrays** (Excel 365+) return multiple values from a single formula.\n\n**Key functions:**\n- `UNIQUE()` — unique values\n- `SORT()` — sorted results\n- `FILTER()` — filtered rows\n- `SEQUENCE()` — number sequences\n- `SORTBY()` — sort by another column\n\n**Example:**\n`=FILTER(A2:C100, B2:B100 > 1000)`\n\nReturns all rows where column B > 1000. Results **spill** into adjacent cells automatically.";
+  // Specific function lookup
+  for (const [key, info] of Object.entries(EXCEL_FORMULAS)) {
+    if (lower.includes(key) || lower.includes(key.toUpperCase())) {
+      return `**${info.formula}**\n\n${info.description}\n\n**Example:**\n\`${info.example}\`\n\n**Category:** ${info.category}`;
+    }
+  }
 
-  if (lower.includes('data validation'))
-    return "**Data Validation** restricts what users can enter in cells.\n\n**Common types:**\n- **List** — dropdown of allowed values\n- **Whole number / Decimal** — range limits\n- **Date** — date range restrictions\n- **Text length** — character limits\n- **Custom** — formula-based rules\n\n**How to:** Data → Data Validation → Settings → choose criteria.\n\n**Tip:** Add Input Messages and Error Alerts for user guidance.";
-
-  if (lower.includes('chart') || lower.includes('graph') || lower.includes('visual'))
-    return "**Excel Charts Guide:**\n\n| Chart Type | Best For |\n|---|---|\n| **Bar/Column** | Comparing categories |\n| **Line** | Trends over time |\n| **Pie/Donut** | Part-of-whole (≤6 items) |\n| **Scatter** | Correlations |\n| **Combo** | Two metrics on different scales |\n| **Waterfall** | Showing cumulative effect |\n\n**Tips:**\n- Select data → Insert → Recommended Charts\n- Use **Alt+F1** for quick chart\n- Right-click axis → Format for customization";
-
-  if (lower.includes('named range') || lower.includes('name manager'))
-    return "**Named Ranges** assign a label to a cell or range for easier formulas.\n\n**Create:** Select range → Name Box (left of formula bar) → type name → Enter\n\n**Benefits:**\n- `=SUM(Revenue)` instead of `=SUM(D2:D500)`\n- Auto-updates when using Tables\n- Makes formulas self-documenting\n\n**Manage:** Formulas → Name Manager";
-
-  if (lower.includes('error') || lower.includes('#ref') || lower.includes('#value') || lower.includes('#n/a') || lower.includes('#div'))
-    return "**Common Excel Errors:**\n\n| Error | Cause | Fix |\n|---|---|---|\n| **#REF!** | Deleted reference | Check cell references |\n| **#VALUE!** | Wrong data type | Ensure correct input types |\n| **#N/A** | Lookup not found | Check lookup value exists |\n| **#DIV/0!** | Division by zero | Use `=IFERROR(A/B, 0)` |\n| **#NAME?** | Unrecognized formula | Check spelling |\n| **#NULL!** | Incorrect range operator | Use `:` not space |\n| **######** | Column too narrow | Widen column |";
-
-  if (lower.includes('table') || lower.includes('structured reference'))
-    return "**Excel Tables** (Ctrl+T) convert ranges into structured, auto-expanding datasets.\n\n**Benefits:**\n- Auto-expand when adding rows\n- Structured references: `=SUM(Table1[Revenue])`\n- Built-in filtering and sorting\n- Auto-formatting with banded rows\n- Total Row with dropdown aggregations\n\n**Tip:** Always use Tables for data that grows. Formulas and charts auto-update.";
-
-  if (lower.includes('macro') || lower.includes('vba'))
-    return "**Macros & VBA** automate repetitive tasks in Excel.\n\n**Record a macro:** View → Macros → Record Macro\n\n**VBA basics:**\n```vb\nSub FormatReport()\n  Range(\"A1:D1\").Font.Bold = True\n  Columns(\"A:D\").AutoFit\nEnd Sub\n```\n\n**Tips:**\n- Use the **Macro Recorder** to learn VBA syntax\n- Save as `.xlsm` to keep macros\n- Use `Alt+F11` to open VBA Editor";
-
-  if (lower.includes('best practice') || lower.includes('tip'))
-    return "**Excel Best Practices:**\n\n1. **Use Tables (Ctrl+T)** — auto-expanding, structured references\n2. **One fact per cell** — don't merge or combine data\n3. **Use Named Ranges** — self-documenting formulas\n4. **Avoid hardcoded values** — put constants in labeled cells\n5. **Use IFERROR** — handle edge cases gracefully\n6. **Keep raw data separate** — analysis on a different sheet\n7. **Use Conditional Formatting sparingly** — too much slows workbooks\n8. **Document your formulas** — use comments or a formula map sheet";
-
-  return `Great Excel question! I can help with:\n\n- **Formulas** — SUM, VLOOKUP, IF, INDEX/MATCH, and more\n- **Concepts** — Pivot Tables, Charts, Conditional Formatting\n- **Functions** — Dynamic Arrays, Data Validation, Named Ranges\n- **Troubleshooting** — Error handling, performance, best practices\n\nTry asking: *"Calculate total revenue"*, *"How do Pivot Tables work?"*, or *"Excel keyboard shortcuts"*`;
+  // Fallback with help
+  return `**I'm your Excel Expert!** Here's what I can help with:\n\n📊 **Formula Categories:**\n- Math: SUM, AVERAGE, COUNT, MAX, MIN, ROUND\n- Conditional: SUMIF, COUNTIF, AVERAGEIF, SUMIFS\n- Lookup: VLOOKUP, XLOOKUP, INDEX/MATCH\n- Logical: IF, IFS, AND, OR, SWITCH, IFERROR\n- Text: CONCAT, LEFT, RIGHT, MID, TRIM, TEXT\n- Date: TODAY, DATE, EOMONTH, NETWORKDAYS\n- Arrays: FILTER, SORT, UNIQUE, SEQUENCE\n\n🧠 **Concepts:**\nPivot Tables, Conditional Formatting, Data Validation, Named Ranges, Tables, Charts, Power Query, Macros\n\n🔧 **Troubleshooting:**\n#REF!, #VALUE!, #N/A, #DIV/0!, Slow workbook, Circular reference\n\nTry: *"How does VLOOKUP work?"*, *"Explain pivot tables"*, or *"Excel shortcuts"*`;
 }
 
 export function ExcelBot({ datasetId, onApplyMeasure, columns = [], data = [] }: ExcelBotProps) {

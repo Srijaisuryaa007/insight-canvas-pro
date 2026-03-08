@@ -329,14 +329,6 @@ export default function Datasets() {
                 </CardContent>
               </Card>
 
-              {/* DAX Measures */}
-              <DAXMeasurePanel
-                measures={daxMeasures}
-                data={currentData}
-                columns={currentDataset.columns.map(c => c.name)}
-                onAddMeasure={m => setDaxMeasures(prev => [...prev, m])}
-                onRemoveMeasure={id => setDaxMeasures(prev => prev.filter(m => m.id !== id))}
-              />
             </>
           ) : (
             <Card className="bg-card border-border">

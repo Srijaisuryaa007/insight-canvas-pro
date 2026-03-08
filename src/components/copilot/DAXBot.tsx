@@ -211,7 +211,7 @@ export function DAXBot({ datasetId, onApplyMeasure, columns = [], data = [] }: D
         let apiAnswer = '';
         try {
           const history = messages.map(m => ({ role: m.role, content: m.content }));
-          const apiResponse = await askCopilot(`[DAX ONLY] ${question}`, datasetId, history);
+          const apiResponse = await askCopilot(`[DAX EXPERT MODE] You are a DAX specialist with 10+ years Power BI experience. Generate the exact DAX formula, explain what each part does, give example output, and suggest related formulas. Question: ${question}`, datasetId, history);
           apiAnswer = apiResponse.answer || '';
         } catch {}
 

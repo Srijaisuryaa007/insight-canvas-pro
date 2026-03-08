@@ -275,6 +275,17 @@ export default function Reports() {
           )}
         </div>
       </div>
+
+      {/* Scheduled Reports */}
+      <Separator />
+      <ScheduledReports />
+
+      {/* Team Collaboration */}
+      <Separator />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DashboardComments dashboardId={dashboard?.id || 'default'} />
+        <VersionHistory dashboardId={dashboard?.id || 'default'} />
+      </div>
     </div>
   );
 }

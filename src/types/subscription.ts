@@ -80,6 +80,8 @@ export const CREDIT_COSTS = {
   'copilot-query': 2,
   'render-chart': 1,
   'export-pdf': 5,
+  'export-pptx': 8,
+  'export-docx': 5,
   'export-csv': 1,
   'export-png': 1
 } as const;

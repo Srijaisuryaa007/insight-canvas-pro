@@ -18,6 +18,7 @@ export function useSubscription() {
     purchasedCredits: 0
   });
   const [userId, setUserId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   // Load from Supabase
   useEffect(() => {
@@ -39,12 +40,14 @@ export function useSubscription() {
           upgradeDate: data.upgrade_date,
           subscriptionEndDate: data.subscription_end_date,
         });
+        setLoaded(true);
       } else {
         // Create initial subscription state
         await supabase.from('subscription_state').insert({
           user_id: session.user.id, plan: 'free',
           credits: PLANS.free.credits, purchased_credits: 0,
         });
+        setLoaded(true);
       }
     };
 
@@ -53,7 +56,7 @@ export function useSubscription() {
 
   // Persist to Supabase on state change
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase || !userId) return;
+    if (!isSupabaseConfigured || !supabase || !userId || !loaded) return;
     supabase.from('subscription_state').update({
       plan: state.plan, credits: state.credits,
       purchased_credits: state.purchasedCredits,

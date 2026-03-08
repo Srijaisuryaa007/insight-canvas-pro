@@ -56,7 +56,7 @@ export function useSubscription() {
 
   // Persist to Supabase on state change
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase || !userId) return;
+    if (!isSupabaseConfigured || !supabase || !userId || !loaded) return;
     supabase.from('subscription_state').update({
       plan: state.plan, credits: state.credits,
       purchased_credits: state.purchasedCredits,

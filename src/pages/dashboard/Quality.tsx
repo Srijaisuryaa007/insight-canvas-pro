@@ -931,7 +931,7 @@ export default function Quality() {
                         {/* Uniqueness */}
                         {vr.uniqueness.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">🔑 Uniqueness Check</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Uniqueness Check</CardTitle></CardHeader>
                             <CardContent>
                               <div className="space-y-2">
                                 {vr.uniqueness.map((u, i) => (

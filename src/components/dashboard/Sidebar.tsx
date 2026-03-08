@@ -22,6 +22,7 @@ const navItems = [
   { path: '/dashboard/insights', icon: Lightbulb, label: 'Insights' },
   { path: '/dashboard/visualizations', icon: BarChart3, label: 'Visualizations' },
   { path: '/dashboard/copilot', icon: Sparkles, label: 'AI Copilot' },
+  { path: '/dashboard/sql', icon: Terminal, label: 'SQL Engine' },
   { path: '/dashboard/reports', icon: FileText, label: 'Reports' },
 ];
 

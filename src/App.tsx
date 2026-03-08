@@ -59,6 +59,7 @@ const App = () => (
                   <Route path="visualizations" element={<Visualizations />} />
                   <Route path="copilot" element={<Copilot />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="sql" element={<SQLEngine />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="profile" element={<Profile />} />
                 </Route>

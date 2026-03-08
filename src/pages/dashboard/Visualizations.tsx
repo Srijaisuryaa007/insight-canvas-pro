@@ -1209,17 +1209,6 @@ export default function Visualizations() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Aggregation</Label>
-                      <Select value={aggregation} onValueChange={setAggregation}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent className="bg-popover">
-                          {['sum', 'avg', 'count', 'min', 'max'].map(a =>
-                            <SelectItem key={a} value={a}>{a.charAt(0).toUpperCase() + a.slice(1)}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
                         <Label className="text-xs text-muted-foreground">Legend</Label>

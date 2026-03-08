@@ -41,6 +41,7 @@ export default function Reports() {
   const { exportCSV } = useExport();
   const { currentData, currentDataset } = useData();
   const { user } = useAuth();
+  const { dashboard } = useDashboard();
   const { report: qualityReport } = useDataQuality();
   const [sections, setSections] = useState<string[]>(REPORT_SECTIONS.filter(s => s.default).map(s => s.id));
   const [reportTitle, setReportTitle] = useState('');

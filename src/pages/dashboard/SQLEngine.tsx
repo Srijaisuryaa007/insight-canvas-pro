@@ -607,13 +607,15 @@ function RecommendedQueriesPanel({ onSelect }: { onSelect: (sql: string) => void
 // ── Main SQL Engine ──
 
 export default function SQLEngine() {
-  const { currentDataset, currentData, datasets, selectDataset } = useData();
+  const { currentDataset, currentData, datasets, selectDataset, isDataCleaned } = useData();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Record<string, unknown>[]>([]);
   const [queryError, setQueryError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('results');
   const [manualChartType, setManualChartType] = useState<string | null>(null);
+  const [showBuilder, setShowBuilder] = useState(true);
+  const autoRunTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pick up query from AI Copilot
   useEffect(() => {

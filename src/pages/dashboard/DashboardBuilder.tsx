@@ -6,6 +6,7 @@ import { DashboardCanvas } from '@/components/dashboard/DashboardCanvas';
 import { WidgetConfigPanel } from '@/components/dashboard/WidgetConfigPanel';
 import { WorkspacePanel, PanelPosition } from '@/components/dashboard/WorkspacePanel';
 import { PanelContent } from '@/components/dashboard/PanelContent';
+import TemplateGallery from '@/components/dashboard/TemplateGallery';
 import { DASHBOARD_TEMPLATES } from '@/lib/dashboardTemplates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

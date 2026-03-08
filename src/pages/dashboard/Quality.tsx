@@ -74,7 +74,7 @@ export default function Quality() {
       setDataProfile(profile);
       setIsProfileRunning(false);
       setActiveTab('profile');
-      toast({ title: '📊 Data Profile Complete', description: `${profile.totalRows} rows, ${profile.totalColumns} columns, ${profile.issuesFound} issues found` });
+      toast({ title: 'Profile Complete', description: `${profile.totalRows} rows, ${profile.totalColumns} columns, ${profile.issuesFound} issues detected` });
     }, 300);
   };
 
@@ -92,10 +92,10 @@ export default function Quality() {
       // If columns need decisions, show analysis tab first
       if (summary.columnsNeedingDecision.length > 0) {
         setActiveTab('columns');
-        toast({ title: '⚠️ Columns Need Your Decision', description: `${summary.columnsNeedingDecision.length} columns are 50-70% empty. Choose: Drop, Fill, or Keep.` });
+        toast({ title: 'Action Required', description: `${summary.columnsNeedingDecision.length} columns are 50–70% empty and require your decision.` });
       } else {
         setActiveTab('summary');
-        toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | ${summary.steps.reduce((a, s) => a + s.changesMade, 0)} changes made` });
+        toast({ title: 'Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 — ${summary.steps.reduce((a, s) => a + s.changesMade, 0)} changes applied` });
       }
       setDataProfile(profileData(cleanedData));
       if (currentDataset) scanDataset(currentDataset.id, cleanedData);
@@ -116,7 +116,7 @@ export default function Quality() {
       setIsCleaningRunning(false);
       setActiveTab('summary');
       setDataProfile(profileData(cleanedData));
-      toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | Decisions applied.` });
+      toast({ title: 'Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 — Decisions applied successfully.` });
       if (currentDataset) scanDataset(currentDataset.id, cleanedData);
     }, 500);
   };
@@ -153,10 +153,10 @@ export default function Quality() {
     setMissingStrategy(s => { const n = { ...s }; delete n[column]; return n; });
     const remaining = report ? report.issues.filter(i => !(i.column === column && i.type === type)).length : 0;
     toast({ 
-      title: '✅ Fix Applied', 
+      title: 'Fix Applied', 
       description: remaining > 0 
-        ? `Fixed ${type} in "${column}". ${remaining} issue${remaining > 1 ? 's' : ''} remaining.`
-        : `Fixed ${type} in "${column}". All issues resolved! 🎉`
+        ? `Resolved ${type} in "${column}". ${remaining} issue${remaining > 1 ? 's' : ''} remaining.`
+        : `Resolved ${type} in "${column}". All issues cleared.`
     });
     // Re-scan in background to get accurate report
     if (currentDataset) await scanDataset(currentDataset.id, newData);
@@ -191,10 +191,10 @@ export default function Quality() {
     setMissingStrategy(s => { const n = { ...s }; delete n[column]; return n; });
     const remaining = report ? report.issues.filter(i => !(i.column === column && i.type === 'missing')).length : 0;
     toast({ 
-      title: '✅ Missing Values Fixed', 
+      title: 'Missing Values Resolved', 
       description: remaining > 0
         ? `Applied "${strategy}" to "${column}". ${remaining} issue${remaining > 1 ? 's' : ''} remaining.`
-        : `Applied "${strategy}" to "${column}". All issues resolved! 🎉`
+        : `Applied "${strategy}" to "${column}". All issues cleared.`
     });
     if (currentDataset) await scanDataset(currentDataset.id, newData);
   };
@@ -211,7 +211,7 @@ export default function Quality() {
     setMissingStrategy({});
     // Clear all issues immediately
     setReport({ ...report, issues: [], overallScore: 100 });
-    toast({ title: '✅ All Fixes Applied', description: `Fixed ${count} issue types. All clean! 🎉` });
+    toast({ title: 'All Fixes Applied', description: `Resolved ${count} issue types successfully.` });
     await scanDataset(currentDataset.id, data);
   };
 
@@ -263,7 +263,7 @@ export default function Quality() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Data Quality</h1>
-          <p className="text-muted-foreground">Profile, scan, clean, and fix your data with an expert 8-step pipeline</p>
+          <p className="text-muted-foreground">Automated profiling, validation, and cleaning powered by an enterprise-grade pipeline</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} title="Undo">
@@ -451,7 +451,7 @@ export default function Quality() {
                     <div className="space-y-4">
                       <Card className="bg-card border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">🗑️ Empty Column Analysis</CardTitle>
+                          <CardTitle className="text-base">Empty Column Analysis</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="overflow-x-auto">
@@ -484,9 +484,9 @@ export default function Quality() {
                                         col.action === 'WARN_USER' ? 'outline' :
                                         col.action === 'KEEP_FILL' ? 'default' : 'secondary'
                                       } className="text-xs">
-                                        {col.action === 'AUTO_DROP' ? '🗑️ DROP' :
-                                         col.action === 'WARN_USER' ? '⚠️ DECIDE' :
-                                         col.action === 'KEEP_FILL' ? '🔧 FILL' : '✅ CLEAN'}
+                                         {col.action === 'AUTO_DROP' ? 'DROP' :
+                                          col.action === 'WARN_USER' ? 'DECIDE' :
+                                          col.action === 'KEEP_FILL' ? 'FILL' : 'CLEAN'}
                                       </Badge>
                                     </td>
                                     <td className="p-2 text-muted-foreground">{col.reason}</td>
@@ -499,10 +499,10 @@ export default function Quality() {
 
                           {/* Summary counts */}
                           <div className="mt-4 flex flex-wrap gap-3 text-xs">
-                            <span>✅ Dropped: {cleaningSummary.columnAnalysis.filter(c => c.action === 'AUTO_DROP').length}</span>
-                            <span>⚠️ Need Decision: {cleaningSummary.columnAnalysis.filter(c => c.action === 'WARN_USER').length}</span>
-                            <span>🔧 To Fill: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_FILL').length}</span>
-                            <span>✅ Clean: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_CLEAN').length}</span>
+                            <span>Dropped: {cleaningSummary.columnAnalysis.filter(c => c.action === 'AUTO_DROP').length}</span>
+                            <span className="text-amber-500">Pending Decision: {cleaningSummary.columnAnalysis.filter(c => c.action === 'WARN_USER').length}</span>
+                            <span>To Fill: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_FILL').length}</span>
+                            <span>Clean: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_CLEAN').length}</span>
                           </div>
                         </CardContent>
                       </Card>
@@ -511,7 +511,7 @@ export default function Quality() {
                       {cleaningSummary.columnsNeedingDecision.length > 0 && (
                         <Card className="bg-amber-500/5 border-amber-500/20">
                           <CardHeader className="pb-3">
-                            <CardTitle className="text-base">⚠️ Columns Needing Your Decision</CardTitle>
+                            <CardTitle className="text-base">Columns Requiring Your Decision</CardTitle>
                           </CardHeader>
                           <CardContent>
                             <p className="text-xs text-muted-foreground mb-4">
@@ -593,7 +593,7 @@ export default function Quality() {
                         {/* Banner */}
                         <Card className="bg-primary/5 border-primary/20">
                           <CardContent className="py-4 text-center">
-                            <p className="text-lg font-bold">╔══ DUPLICATE ANALYSIS REPORT ══╗</p>
+                            <p className="text-lg font-bold tracking-wide uppercase">Duplicate Analysis Report</p>
                           </CardContent>
                         </Card>
 
@@ -603,27 +603,27 @@ export default function Quality() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                               <div className="p-3 rounded-lg bg-destructive/10">
                                 <p className="text-2xl font-bold text-destructive">{dr.fullDuplicates}</p>
-                                <p className="text-xs text-muted-foreground">🔴 Full Duplicates</p>
+                                <p className="text-xs text-muted-foreground">Full Duplicates</p>
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{Object.values(dr.partialDuplicates).reduce((a, b) => a + b, 0)}</p>
-                                <p className="text-xs text-muted-foreground">🟡 Partial Duplicates</p>
+                                <p className="text-xs text-muted-foreground">Partial Duplicates</p>
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{dr.caseDuplicates + dr.whitespaceDuplicates + dr.formatDuplicates}</p>
-                                <p className="text-xs text-muted-foreground">🟡 Case/Space/Format</p>
+                                <p className="text-xs text-muted-foreground">Case / Space / Format</p>
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{dr.typoDuplicates.reduce((a, t) => a + t.groups.length, 0)}</p>
-                                <p className="text-xs text-muted-foreground">🟡 Typo Groups</p>
+                                <p className="text-xs text-muted-foreground">Typo Groups</p>
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{dr.duplicateColumns.length}</p>
-                                <p className="text-xs text-muted-foreground">🟡 Duplicate Columns</p>
+                                <p className="text-xs text-muted-foreground">Duplicate Columns</p>
                               </div>
                               <div className="p-3 rounded-lg bg-orange-500/10">
                                 <p className="text-2xl font-bold text-orange-600">{dr.nearDuplicates.length}</p>
-                                <p className="text-xs text-muted-foreground">🟠 Near Duplicates</p>
+                                <p className="text-xs text-muted-foreground">Near Duplicates</p>
                               </div>
                               <div className="p-3 rounded-lg bg-muted/50 col-span-2">
                                 <p className="text-2xl font-bold">{dr.totalIssues}</p>
@@ -833,7 +833,7 @@ export default function Quality() {
 
                         {/* Completeness */}
                         <Card className="bg-card border-border">
-                          <CardHeader className="pb-3"><CardTitle className="text-base">📊 Completeness: {vr.completeness.overall}%</CardTitle></CardHeader>
+                          <CardHeader className="pb-3"><CardTitle className="text-base">Completeness — {vr.completeness.overall}%</CardTitle></CardHeader>
                           <CardContent>
                             <Progress value={vr.completeness.overall} className="h-3 mb-3" />
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
@@ -845,7 +845,7 @@ export default function Quality() {
                               ))}
                             </div>
                             {vr.completeness.lowRows > 0 && (
-                              <p className="text-xs text-amber-500 mt-2">⚠️ {vr.completeness.lowRows} rows have less than 50% completeness</p>
+                              <p className="text-xs text-amber-500 mt-2">{vr.completeness.lowRows} rows have less than 50% completeness</p>
                             )}
                           </CardContent>
                         </Card>
@@ -853,7 +853,7 @@ export default function Quality() {
                         {/* Validation Issues */}
                         {vr.issues.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">🔍 Validation Issues ({vr.issues.length})</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Validation Issues ({vr.issues.length})</CardTitle></CardHeader>
                             <CardContent>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
@@ -879,7 +879,7 @@ export default function Quality() {
                                         </td>
                                         <td className="p-2 text-right font-bold">{iss.count}</td>
                                         <td className="p-2 text-muted-foreground">{iss.description}</td>
-                                        <td className="p-2">{iss.autoFixable ? '✅ Auto' : '⚠️ Manual'}</td>
+                                        <td className="p-2">{iss.autoFixable ? <Badge variant="secondary" className="text-xs">Auto</Badge> : <Badge variant="outline" className="text-xs">Manual</Badge>}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -892,7 +892,7 @@ export default function Quality() {
                         {/* Distribution */}
                         {vr.distribution.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">📈 Distribution Analysis</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Distribution Analysis</CardTitle></CardHeader>
                             <CardContent>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
@@ -931,16 +931,16 @@ export default function Quality() {
                         {/* Uniqueness */}
                         {vr.uniqueness.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">🔑 Uniqueness Check</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Uniqueness Check</CardTitle></CardHeader>
                             <CardContent>
                               <div className="space-y-2">
                                 {vr.uniqueness.map((u, i) => (
                                   <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/30 text-xs">
                                     <span className="font-medium">{u.column}</span>
-                                    {u.isUnique ? (
-                                      <Badge variant="secondary" className="text-xs">✅ Unique</Badge>
-                                    ) : (
-                                      <Badge variant="destructive" className="text-xs">❌ {u.duplicateCount} duplicates</Badge>
+                                     {u.isUnique ? (
+                                       <Badge variant="secondary" className="text-xs">Unique</Badge>
+                                     ) : (
+                                       <Badge variant="destructive" className="text-xs">{u.duplicateCount} duplicates</Badge>
                                     )}
                                   </div>
                                 ))}
@@ -952,7 +952,7 @@ export default function Quality() {
                         {/* Column Name Issues */}
                         {vr.columnNameIssues.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">📝 Column Name Fixes</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Column Name Fixes</CardTitle></CardHeader>
                             <CardContent>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
@@ -982,7 +982,7 @@ export default function Quality() {
                         {cleaningSummary.validationFixDetails.length > 0 && (
                           <Card className="bg-emerald-500/5 border-emerald-500/20">
                             <CardContent className="py-4">
-                              <h4 className="font-medium text-sm mb-2">✅ Auto-Fixes Applied ({cleaningSummary.validationFixCount})</h4>
+                              <h4 className="font-medium text-sm mb-2">Auto-Fixes Applied ({cleaningSummary.validationFixCount})</h4>
                               <ul className="space-y-1">
                                 {cleaningSummary.validationFixDetails.map((d, i) => (
                                   <li key={i} className="text-xs text-muted-foreground">{d}</li>
@@ -1041,9 +1041,9 @@ export default function Quality() {
                               <p className="text-xs text-muted-foreground">~KB Memory</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50 text-center col-span-2">
-                              <p className={cn("text-2xl font-bold", dataProfile.issuesFound === 0 ? "text-emerald-500" : "text-amber-500")}>
-                                {dataProfile.issuesFound === 0 ? '✅' : '⚠️'}
-                              </p>
+                               <p className={cn("text-2xl font-bold", dataProfile.issuesFound === 0 ? "text-emerald-500" : "text-amber-500")}>
+                                 {dataProfile.issuesFound === 0 ? 'Pass' : 'Review'}
+                               </p>
                               <p className="text-xs text-muted-foreground">Status</p>
                             </div>
                           </div>
@@ -1223,7 +1223,7 @@ export default function Quality() {
                                       )}>{issue.severity}</Badge>
                                     </div>
                                     <p className="text-sm text-muted-foreground mt-1">{issue.count} occurrences ({issue.percentage}%)</p>
-                                    <p className="text-sm mt-2">💡 {issue.suggestion}</p>
+                                    <p className="text-sm mt-2 text-muted-foreground italic">{issue.suggestion}</p>
 
                                     {/* Missing value strategy selector */}
                                     {issue.type === 'missing' && (
@@ -1283,7 +1283,7 @@ export default function Quality() {
                       <Card className="bg-primary/5 border-primary/20">
                         <CardContent className="py-4">
                           <div className="flex items-center justify-between">
-                            <p className="text-lg font-bold">╔══ DATA CLEANING COMPLETE ✅ ══╗</p>
+                            <p className="text-lg font-bold tracking-wide uppercase">Data Cleaning Complete</p>
                             <div className="flex items-center gap-3">
                               <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-bold text-xl",
                                 cleaningSummary.letterGrade === 'A' ? 'bg-emerald-500' : cleaningSummary.letterGrade === 'B' ? 'bg-chart-1' : cleaningSummary.letterGrade === 'C' ? 'bg-amber-500' : 'bg-destructive'
@@ -1308,12 +1308,12 @@ export default function Quality() {
                               <span className="text-3xl font-bold text-primary-foreground">{cleaningSummary.healthScore}</span>
                             </div>
                             <div>
-                              <h3 className="text-lg font-bold">📈 Data Health Score: {cleaningSummary.healthScore}/100 (Grade: {cleaningSummary.letterGrade})</h3>
+                              <h3 className="text-lg font-bold">Data Health Score: {cleaningSummary.healthScore}/100 (Grade {cleaningSummary.letterGrade})</h3>
                               <p className="text-sm text-muted-foreground mt-1">
-                                {cleaningSummary.letterGrade === 'A' ? 'Excellent! Your data is analysis-ready.' :
-                                 cleaningSummary.letterGrade === 'B' ? 'Good quality. Minor improvements possible.' :
-                                 cleaningSummary.letterGrade === 'C' ? 'Fair quality. Review issues flagged below.' :
-                                 'Needs attention. Significant issues found.'}
+                                 {cleaningSummary.letterGrade === 'A' ? 'Excellent — your data is analysis-ready.' :
+                                  cleaningSummary.letterGrade === 'B' ? 'Good — minor improvements recommended.' :
+                                  cleaningSummary.letterGrade === 'C' ? 'Fair — review the flagged issues below.' :
+                                  'Needs attention — significant quality issues detected.'}
                               </p>
                             </div>
                           </div>
@@ -1338,7 +1338,7 @@ export default function Quality() {
                       {/* Summary Stats */}
                       <Card className="bg-card border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">📊 Summary</CardTitle>
+                          <CardTitle className="text-base">Summary</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1351,27 +1351,27 @@ export default function Quality() {
                               <p className="font-bold">{cleaningSummary.colsBefore} → {cleaningSummary.colsAfter}</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Missing Fixed</p>
+                              <p className="text-xs text-muted-foreground">Missing Fixed</p>
                               <p className="font-bold">{cleaningSummary.missingFixed} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Duplicates Removed</p>
+                              <p className="text-xs text-muted-foreground">Duplicates Removed</p>
                               <p className="font-bold">{cleaningSummary.duplicatesRemoved} rows (kept 1 each)</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Types Fixed</p>
+                              <p className="text-xs text-muted-foreground">Types Fixed</p>
                               <p className="font-bold">{cleaningSummary.typesFixed} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Outliers Capped</p>
+                              <p className="text-xs text-muted-foreground">Outliers Capped</p>
                               <p className="font-bold">{cleaningSummary.outliersCapped} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Text Standardized</p>
+                              <p className="text-xs text-muted-foreground">Text Standardized</p>
                               <p className="font-bold">{cleaningSummary.textStandardized} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Columns Dropped / Features Added</p>
+                              <p className="text-xs text-muted-foreground">Columns Dropped / Features Added</p>
                               <p className="font-bold">{cleaningSummary.columnsDropped} dropped / {cleaningSummary.featuresAdded.length} added</p>
                             </div>
                           </div>
@@ -1381,7 +1381,7 @@ export default function Quality() {
                       {/* Step-by-step Details with tables */}
                       <Card className="bg-card border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">🔧 Step-by-Step Details</CardTitle>
+                          <CardTitle className="text-base">Step-by-Step Details</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
@@ -1440,7 +1440,7 @@ export default function Quality() {
                       {cleaningSummary.flaggedRows.length > 0 && (
                         <Card className="bg-card border-border">
                           <CardHeader className="pb-3">
-                            <CardTitle className="text-base">⚠️ Flagged Values (Not Capped — Needs Review)</CardTitle>
+                            <CardTitle className="text-base">Flagged Values — Requires Manual Review</CardTitle>
                           </CardHeader>
                           <CardContent>
                             <div className="overflow-x-auto">
@@ -1474,7 +1474,7 @@ export default function Quality() {
                         {cleaningSummary.warnings.length > 0 && (
                           <Card className="bg-card border-border">
                             <CardContent className="py-4">
-                              <h4 className="font-medium text-sm mb-3">⚠️ Warnings</h4>
+                              <h4 className="font-medium text-sm mb-3">Warnings</h4>
                               <div className="space-y-2">
                                 {cleaningSummary.warnings.map((w, i) => (
                                   <p key={i} className="text-xs text-amber-500">• {w}</p>
@@ -1485,7 +1485,7 @@ export default function Quality() {
                         )}
                         <Card className="bg-card border-border">
                           <CardContent className="py-4">
-                            <h4 className="font-medium text-sm mb-3">💡 Recommendations for Analysis</h4>
+                            <h4 className="font-medium text-sm mb-3">Recommendations</h4>
                             <div className="space-y-2">
                               {cleaningSummary.recommendations.map((r, i) => (
                                 <p key={i} className="text-xs text-muted-foreground">• {r}</p>
@@ -1499,7 +1499,7 @@ export default function Quality() {
                       {cleaningSummary.featuresAdded.length > 0 && (
                         <Card className="bg-card border-border">
                           <CardContent className="py-4">
-                            <h4 className="font-medium text-sm mb-2">⚡ New Features Added ({cleaningSummary.featuresAdded.length})</h4>
+                            <h4 className="font-medium text-sm mb-2">Engineered Features ({cleaningSummary.featuresAdded.length})</h4>
                             <div className="flex flex-wrap gap-2">
                               {cleaningSummary.featuresAdded.map((f, i) => (
                                 <Badge key={i} variant="outline" className="text-xs">{f}</Badge>

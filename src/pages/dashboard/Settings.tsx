@@ -250,6 +250,9 @@ export default function Settings() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Data Alerts */}
+      <DataAlerts />
     </div>
   );
 }

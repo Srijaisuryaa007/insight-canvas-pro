@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { toast } from '@/hooks/use-toast';
 
 export interface Comment {
@@ -19,17 +20,6 @@ export interface Comment {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'datapulse_comments';
-
-function loadComments(): Comment[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
-}
-
-function persistComments(comments: Comment[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
-}
-
-// Simple mock users for @mention suggestions
 const MOCK_USERS = [
   { id: '1', name: 'Alice Chen' },
   { id: '2', name: 'Bob Martinez' },
@@ -44,7 +34,7 @@ interface DashboardCommentsProps {
 
 export default function DashboardComments({ dashboardId }: DashboardCommentsProps) {
   const { user } = useAuth();
-  const [allComments, setAllComments] = useState<Comment[]>(loadComments);
+  const [allComments, setAllComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
@@ -52,32 +42,39 @@ export default function DashboardComments({ dashboardId }: DashboardCommentsProp
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Load comments from Supabase
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !dashboardId) return;
+    supabase.from('comments').select('*').eq('dashboard_id', dashboardId)
+      .order('created_at')
+      .then(({ data }) => {
+        if (data) {
+          setAllComments(data.map(c => ({
+            id: c.id, dashboardId: c.dashboard_id, userId: c.user_id,
+            userName: '', comment: c.comment_text, mentions: [], createdAt: c.created_at,
+          })));
+        }
+      });
+  }, [dashboardId]);
+
   const comments = useMemo(() =>
     allComments.filter(c => c.dashboardId === dashboardId).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
     [allComments, dashboardId]
   );
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [comments.length]);
 
   const handleInput = (value: string) => {
     setNewComment(value);
     const cursor = textareaRef.current?.selectionStart || 0;
     setCursorPosition(cursor);
-
-    // Detect @mention trigger
     const textBeforeCursor = value.slice(0, cursor);
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
     if (lastAtIndex !== -1 && (lastAtIndex === 0 || textBeforeCursor[lastAtIndex - 1] === ' ')) {
       const query = textBeforeCursor.slice(lastAtIndex + 1);
-      if (!query.includes(' ')) {
-        setShowMentions(true);
-        setMentionFilter(query.toLowerCase());
-        return;
-      }
+      if (!query.includes(' ')) { setShowMentions(true); setMentionFilter(query.toLowerCase()); return; }
     }
     setShowMentions(false);
   };
@@ -87,8 +84,7 @@ export default function DashboardComments({ dashboardId }: DashboardCommentsProp
     const lastAtIndex = textBeforeCursor.lastIndexOf('@');
     const beforeMention = newComment.slice(0, lastAtIndex);
     const afterCursor = newComment.slice(cursorPosition);
-    const newValue = `${beforeMention}@${userName} ${afterCursor}`;
-    setNewComment(newValue);
+    setNewComment(`${beforeMention}@${userName} ${afterCursor}`);
     setShowMentions(false);
     textareaRef.current?.focus();
   };
@@ -100,21 +96,19 @@ export default function DashboardComments({ dashboardId }: DashboardCommentsProp
 
   const handleSubmit = () => {
     if (!newComment.trim() || !user) return;
-
     const comment: Comment = {
-      id: crypto.randomUUID(),
-      dashboardId,
-      userId: user.id,
-      userName: user.name,
-      comment: newComment.trim(),
-      mentions: extractMentions(newComment),
-      createdAt: new Date().toISOString(),
+      id: crypto.randomUUID(), dashboardId, userId: user.id,
+      userName: user.name, comment: newComment.trim(),
+      mentions: extractMentions(newComment), createdAt: new Date().toISOString(),
     };
-
-    const updated = [...allComments, comment];
-    setAllComments(updated);
-    persistComments(updated);
+    setAllComments(prev => [...prev, comment]);
     setNewComment('');
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('comments').insert({
+        id: comment.id, dashboard_id: dashboardId, user_id: user.id, comment_text: comment.comment,
+      }).then();
+    }
 
     if (comment.mentions.length > 0) {
       toast({ title: 'Comment Posted', description: `Mentioned: ${comment.mentions.join(', ')}` });
@@ -122,17 +116,17 @@ export default function DashboardComments({ dashboardId }: DashboardCommentsProp
   };
 
   const handleDelete = (id: string) => {
-    const updated = allComments.filter(c => c.id !== id);
-    setAllComments(updated);
-    persistComments(updated);
+    setAllComments(prev => prev.filter(c => c.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('comments').delete().eq('id', id).then();
+    }
   };
 
   const filteredUsers = MOCK_USERS.filter(u => u.name.toLowerCase().includes(mentionFilter));
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+    const diffMs = Date.now() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
@@ -145,9 +139,7 @@ export default function DashboardComments({ dashboardId }: DashboardCommentsProp
     return text.split(/(@\w+\s?\w*)/g).map((part, i) =>
       part.startsWith('@') ? (
         <span key={i} className="text-primary font-medium bg-primary/10 rounded px-0.5">{part}</span>
-      ) : (
-        <span key={i}>{part}</span>
-      )
+      ) : (<span key={i}>{part}</span>)
     );
   };
 
@@ -173,12 +165,12 @@ export default function DashboardComments({ dashboardId }: DashboardCommentsProp
                 <div key={comment.id} className="flex gap-2 group">
                   <Avatar className="h-7 w-7 shrink-0">
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {comment.userName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      {comment.userName.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{comment.userName}</span>
+                      <span className="text-sm font-medium">{comment.userName || 'User'}</span>
                       <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                         <Clock className="h-2.5 w-2.5" /> {formatTime(comment.createdAt)}
                       </span>
@@ -211,23 +203,16 @@ export default function DashboardComments({ dashboardId }: DashboardCommentsProp
         {user && (
           <div className="relative">
             <Textarea
-              ref={textareaRef}
-              value={newComment}
+              ref={textareaRef} value={newComment}
               onChange={e => handleInput(e.target.value)}
               placeholder="Add a comment... Use @username to mention"
               className="min-h-[60px] text-sm pr-10 resize-none"
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
             />
             <Button size="icon" variant="ghost" className="absolute bottom-2 right-2 h-7 w-7"
               onClick={handleSubmit} disabled={!newComment.trim()}>
               <Send className="h-4 w-4" />
             </Button>
-
             {showMentions && filteredUsers.length > 0 && (
               <div className="absolute bottom-full mb-1 left-0 w-56 bg-popover border border-border rounded-lg shadow-lg z-50 p-1">
                 {filteredUsers.map(u => (

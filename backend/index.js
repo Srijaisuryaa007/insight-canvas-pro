@@ -896,6 +896,65 @@ app.post('/api/connector/import', async (req, res) => {
   }
 });
 
+// ============ CREDENTIAL MANAGEMENT ENDPOINTS ============
+
+// POST /api/credentials/save — encrypt & store credentials
+app.post('/api/credentials/save', (req, res) => {
+  try {
+    const { connectionId, connectorId, credentials, displayName } = req.body;
+    if (!connectionId || !connectorId || !credentials) {
+      return res.status(400).json({ error: 'connectionId, connectorId, and credentials are required' });
+    }
+    saveEncryptedCredentials(connectionId, connectorId, credentials, displayName || connectorId);
+    console.log(`[SECURITY] Credentials saved (AES-256-GCM) for ${connectorId} connection: ${connectionId}`);
+    res.json({ success: true, message: 'Credentials encrypted and stored securely' });
+  } catch (error) {
+    console.error('[CREDENTIALS SAVE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/credentials/list — list saved connections (no secrets exposed)
+app.get('/api/credentials/list', (req, res) => {
+  try {
+    const connections = listStoredConnections();
+    res.json({ connections });
+  } catch (error) {
+    console.error('[CREDENTIALS LIST ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/credentials/use — decrypt credentials for a specific action (server-side only)
+app.post('/api/credentials/use', (req, res) => {
+  try {
+    const { connectionId } = req.body;
+    const entry = getDecryptedCredentials(connectionId);
+    if (!entry) {
+      return res.status(404).json({ error: 'Connection not found or decryption failed' });
+    }
+    // Never send raw credentials to frontend — only confirm they exist
+    res.json({ success: true, connectorId: entry.connectorId, displayName: entry.displayName });
+  } catch (error) {
+    console.error('[CREDENTIALS USE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/credentials/:id — remove stored credentials
+app.delete('/api/credentials/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    deleteStoredCredentials(id);
+    console.log(`[SECURITY] Credentials deleted for connection: ${id}`);
+    res.json({ success: true, message: 'Credentials removed securely' });
+  } catch (error) {
+    console.error('[CREDENTIALS DELETE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 // ============ HELPER FUNCTIONS ============
 
 function detectColumns(data) {

@@ -46,10 +46,14 @@ const DATA_PATTERNS = [
   /\b(top|bottom|highest|lowest|most|least)\s+\d+/i,
   /\b(group|filter|where|aggregate)\s+by/i,
   /\b(sql|query)\b/i,
-  /\b(chart|graph|visualize|visualization|bar chart|line chart|pie chart)\b/i,
-  /\b(analyze|analysis)\s+(my|the|this)?\s*(data|dataset)/i,
-  /\b(trend|correlation|distribution)\b/i,
+  /\b(charts?|graphs?|visuali[sz](e|ation)|bar\s*charts?|line\s*charts?|pie\s*charts?|scatter|heatmap|histogram|plot)\b/i,
+  /\b(suggest|recommend)\b.*\b(charts?|visuals?|graphs?|visuali[sz]ation)\b/i,
+  /\b(analyze|analysis|analyse)\s*(my|the|this)?\s*(data|dataset)?/i,
+  /\b(trend|correlation|distribution|pattern|outlier|anomal|insight|segment|cluster)\b/i,
   /\b(by region|by category|by month|by year|by product)\b/i,
+  /\b(summarize|summary|overview|describe)\s*(my|the|this)?\s*(data|dataset)?/i,
+  /\b(find|detect|discover|check|scan)\s*(pattern|trend|outlier|anomal|insight|correlation)/i,
+  /\b(kpi|metric|dashboard|report)\b/i,
 ];
 
 // General knowledge patterns - handle with conversational response

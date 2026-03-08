@@ -326,19 +326,6 @@ export default function Datasets() {
                       ))}
                     </div>
                   </div>
-                  {daxMeasures.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Measures</p>
-                      <div className="space-y-1">
-                        {daxMeasures.map(m => (
-                          <div key={m.id} className="flex items-center justify-between px-2 py-1 rounded bg-chart-1/5 text-xs">
-                            <span className="flex items-center gap-1"><Code className="h-3 w-3 text-chart-1" />{m.name}</span>
-                            <Badge variant="outline" className="text-[9px] h-4">DAX</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 

@@ -3,7 +3,7 @@ import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar,
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { ColumnInspector } from '@/components/data/ColumnInspector';
 import { FormulaColumnEditor } from '@/components/data/FormulaColumnEditor';
-import { DAXMeasurePanel } from '@/components/data/DAXMeasurePanel';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';

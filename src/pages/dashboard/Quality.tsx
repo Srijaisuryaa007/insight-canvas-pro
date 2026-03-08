@@ -451,7 +451,7 @@ export default function Quality() {
                     <div className="space-y-4">
                       <Card className="bg-card border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">🗑️ Empty Column Analysis</CardTitle>
+                          <CardTitle className="text-base">Empty Column Analysis</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="overflow-x-auto">

@@ -15,8 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import {
   LayoutDashboard, Plus, Undo2, Redo2, Save, ZoomIn, ZoomOut,
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
-  ChevronLeft, Download, FolderOpen, Lock, Image
+  ChevronLeft, Download, FolderOpen, Lock, Image, Copy, FileText, Presentation, File
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 const WIDGET_LIMITS: Record<string, number> = {

@@ -805,6 +805,21 @@ export default function Datasets() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rename Dialog */}
+      <AlertDialog open={!!renamingId} onOpenChange={() => setRenamingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Dataset</AlertDialogTitle>
+            <AlertDialogDescription>Enter a new name for this dataset.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input value={renameValue} onChange={e => setRenameValue(e.target.value)} placeholder="Dataset name" className="my-2" onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); }} autoFocus />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRename}>Rename</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

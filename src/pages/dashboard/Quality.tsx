@@ -937,10 +937,10 @@ export default function Quality() {
                                 {vr.uniqueness.map((u, i) => (
                                   <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/30 text-xs">
                                     <span className="font-medium">{u.column}</span>
-                                    {u.isUnique ? (
-                                      <Badge variant="secondary" className="text-xs">✅ Unique</Badge>
-                                    ) : (
-                                      <Badge variant="destructive" className="text-xs">❌ {u.duplicateCount} duplicates</Badge>
+                                     {u.isUnique ? (
+                                       <Badge variant="secondary" className="text-xs">Unique</Badge>
+                                     ) : (
+                                       <Badge variant="destructive" className="text-xs">{u.duplicateCount} duplicates</Badge>
                                     )}
                                   </div>
                                 ))}

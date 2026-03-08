@@ -853,7 +853,7 @@ export default function Quality() {
                         {/* Validation Issues */}
                         {vr.issues.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">🔍 Validation Issues ({vr.issues.length})</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Validation Issues ({vr.issues.length})</CardTitle></CardHeader>
                             <CardContent>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">

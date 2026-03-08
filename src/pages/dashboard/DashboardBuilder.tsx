@@ -6,6 +6,7 @@ import { DashboardCanvas } from '@/components/dashboard/DashboardCanvas';
 import { WidgetConfigPanel } from '@/components/dashboard/WidgetConfigPanel';
 import { WorkspacePanel, PanelPosition } from '@/components/dashboard/WorkspacePanel';
 import { PanelContent } from '@/components/dashboard/PanelContent';
+import TemplateGallery from '@/components/dashboard/TemplateGallery';
 import { DASHBOARD_TEMPLATES } from '@/lib/dashboardTemplates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -204,41 +205,12 @@ render();
   // Template picker
   if (showTemplates && !dashboard) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><LayoutDashboard className="h-7 w-7" />Dashboard Builder</h1>
-            <p className="text-muted-foreground">Choose a template or start from scratch</p>
-          </div>
-          <div className="flex gap-2">
-            <Badge variant="outline" className="capitalize">{plan} Plan • {widgetLimit === Infinity ? '∞' : widgetLimit} widgets/page</Badge>
-            <Button variant="outline" onClick={() => { setShowSaved(true); setShowTemplates(false); }}>
-              <FolderOpen className="h-4 w-4 mr-2" />Saved
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {DASHBOARD_TEMPLATES.map(t => (
-            <Card key={t.id} className="bg-card border-border hover:shadow-lg transition-all cursor-pointer group"
-              onClick={() => { createDashboard(t.name, t); setShowTemplates(false); }}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{t.thumbnail}</span>
-                  <div>
-                    <CardTitle className="text-sm group-hover:text-primary transition-colors">{t.name}</CardTitle>
-                    <Badge variant="outline" className="text-xs mt-1">{t.category}</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground">{t.description}</p>
-                <p className="text-xs text-muted-foreground mt-2">{t.pages[0]?.widgets.length || 0} widgets • {t.pages.length} page(s)</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+      <TemplateGallery
+        plan={plan}
+        widgetLimit={widgetLimit}
+        onSelectTemplate={(t) => { createDashboard(t.name, t); setShowTemplates(false); }}
+        onShowSaved={() => { setShowSaved(true); setShowTemplates(false); }}
+      />
     );
   }
 

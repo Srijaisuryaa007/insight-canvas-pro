@@ -156,18 +156,16 @@ export function WidgetConfigPanel() {
 
         <Separator />
 
-        {/* Chart Type */}
+        {/* Chart Type — shows ALL charts, locked ones gated */}
         {isChart && (
           <>
-            <Section title="Chart Type" defaultOpen={true}>
-              <Select value={widget.config.chartType || 'bar'} onValueChange={v => update({ chartType: v })}>
-                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {availableCharts.map(ct => (
-                    <SelectItem key={ct} value={ct}>{ct.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Section title={`Chart Type (${availableCharts.length} unlocked)`} defaultOpen={true}>
+              <ChartTypeSelector
+                currentType={widget.config.chartType || 'bar'}
+                plan={plan}
+                availableCharts={availableCharts}
+                onSelect={v => update({ chartType: v })}
+              />
             </Section>
             <Separator />
           </>

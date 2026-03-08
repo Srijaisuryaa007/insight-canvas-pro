@@ -162,7 +162,7 @@ export async function exportRichPPTX(
 
     const blob = await pptx.write({ outputType: 'blob' }) as Blob;
     saveAs(blob, `${stats.title.replace(/\s+/g, '-').toLowerCase()}.pptx`);
-    toast({ title: 'PowerPoint Exported', description: `${pptx.slides.length}-slide presentation downloaded.` });
+    toast({ title: 'PowerPoint Exported', description: 'Presentation downloaded successfully.' });
   } catch (e) {
     console.error('PPTX export error:', e);
     toast({ title: 'Export Failed', description: 'Could not generate PowerPoint.', variant: 'destructive' });

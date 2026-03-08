@@ -17,7 +17,7 @@ const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 export default function Settings() {
   const { user } = useAuth();
   const { plan, credits, isEnterprise, upgradePlan } = useSubscription();
-  const { isProcessing, currentPackage, creditPackages, initiatePayment } = usePayment();
+  const { isProcessing, currentPackage, currentPlanUpgrade, creditPackages, initiatePayment, initiateSubscriptionUpgrade } = usePayment();
 
   const planConfigs = planOrder.map(id => ({
     ...PLANS[id],
@@ -89,8 +89,9 @@ export default function Settings() {
                     ))}
                   </ul>
                   <Button className="w-full" variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent} onClick={() => upgradePlan(p.id)}>
-                    {isCurrent ? 'Current Plan' : 'Upgrade'}
+                    disabled={isCurrent || (isProcessing && currentPlanUpgrade === p.id)}
+                    onClick={() => p.id === 'free' ? upgradePlan('free') : initiateSubscriptionUpgrade(p.id)}>
+                    {isProcessing && currentPlanUpgrade === p.id ? 'Processing...' : isCurrent ? 'Current Plan' : p.price === 0 ? 'Downgrade' : `Upgrade - ₹${(p.priceINR / 100).toFixed(0)}/mo`}
                   </Button>
                 </CardContent>
               </Card>

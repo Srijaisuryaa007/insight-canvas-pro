@@ -309,7 +309,13 @@ function RecommendedQueriesPanel({ onSelect }: { onSelect: (sql: string) => void
 
   if (queries.length === 0) return null;
 
-  const categories = [...new Set(queries.map(q => q.category))];
+  // Fixed order from basic to advanced
+  const categoryOrder = [
+    'Basic', 'Aggregation', 'Filtering', 'Data Quality', 'Ranking',
+    'Grouping & HAVING', 'Percentage & Ratio', 'Statistical', 'Comparison',
+    'Trend Analysis', 'CASE Statements', 'Window Functions', 'Cross-Tab', 'CTE',
+  ];
+  const categories = categoryOrder.filter(cat => queries.some(q => q.category === cat));
 
   const toggleCategory = (cat: string) => {
     setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }));

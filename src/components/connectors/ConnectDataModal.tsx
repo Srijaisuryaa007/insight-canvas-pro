@@ -416,9 +416,9 @@ function GoogleSheetsExpanded({ onClose }: { onClose: () => void }) {
 
 function PasteDataExpanded({ onClose, onImportComplete }: { onClose: () => void; onImportComplete: () => void }) {
   const [pastedData, setPastedData] = useState('');
-  const { addDataset } = useData();
+  const { uploadData } = useData();
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!pastedData.trim()) return;
     const lines = pastedData.trim().split('\n');
     if (lines.length < 2) {
@@ -429,20 +429,12 @@ function PasteDataExpanded({ onClose, onImportComplete }: { onClose: () => void;
     const headers = lines[0].split(delimiter).map(h => h.trim());
     const rows = lines.slice(1).map(line => {
       const values = line.split(delimiter);
-      const obj: Record<string, string> = {};
+      const obj: Record<string, unknown> = {};
       headers.forEach((h, i) => { obj[h || `col_${i}`] = (values[i] || '').trim(); });
       return obj;
     });
 
-    addDataset({
-      id: `paste-${Date.now()}`,
-      name: `Pasted Data ${new Date().toLocaleDateString()}`,
-      fileName: `pasted_${Date.now()}.csv`,
-      data: rows,
-      columns: headers,
-      rowCount: rows.length,
-      uploadedAt: new Date().toISOString(),
-    });
+    await uploadData(`Pasted Data ${new Date().toLocaleDateString()}`, `pasted_${Date.now()}.csv`, rows);
     toast({ title: '✓ Data imported', description: `${rows.length} rows imported from pasted data` });
     onImportComplete();
   };

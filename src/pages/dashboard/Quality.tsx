@@ -590,21 +590,28 @@ export default function Quality() {
                       <CardContent className="py-12 text-center">
                         <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                         <h3 className="font-medium">No Cleaning Report Yet</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Click "Full 8-Step Clean" to run the complete pipeline and see the report</p>
+                        <p className="text-sm text-muted-foreground mt-1">Click "Full 8-Step Clean" to run the complete pipeline</p>
                       </CardContent>
                     </Card>
                   ) : (
                     <div className="space-y-4">
-                      {/* Health Score */}
+                      {/* Banner */}
+                      <Card className="bg-primary/5 border-primary/20">
+                        <CardContent className="py-4 text-center">
+                          <p className="text-lg font-bold">╔══ DATA CLEANING COMPLETE ✅ ══╗</p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Health Score with breakdown */}
                       <Card className="bg-card border-border">
                         <CardContent className="py-6">
-                          <div className="flex items-center gap-6">
+                          <div className="flex items-center gap-6 mb-4">
                             <div className={cn("w-20 h-20 rounded-full flex items-center justify-center",
                               getScoreBg(cleaningSummary.healthScore))}>
                               <span className="text-3xl font-bold text-primary-foreground">{cleaningSummary.healthScore}</span>
                             </div>
                             <div>
-                              <h3 className="text-lg font-bold">📊 Data Health Score: {cleaningSummary.healthScore}/100</h3>
+                              <h3 className="text-lg font-bold">📈 Data Health Score: {cleaningSummary.healthScore}/100</h3>
                               <p className="text-sm text-muted-foreground mt-1">
                                 {cleaningSummary.healthScore >= 90 ? 'Excellent! Your data is analysis-ready.' :
                                  cleaningSummary.healthScore >= 70 ? 'Good quality. Minor improvements possible.' :
@@ -612,101 +619,189 @@ export default function Quality() {
                               </p>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Summary Stats */}
-                      <Card className="bg-card border-border">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">📋 Cleaning Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Rows Before → After</p>
-                              <p className="font-bold">{cleaningSummary.rowsBefore} → {cleaningSummary.rowsAfter}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Duplicates Removed</p>
-                              <p className="font-bold">{cleaningSummary.duplicatesRemoved}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Missing Values Fixed</p>
-                              <p className="font-bold">{cleaningSummary.missingFixed}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Outliers Capped</p>
-                              <p className="font-bold">{cleaningSummary.outliersCapped}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Data Types Fixed</p>
-                              <p className="font-bold">{cleaningSummary.typesFixed}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Features Added</p>
-                              <p className="font-bold">{cleaningSummary.featuresAdded.length}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Step-by-step Details */}
-                      <Card className="bg-card border-border">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">Step-by-Step Details</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            {cleaningSummary.steps.map((step, i) => (
-                              <div key={i} className="p-3 rounded-lg border border-border bg-muted/20">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-medium text-sm">
-                                    {step.icon} Step {step.step}: {step.name}
-                                  </span>
-                                  <Badge variant={step.changesMade > 0 ? 'default' : 'outline'} className="text-xs">
-                                    {step.changesMade} changes
-                                  </Badge>
+                          {/* Score breakdown */}
+                          <div className="space-y-2">
+                            {cleaningSummary.healthBreakdown.map((item, i) => (
+                              <div key={i} className="flex items-center gap-3">
+                                <span className="text-xs w-36 text-muted-foreground">{item.label}</span>
+                                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className={cn("h-full rounded-full transition-all", item.score >= item.max ? "bg-emerald-500" : item.score >= item.max * 0.7 ? "bg-amber-500" : "bg-destructive")}
+                                    style={{ width: `${(item.score / item.max) * 100}%` }} 
+                                  />
                                 </div>
-                                <ul className="space-y-1">
-                                  {step.actions.map((action, j) => (
-                                    <li key={j} className="text-xs text-muted-foreground">• {action}</li>
-                                  ))}
-                                </ul>
+                                <span className="text-xs font-mono w-12 text-right">{item.score}/{item.max}</span>
                               </div>
                             ))}
                           </div>
                         </CardContent>
                       </Card>
 
-                      {/* Warnings & Recommendations */}
-                      {(cleaningSummary.warnings.length > 0 || cleaningSummary.recommendations.length > 0) && (
+                      {/* Summary Stats */}
+                      <Card className="bg-card border-border">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">📊 Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">Rows</p>
+                              <p className="font-bold">{cleaningSummary.rowsBefore} → {cleaningSummary.rowsAfter}</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">Columns</p>
+                              <p className="font-bold">{cleaningSummary.colsBefore} → {cleaningSummary.colsAfter}</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">✅ Missing Fixed</p>
+                              <p className="font-bold">{cleaningSummary.missingFixed} values</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">✅ Duplicates Removed</p>
+                              <p className="font-bold">{cleaningSummary.duplicatesRemoved} rows (kept 1 each)</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">✅ Types Fixed</p>
+                              <p className="font-bold">{cleaningSummary.typesFixed} values</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">✅ Outliers Capped</p>
+                              <p className="font-bold">{cleaningSummary.outliersCapped} values</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">✅ Text Standardized</p>
+                              <p className="font-bold">{cleaningSummary.textStandardized} values</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <p className="text-xs text-muted-foreground">✅ Columns Dropped / Features Added</p>
+                              <p className="font-bold">{cleaningSummary.columnsDropped} dropped / {cleaningSummary.featuresAdded.length} added</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Step-by-step Details with tables */}
+                      <Card className="bg-card border-border">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">🔧 Step-by-Step Details</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {cleaningSummary.steps.map((step, i) => (
+                              <div key={i} className="p-4 rounded-lg border border-border bg-muted/10">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-medium text-sm">
+                                    {step.icon} Step {step.step}: {step.name}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {step.rowsBefore !== step.rowsAfter && (
+                                      <span className="text-xs text-muted-foreground">{step.rowsBefore} → {step.rowsAfter} rows</span>
+                                    )}
+                                    <Badge variant={step.changesMade > 0 ? 'default' : 'outline'} className="text-xs">
+                                      {step.changesMade} changes
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <ul className="space-y-1 mb-2">
+                                  {step.actions.map((action, j) => (
+                                    <li key={j} className="text-xs text-muted-foreground">• {action}</li>
+                                  ))}
+                                </ul>
+                                {/* Detail table */}
+                                {step.details && step.details.length > 0 && (
+                                  <div className="mt-2 overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="border-b border-border">
+                                          <th className="text-left p-1.5 font-medium text-muted-foreground">Column</th>
+                                          <th className="text-left p-1.5 font-medium text-muted-foreground">Before</th>
+                                          <th className="text-left p-1.5 font-medium text-muted-foreground">After</th>
+                                          <th className="text-left p-1.5 font-medium text-muted-foreground">Action</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {step.details.map((d, j) => (
+                                          <tr key={j} className="border-b border-border/30">
+                                            <td className="p-1.5 font-medium">{d.column}</td>
+                                            <td className="p-1.5 text-destructive">{d.before}</td>
+                                            <td className="p-1.5 text-emerald-500">{d.after}</td>
+                                            <td className="p-1.5 text-muted-foreground">{d.action}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Flagged Rows */}
+                      {cleaningSummary.flaggedRows.length > 0 && (
                         <Card className="bg-card border-border">
-                          <CardContent className="py-4 space-y-4">
-                            {cleaningSummary.warnings.length > 0 && (
-                              <div>
-                                <h4 className="font-medium text-sm mb-2">⚠️ Warnings</h4>
-                                {cleaningSummary.warnings.map((w, i) => (
-                                  <p key={i} className="text-xs text-amber-500 ml-4">• {w}</p>
-                                ))}
-                              </div>
-                            )}
-                            {cleaningSummary.recommendations.length > 0 && (
-                              <div>
-                                <h4 className="font-medium text-sm mb-2">💡 Recommendations</h4>
-                                {cleaningSummary.recommendations.map((r, i) => (
-                                  <p key={i} className="text-xs text-muted-foreground ml-4">• {r}</p>
-                                ))}
-                              </div>
-                            )}
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">⚠️ Flagged Values (Not Capped — Needs Review)</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b border-border">
+                                    <th className="text-left p-1.5 font-medium text-muted-foreground">Row</th>
+                                    <th className="text-left p-1.5 font-medium text-muted-foreground">Column</th>
+                                    <th className="text-left p-1.5 font-medium text-muted-foreground">Value</th>
+                                    <th className="text-left p-1.5 font-medium text-muted-foreground">Reason</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {cleaningSummary.flaggedRows.map((f, i) => (
+                                    <tr key={i} className="border-b border-border/30">
+                                      <td className="p-1.5">Row {f.row}</td>
+                                      <td className="p-1.5 font-medium">{f.column}</td>
+                                      <td className="p-1.5 text-amber-500">{f.value}</td>
+                                      <td className="p-1.5 text-muted-foreground">{f.reason}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </CardContent>
                         </Card>
                       )}
+
+                      {/* Warnings & Recommendations */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {cleaningSummary.warnings.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardContent className="py-4">
+                              <h4 className="font-medium text-sm mb-3">⚠️ Warnings</h4>
+                              <div className="space-y-2">
+                                {cleaningSummary.warnings.map((w, i) => (
+                                  <p key={i} className="text-xs text-amber-500">• {w}</p>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        <Card className="bg-card border-border">
+                          <CardContent className="py-4">
+                            <h4 className="font-medium text-sm mb-3">💡 Recommendations for Analysis</h4>
+                            <div className="space-y-2">
+                              {cleaningSummary.recommendations.map((r, i) => (
+                                <p key={i} className="text-xs text-muted-foreground">• {r}</p>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
 
                       {/* Features Added */}
                       {cleaningSummary.featuresAdded.length > 0 && (
                         <Card className="bg-card border-border">
                           <CardContent className="py-4">
-                            <h4 className="font-medium text-sm mb-2">⚡ New Features Added</h4>
+                            <h4 className="font-medium text-sm mb-2">⚡ New Features Added ({cleaningSummary.featuresAdded.length})</h4>
                             <div className="flex flex-wrap gap-2">
                               {cleaningSummary.featuresAdded.map((f, i) => (
                                 <Badge key={i} variant="outline" className="text-xs">{f}</Badge>

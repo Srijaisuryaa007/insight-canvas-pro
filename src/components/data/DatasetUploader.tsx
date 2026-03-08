@@ -110,8 +110,9 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
       clearInterval(progressInterval);
       setProgress(90);
 
-      // Upload to backend API
-      const success = await uploadData(datasetName || file.name, file.name, data);
+      // Upload to backend API — pass file size for storage limit check
+      const fileSizeMB = file.size / (1024 * 1024);
+      const success = await uploadData(datasetName || file.name, file.name, data, fileSizeMB);
 
       if (success) {
         setProgress(100);

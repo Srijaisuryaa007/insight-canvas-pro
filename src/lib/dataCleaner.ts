@@ -400,8 +400,8 @@ export function runFullCleaningPipeline(
     current = dupResult.cleanedData;
     duplicatesRemoved += (before - dupResult.rowsAfter);
     
-    // Store duplicate report on summary for the UI
-    (summary as any).__duplicateReport = dupResult.report;
+    // Store duplicate report for the UI (accessed via duplicateReport field)
+    duplicateReportData = dupResult.report;
 
     const actions = [...dupResult.report.actions];
     const details = [...dupResult.report.details];

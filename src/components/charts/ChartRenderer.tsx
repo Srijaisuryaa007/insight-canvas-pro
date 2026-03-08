@@ -580,7 +580,7 @@ export function ChartRenderer({
               {/* Scatter points */}
               {data.slice(0, 300).map((d, i) => (
                 <circle key={i} cx={px(Number(d[xAxis]) || 0)} cy={py(Number(d[yAxis]) || 0)} r={2} fill={colors[0]} fillOpacity={0.6}>
-                  <title>{xAxis}: {d[xAxis]}, {yAxis}: {d[yAxis]}</title>
+                  <title>{xAxis}: {String(d[xAxis])}, {yAxis}: {String(d[yAxis])}</title>
                 </circle>
               ))}
               {/* Axes */}

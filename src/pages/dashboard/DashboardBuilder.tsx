@@ -133,11 +133,16 @@ export default function DashboardBuilder() {
     const numCols = keys.filter(k => typeof currentData[0][k] === 'number');
     const strCols = keys.filter(k => typeof currentData[0][k] === 'string');
 
+    // Remove existing chart widgets to make room
+    const existingCharts = currentPage?.widgets.filter(w => w.type === 'chart') || [];
+    existingCharts.forEach(w => removeWidget(w.id));
+
     const chartTypes = ['bar', 'line', 'pie', 'area', 'scatter'];
     const added: string[] = [];
-    const currentCount = currentPage?.widgets.length || 0;
+    // After removing, recalculate remaining non-chart widgets
+    const nonChartCount = (currentPage?.widgets.length || 0) - existingCharts.length;
     chartTypes.forEach((type, i) => {
-      if (currentCount + added.length >= widgetLimit) return;
+      if (nonChartCount + added.length >= widgetLimit) return;
       if (!isChartAvailable(type)) return;
       const xAxis = strCols[0] || keys[0];
       const yAxis = numCols[i % numCols.length] || numCols[0] || keys[1];
@@ -146,12 +151,8 @@ export default function DashboardBuilder() {
         added.push(type);
       }
     });
-    if (added.length > 0) {
-      toast({ title: 'Charts Imported', description: `Added ${added.length} recommended charts from your dataset.` });
-    } else {
-      toast({ title: 'Widget Limit Reached', description: `Upgrade your plan for more widgets.`, variant: 'destructive' });
-    }
-  }, [currentData, currentPage, widgetLimit, isChartAvailable, addWidget]);
+    toast({ title: 'Charts Replaced', description: `Replaced with ${added.length} recommended charts from your dataset.` });
+  }, [currentData, currentPage, widgetLimit, isChartAvailable, addWidget, removeWidget]);
 
   const handleExportDashboard = useCallback(async (format: 'pdf' | 'pptx' | 'docx') => {
     if (!currentData.length) { toast({ title: 'No data', variant: 'destructive' }); return; }

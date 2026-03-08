@@ -338,7 +338,7 @@ function ChartTypeSelector({ selectedChart, onSelect, isChartAvailable, searchQu
                                     Unlock {ALL_CHART_LABELS[chart]} and 35+ more chart types with DataVora Pro
                                   </p>
                                   <p className="text-[10px] text-muted-foreground">₹999/month • Cancel anytime</p>
-                                  <Button size="sm" className="w-full h-6 text-[10px]" onClick={(e) => { e.stopPropagation(); }}>
+                                  <Button size="sm" className="w-full h-6 text-[10px]" onClick={(e) => { e.stopPropagation(); navigate('/dashboard/settings'); }}>
                                     Upgrade Now →
                                   </Button>
                                 </div>

@@ -128,7 +128,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('Active dataset:', dataset.name, 'Rows:', data.length);
   }, []);
 
-  const { user } = useAuth();
 
   const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[]): Promise<boolean> => {
     if (!canAddDataset(datasets.length)) {

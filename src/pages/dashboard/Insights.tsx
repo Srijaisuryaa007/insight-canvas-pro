@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, AlertTriangle, Target, ShieldAlert, Sparkles, Database, Eye,
   ArrowUpRight, Activity, Zap, Search, SortDesc, Loader2, Brain, CheckCircle2,
-  Circle, BarChart3, Download, ChevronDown, ChevronUp, Gem
+  Circle, BarChart3, Download, ChevronDown, ChevronUp, Gem, PieChart, RefreshCw, FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,41 +18,58 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 
+// ─── FIX 1 & 2: Format helpers ─────────────────────────────────────
+function formatInsightTitle(title: string): string {
+  return title
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase())
+    .trim();
+}
+
+function formatSnakeCaseInText(text: string): string {
+  // Replace any word_word patterns with Title Case
+  return text.replace(/\b([a-z]+(?:_[a-z]+)+)\b/g, (match) => {
+    return match
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+  });
+}
+
 // ─── Type Config ────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<string, {
-  icon: any; label: string;
+  icon: any; emoji: string; label: string;
   accentClass: string; bgClass: string; textClass: string;
-  strokeClass: string;
+  strokeClass: string; borderGradient: string;
 }> = {
   trend: {
-    icon: TrendingUp, label: 'Trend',
-    accentClass: 'bg-blue-500', bgClass: 'bg-blue-500/10', textClass: 'text-blue-500 dark:text-blue-400',
-    strokeClass: 'stroke-blue-500',
+    icon: TrendingUp, emoji: '📈', label: 'Trend',
+    accentClass: 'bg-cyan-500', bgClass: 'bg-cyan-500/10', textClass: 'text-cyan-500 dark:text-cyan-400',
+    strokeClass: 'stroke-cyan-500', borderGradient: 'from-cyan-500 to-cyan-400',
   },
   anomaly: {
-    icon: ShieldAlert, label: 'Anomaly',
+    icon: AlertTriangle, emoji: '⚠️', label: 'Anomaly',
     accentClass: 'bg-amber-500', bgClass: 'bg-amber-500/10', textClass: 'text-amber-600 dark:text-amber-400',
-    strokeClass: 'stroke-amber-500',
+    strokeClass: 'stroke-amber-500', borderGradient: 'from-amber-500 to-amber-400',
   },
   risk: {
-    icon: AlertTriangle, label: 'Risk',
+    icon: ShieldAlert, emoji: '🔴', label: 'Risk',
     accentClass: 'bg-red-500', bgClass: 'bg-red-500/10', textClass: 'text-red-500 dark:text-red-400',
-    strokeClass: 'stroke-red-500',
+    strokeClass: 'stroke-red-500', borderGradient: 'from-red-500 to-red-400',
   },
   opportunity: {
-    icon: Target, label: 'Opportunity',
+    icon: Target, emoji: '💡', label: 'Opportunity',
     accentClass: 'bg-violet-500', bgClass: 'bg-violet-500/10', textClass: 'text-violet-600 dark:text-violet-400',
-    strokeClass: 'stroke-violet-500',
+    strokeClass: 'stroke-violet-500', borderGradient: 'from-violet-500 to-violet-400',
   },
   correlation: {
-    icon: Activity, label: 'Correlation',
+    icon: Activity, emoji: '🔗', label: 'Correlation',
     accentClass: 'bg-indigo-500', bgClass: 'bg-indigo-500/10', textClass: 'text-indigo-500 dark:text-indigo-400',
-    strokeClass: 'stroke-indigo-500',
+    strokeClass: 'stroke-indigo-500', borderGradient: 'from-indigo-500 to-indigo-400',
   },
   distribution: {
-    icon: BarChart3, label: 'Distribution',
-    accentClass: 'bg-purple-500', bgClass: 'bg-purple-500/10', textClass: 'text-purple-500 dark:text-purple-400',
-    strokeClass: 'stroke-purple-500',
+    icon: PieChart, emoji: '🥧', label: 'Distribution',
+    accentClass: 'bg-blue-500', bgClass: 'bg-blue-500/10', textClass: 'text-blue-500 dark:text-blue-400',
+    strokeClass: 'stroke-blue-500', borderGradient: 'from-blue-500 to-blue-400',
   },
 };
 
@@ -210,24 +227,54 @@ function EmptyState({ onGenerate, credits, creditCost, hasDataset }: { onGenerat
         Generate AI Insights
       </Button>
       <p className="text-xs text-muted-foreground mt-3">
-        Uses {creditCost} credits · Takes ~10 seconds
+        {creditCost} credits per analysis · Takes ~10 seconds
       </p>
     </motion.div>
   );
 }
 
-// ─── Stat Card ──────────────────────────────────────────────────────
+// ─── FIX 3: Stat Card (compact) ────────────────────────────────────
 function StatCard({ label, count, subtitle, accentColor, textColor }: {
   label: string; count: number; subtitle: string; accentColor: string; textColor: string;
 }) {
   return (
-    <div className="relative bg-card border border-border rounded-xl p-5 overflow-hidden">
-      <div className={cn("absolute left-0 top-0 bottom-0 w-0.5", accentColor)} />
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 pl-3">{label}</p>
-      <p className={cn("text-3xl font-bold pl-3", textColor)}>
-        <AnimatedCounter value={count} />
+    <div className="relative bg-card border border-border rounded-xl overflow-hidden" style={{ height: 120 }}>
+      <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", accentColor)} />
+      <div className="px-5 py-4 pl-6 h-full flex flex-col justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className={cn("text-[44px] leading-none font-bold", textColor)}>
+          <AnimatedCounter value={count} />
+        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+          <ArrowUpRight className="h-3 w-3 text-muted-foreground/40" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FIX 5: Truncated text with expand ──────────────────────────────
+function TruncatedText({ text, maxLines = 3 }: { text: string; maxLines?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const formatted = formatSnakeCaseInText(text);
+
+  return (
+    <div>
+      <p
+        className={cn("text-sm leading-relaxed", !expanded && "line-clamp-3")}
+        style={!expanded ? { display: '-webkit-box', WebkitLineClamp: maxLines, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : undefined}
+      >
+        {formatted}
       </p>
-      <p className="text-xs text-muted-foreground mt-1 pl-3">{subtitle}</p>
+      {formatted.length > 120 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+          className="text-xs text-primary hover:underline mt-1"
+        >
+          {expanded ? 'Show less' : 'Read more →'}
+        </button>
+      )}
     </div>
   );
 }
@@ -237,7 +284,6 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
   insight: Insight; isExpanded: boolean; onToggle: () => void; onVisualize: (insight: Insight) => void;
 }) {
   const cfg = TYPE_CONFIG[insight.type] || TYPE_CONFIG.distribution;
-  const Icon = cfg.icon;
   const confidencePercent = Math.round(insight.confidence * 100);
   const [vizLoading, setVizLoading] = useState(false);
 
@@ -246,27 +292,35 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
     setTimeout(() => onVisualize(insight), 600);
   };
 
+  // FIX 1: Format title
+  const formattedTitle = formatInsightTitle(insight.title);
+  // FIX 2: Format chart type label
+  const formattedChartType = insight.chartType
+    ? insight.chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    : '';
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-muted-foreground/20 transition-colors">
-      {/* Top accent strip */}
-      <div className={cn("h-0.5 w-full", cfg.accentClass)} />
+      {/* FIX 6: Top accent strip with gradient */}
+      <div className={cn("h-1 w-full bg-gradient-to-r", cfg.borderGradient)} />
 
       {/* Header */}
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", cfg.bgClass)}>
-              <Icon className={cn("w-4.5 h-4.5", cfg.textClass)} />
+            {/* FIX 6: Type-specific emoji icon in colored circle */}
+            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg", cfg.bgClass)}>
+              {cfg.emoji}
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-foreground text-sm leading-snug">{insight.title}</h3>
+              <h3 className="font-semibold text-foreground text-sm leading-snug">{formattedTitle}</h3>
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <Badge variant="outline" className={cn("text-[10px] font-medium px-2 py-0 rounded-md", cfg.textClass, cfg.bgClass, "border-transparent")}>
                   {cfg.label}
                 </Badge>
-                {insight.chartType && (
+                {formattedChartType && (
                   <Badge variant="outline" className="text-[10px] font-medium px-2 py-0 rounded-md">
-                    {insight.chartType}
+                    {formattedChartType}
                   </Badge>
                 )}
               </div>
@@ -281,25 +335,25 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
         </div>
       </div>
 
-      {/* Body - two columns */}
+      {/* FIX 5: Body - two columns with truncation */}
       <div className="px-5 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-lg bg-muted/40 p-3.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Data Evidence</p>
-          <p className="text-sm text-foreground/90 leading-relaxed">{insight.description}</p>
+          <TruncatedText text={insight.description} />
         </div>
         {insight.reasoning && (
           <div className="rounded-lg bg-muted/40 p-3.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Statistical Reasoning</p>
-            <p className="text-sm text-muted-foreground leading-relaxed">{insight.reasoning}</p>
+            <TruncatedText text={insight.reasoning} />
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-border flex items-center justify-between gap-3">
-        <div className="flex-1 max-w-[180px]">
-          <p className="text-[10px] text-muted-foreground mb-1">Impact Level</p>
-          <div className="h-1 bg-muted rounded-full overflow-hidden">
+      {/* FIX 7: Footer - Impact Level fully visible */}
+      <div className="px-5 py-3 border-t border-border bg-card/80 rounded-b-xl flex items-center justify-between gap-3">
+        <div className="flex-1 max-w-[200px]">
+          <p className="text-[10px] text-muted-foreground mb-1.5">Impact Level</p>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${confidencePercent}%` }}
@@ -363,7 +417,7 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
                     {insight.suggestedActions.map((action, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                         <span className="w-4 h-4 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-semibold shrink-0">{i + 1}</span>
-                        {action}
+                        {formatSnakeCaseInText(action)}
                       </li>
                     ))}
                   </ol>
@@ -376,7 +430,7 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
                 <div className="flex flex-wrap gap-1.5">
                   {insight.chartType && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-[10px] text-muted-foreground border border-border">
-                      Chart: {insight.chartType}
+                      Chart: {formattedChartType || insight.chartType}
                     </span>
                   )}
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-[10px] text-muted-foreground border border-border">
@@ -404,7 +458,8 @@ export default function Insights() {
   const [expandedInsight, setExpandedInsight] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'confidence' | 'impact' | 'recent'>('confidence');
+  const [sortBy, setSortBy] = useState<'confidence-desc' | 'confidence-asc' | 'type' | 'recent'>('confidence-desc');
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const creditCost = getCreditCost('generate-insights');
 
@@ -424,15 +479,33 @@ export default function Insights() {
     };
     sessionStorage.setItem('datapulse_viz_context', JSON.stringify(vizContext));
     navigate('/dashboard/visualizations');
-    toast({ title: 'Opened from AI Insight', description: insight.title });
+    toast({ title: 'Opened from AI Insight', description: formatInsightTitle(insight.title) });
   };
 
+  // FIX 10: Keyboard handler for Esc to clear search
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setSearchQuery('');
+      searchRef.current?.blur();
+    }
+  }, []);
+
+  // FIX 10: Sort logic with all options
   const filteredInsights = insights
     .filter(i => activeFilter === 'all' || i.type === activeFilter)
-    .filter(i => !searchQuery || i.title.toLowerCase().includes(searchQuery.toLowerCase()) || i.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(i => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return formatInsightTitle(i.title).toLowerCase().includes(q) ||
+        formatSnakeCaseInText(i.description).toLowerCase().includes(q);
+    })
     .sort((a, b) => {
-      if (sortBy === 'confidence') return b.confidence - a.confidence;
-      if (sortBy === 'impact') return b.confidence - a.confidence;
+      if (sortBy === 'confidence-desc') return b.confidence - a.confidence;
+      if (sortBy === 'confidence-asc') return a.confidence - b.confidence;
+      if (sortBy === 'type') {
+        const order = ['trend', 'anomaly', 'risk', 'opportunity', 'correlation', 'distribution'];
+        return order.indexOf(a.type) - order.indexOf(b.type);
+      }
       return 0;
     });
 
@@ -451,6 +524,9 @@ export default function Insights() {
     { key: 'opportunity', label: `Opportunities (${typeCounts.opportunity})` },
   ];
 
+  // FIX 2: Format dataset name for banner
+  const formattedDatasetName = currentDataset?.name ? formatSnakeCaseInText(currentDataset.name) : 'dataset';
+
   return (
     <div className="space-y-6">
       {/* ─── Header ────────────────────────────────────────────── */}
@@ -465,20 +541,8 @@ export default function Insights() {
           </div>
         </div>
 
+        {/* FIX 4: Removed standalone credits pill. Only dataset selector + generate button */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Credits indicator */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border", credits < 10 ? "bg-destructive/10 border-destructive/30 text-destructive" : "bg-muted border-border text-muted-foreground")}>
-                <Gem className="h-3.5 w-3.5" />
-                {credits} credits
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Each insight generation = {creditCost} credits</p>
-            </TooltipContent>
-          </Tooltip>
-
           {/* Dataset selector */}
           {datasets.length > 0 && (
             <Select value={currentDataset?.id || ''} onValueChange={(id) => selectDataset(id)}>
@@ -494,22 +558,24 @@ export default function Insights() {
             </Select>
           )}
 
-          {/* Generate button */}
+          {/* FIX 4: Generate button - credits info below, not badge */}
           {currentDataset && (
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="h-9 gap-2 font-semibold"
-            >
-              {isGenerating ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Analyzing...</>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />Generate Insights
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">{creditCost} cr</Badge>
-                </>
-              )}
-            </Button>
+            <div className="flex flex-col items-center">
+              <Button
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="h-9 gap-2 font-semibold"
+              >
+                {isGenerating ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Analyzing...</>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />Generate Insights
+                  </>
+                )}
+              </Button>
+              <p className="text-[10px] text-muted-foreground mt-1">{creditCost} credits per analysis</p>
+            </div>
           )}
         </div>
       </div>
@@ -525,32 +591,73 @@ export default function Insights() {
       {/* ─── Results ───────────────────────────────────────────── */}
       {!isGenerating && insights.length > 0 && (
         <>
-          {/* Summary Banner */}
-          <div className="bg-card border border-primary/20 rounded-xl p-5 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="font-semibold text-foreground">Analysis Complete</p>
-              <p className="text-sm text-muted-foreground mt-0.5">Discovered {insights.length} insights from {currentDataset?.name || 'dataset'}</p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {typeCounts.trend > 0 && <Badge variant="outline" className="gap-1 rounded-md text-blue-600 dark:text-blue-400 border-blue-500/20 bg-blue-500/5">{typeCounts.trend} Trend{typeCounts.trend > 1 ? 's' : ''}</Badge>}
-              {typeCounts.anomaly > 0 && <Badge variant="outline" className="gap-1 rounded-md text-amber-600 dark:text-amber-400 border-amber-500/20 bg-amber-500/5">{typeCounts.anomaly} Anomal{typeCounts.anomaly > 1 ? 'ies' : 'y'}</Badge>}
-              {typeCounts.risk > 0 && <Badge variant="outline" className="gap-1 rounded-md text-red-600 dark:text-red-400 border-red-500/20 bg-red-500/5">{typeCounts.risk} Risk{typeCounts.risk > 1 ? 's' : ''}</Badge>}
-              {typeCounts.opportunity > 0 && <Badge variant="outline" className="gap-1 rounded-md text-violet-600 dark:text-violet-400 border-violet-500/20 bg-violet-500/5">{typeCounts.opportunity} Opportunit{typeCounts.opportunity > 1 ? 'ies' : 'y'}</Badge>}
-              <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1" onClick={handleGenerate}>
-                Re-analyze
-              </Button>
-            </div>
-          </div>
+          {/* FIX 8: Summary Banner - upgraded gradient */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-2xl border border-violet-500/20"
+            style={{ background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card)) 100%)' }}
+          >
+            {/* Subtle shimmer overlay */}
+            <div className="absolute inset-0 opacity-[0.03]" style={{ background: 'linear-gradient(135deg, transparent 30%, hsl(var(--primary)) 50%, transparent 70%)', backgroundSize: '200% 200%', animation: 'shimmer 3s ease-in-out infinite' }} />
 
-          {/* Stat Cards */}
+            <div className="relative p-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground text-lg">Analysis Complete</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Discovered {insights.length} insights from {formattedDatasetName}</p>
+                </div>
+              </div>
+
+              {/* Type count pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {typeCounts.trend > 0 && (
+                  <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1 text-cyan-600 dark:text-cyan-400 border-cyan-500/20 bg-cyan-500/5">
+                    📈 {typeCounts.trend} Trend{typeCounts.trend > 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {typeCounts.anomaly > 0 && (
+                  <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1 text-amber-600 dark:text-amber-400 border-amber-500/20 bg-amber-500/5">
+                    ⚠️ {typeCounts.anomaly} Anomal{typeCounts.anomaly > 1 ? 'ies' : 'y'}
+                  </Badge>
+                )}
+                <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 bg-emerald-500/5">
+                  ✅ {typeCounts.risk} Risk{typeCounts.risk !== 1 ? 's' : ''}
+                </Badge>
+                {typeCounts.opportunity > 0 && (
+                  <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1 text-violet-600 dark:text-violet-400 border-violet-500/20 bg-violet-500/5">
+                    💡 {typeCounts.opportunity} Opportunit{typeCounts.opportunity > 1 ? 'ies' : 'y'}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1.5" onClick={handleGenerate}>
+                  <RefreshCw className="h-3 w-3" />
+                  Re-analyze
+                </Button>
+                <Button variant="secondary" size="sm" className="rounded-lg text-xs gap-1.5" onClick={() => {
+                  toast({ title: 'Export coming soon', description: 'PDF export of insights is in development' });
+                }}>
+                  <FileDown className="h-3 w-3" />
+                  Export Insights
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* FIX 3: Stat Cards (compact 120px) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Trends Detected" count={typeCounts.trend} subtitle={typeCounts.trend > 0 ? "vs last scan" : "none found"} accentColor="bg-blue-500" textColor="text-blue-600 dark:text-blue-400" />
+            <StatCard label="Trends Detected" count={typeCounts.trend} subtitle={typeCounts.trend > 0 ? "vs last scan" : "none found"} accentColor="bg-cyan-500" textColor="text-cyan-600 dark:text-cyan-400" />
             <StatCard label="Anomalies Found" count={typeCounts.anomaly} subtitle={typeCounts.anomaly > 0 ? "requires attention" : "all clear"} accentColor="bg-amber-500" textColor="text-amber-600 dark:text-amber-400" />
             <StatCard label="Risk Factors" count={typeCounts.risk} subtitle={typeCounts.risk === 0 ? "all clear" : "needs review"} accentColor="bg-emerald-500" textColor="text-emerald-600 dark:text-emerald-400" />
             <StatCard label="Opportunities" count={typeCounts.opportunity} subtitle={typeCounts.opportunity > 0 ? "growth potential" : "run scan to discover"} accentColor="bg-violet-500" textColor="text-violet-600 dark:text-violet-400" />
           </div>
 
-          {/* Filter Bar */}
+          {/* Filter Bar + FIX 10: Enhanced Search */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-1 flex-wrap">
               {filterTabs.map(tab => (
@@ -572,21 +679,25 @@ export default function Insights() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
+                  ref={searchRef}
                   placeholder="Search insights..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-9 h-8 w-48 text-xs bg-card border-border rounded-lg"
+                  onKeyDown={handleSearchKeyDown}
+                  className="pl-9 h-8 w-52 text-xs bg-card border-border rounded-lg"
                 />
               </div>
+              {/* FIX 10: Full sort dropdown */}
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-                <SelectTrigger className="h-8 w-[140px] text-xs bg-card border-border rounded-lg">
+                <SelectTrigger className="h-8 w-[180px] text-xs bg-card border-border rounded-lg">
                   <SortDesc className="h-3 w-3 mr-1" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="confidence">Confidence</SelectItem>
-                  <SelectItem value="impact">Impact</SelectItem>
-                  <SelectItem value="recent">Recent</SelectItem>
+                  <SelectItem value="confidence-desc">Confidence (high→low)</SelectItem>
+                  <SelectItem value="confidence-asc">Confidence (low→high)</SelectItem>
+                  <SelectItem value="type">Type (Trend first)</SelectItem>
+                  <SelectItem value="recent">Most Recent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -603,7 +714,14 @@ export default function Insights() {
                 onVisualize={handleVisualize}
               />
             ))}
-            {filteredInsights.length === 0 && (
+            {filteredInsights.length === 0 && searchQuery && (
+              <div className="text-center py-12">
+                <Search className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No insights found for "<span className="text-foreground font-medium">{searchQuery}</span>"</p>
+                <button onClick={() => setSearchQuery('')} className="text-xs text-primary hover:underline mt-2">Clear search</button>
+              </div>
+            )}
+            {filteredInsights.length === 0 && !searchQuery && (
               <div className="text-center py-12 text-muted-foreground text-sm">
                 No insights match your filter criteria.
               </div>

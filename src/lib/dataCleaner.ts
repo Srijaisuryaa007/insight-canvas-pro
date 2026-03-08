@@ -74,9 +74,31 @@ function isEffectivelyEmpty(value: unknown, colName: string): boolean {
   if (value === null || value === undefined) return true;
   if (typeof value === 'number' && isNaN(value)) return true;
   if (typeof value === 'string') {
-    const trimmed = value.trim().toLowerCase();
+    const trimmed = value.trim();
     if (trimmed === '') return true;
-    if (EMPTY_VALUES.has(trimmed)) return true;
+    const lower = trimmed.toLowerCase();
+    // Only treat as empty if it's EXACTLY a known placeholder
+    // Be conservative: don't nullify short common words that might be real categories
+    if (EMPTY_VALUES.has(lower)) {
+      // Extra safety: if column has many unique values containing this string, 
+      // it's likely a real value, not a placeholder. We can't check here,
+      // so only treat unambiguous placeholders as empty.
+      // Unambiguous: null, nan, nat, #div/0!, ####, ****, ////, 00/00/0000
+      // Ambiguous (could be real categories): none, na, unknown, -, tbd
+      const UNAMBIGUOUS_EMPTY = new Set([
+        'null', 'nan', 'nat', 'n/a', 'not available',
+        '????', '####', '****', '////',
+        '#div/0!', '#value!', '#ref!', '#n/a!', '#name!',
+        '00/00/0000', '0000-00-00',
+      ]);
+      if (UNAMBIGUOUS_EMPTY.has(lower)) return true;
+      // For ambiguous values like "none", "-", "unknown", "na", "tbd"
+      // only treat as empty if they appear very rarely (handled at column level, not here)
+      // For now, still treat these specific Excel-like markers as empty
+      if (lower === '--' || lower === '---') return true;
+      // "none", "na", "unknown", "-", "tbd" — keep as real values to avoid data loss
+      return false;
+    }
   }
   // 0 in columns where 0 makes no sense
   if (typeof value === 'number' && value === 0 && ZERO_IS_MISSING_PATTERNS.test(colName)) return true;

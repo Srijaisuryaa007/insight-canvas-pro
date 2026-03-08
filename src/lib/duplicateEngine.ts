@@ -194,10 +194,20 @@ export function runFullDuplicateCheck(
 
   // ─── SCENARIO 2: Partial Duplicates (same key column, different values) ───
   const partialDuplicates: Record<string, number> = {};
-  const keyCols = keys.filter(k =>
-    /email|phone|name|^id$|student_id|emp_id|roll_no|username|account/i.test(k) &&
-    current.some(r => typeof r[k] === 'string' || typeof r[k] === 'number')
-  );
+  // Only match actual key/ID columns — NOT generic "name" columns like "city_name", "department_name"
+  const keyCols = keys.filter(k => {
+    const lower = k.toLowerCase();
+    // Exact matches for common unique identifiers
+    if (/^(email|phone|mobile|cell|tel|username|account_id|emp_id|employee_id|student_id|roll_no|ssn|passport)$/i.test(k)) return true;
+    // Only match "id" if it's standalone or a clear primary key pattern
+    if (/^id$/i.test(k) || /^[a-z]+_id$/i.test(k)) return true;
+    // Match "email" anywhere in name
+    if (/email/i.test(k)) return true;
+    // DON'T match generic columns that happen to contain "name" (like city_name, department_name)
+    // Only match if column IS "name" standalone or "first_name", "last_name", "full_name"
+    if (/^(name|first_name|last_name|full_name|display_name)$/i.test(k)) return true;
+    return false;
+  }).filter(k => current.some(r => typeof r[k] === 'string' || typeof r[k] === 'number'));
   keyCols.forEach(col => {
     const beforePartial = current.length;
     const seen = new Set<string>();

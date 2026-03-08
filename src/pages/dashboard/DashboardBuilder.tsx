@@ -18,7 +18,7 @@ import {
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
   ChevronLeft, ChevronRight, Download, FolderOpen, Lock, Copy, FileText, Presentation, File,
   PanelLeft, Eye, RefreshCw, Database, X, Pencil, Check,
-  TrendingUp, Sparkline, SlidersHorizontal
+  TrendingUp, SlidersHorizontal
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';

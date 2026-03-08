@@ -431,7 +431,7 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
   }
 }
 
-function autoDetectChartType(data: Record<string, unknown>[]): { type: string; xAxis: string; yAxis: string } {
+function autoDetectChartType(data: Record<string, unknown>[], sql?: string): { type: string; xAxis: string; yAxis: string; yAxes?: string[] } {
   if (!data.length) return { type: 'bar', xAxis: '', yAxis: '' };
   const keys = Object.keys(data[0]);
   const numKeys = keys.filter(k => typeof data[0][k] === 'number');
@@ -440,14 +440,68 @@ function autoDetectChartType(data: Record<string, unknown>[]): { type: string; x
     const v = String(data[0][k]);
     return !isNaN(Date.parse(v)) && v.length > 6;
   });
+  const upperSQL = (sql || '').toUpperCase();
 
-  if (dateKeys.length > 0 && numKeys.length > 0) return { type: 'line', xAxis: dateKeys[0], yAxis: numKeys[0] };
+  // Single aggregated row (e.g. SELECT SUM, AVG, COUNT) → KPI-style bar
+  if (data.length === 1 && numKeys.length >= 1 && strKeys.length === 0) {
+    return { type: 'bar', xAxis: keys[0], yAxis: numKeys[0], yAxes: numKeys };
+  }
+
+  // Running total / cumulative queries → area chart
+  if (keys.some(k => /running|cumulative|cum_/i.test(k)) || upperSQL.includes('RUNNING') || upperSQL.includes('CUMULATIVE')) {
+    const xCol = dateKeys[0] || strKeys[0] || keys[0];
+    const yCol = keys.find(k => /running|cumulative/i.test(k)) || numKeys[numKeys.length - 1] || keys[1];
+    return { type: 'area', xAxis: xCol, yAxis: yCol };
+  }
+
+  // Growth / LAG queries → line chart with growth
+  if (keys.some(k => /growth|change|diff|lag|lead/i.test(k)) || upperSQL.includes('LAG') || upperSQL.includes('LEAD')) {
+    const xCol = dateKeys[0] || strKeys[0] || keys[0];
+    const yCol = keys.find(k => /growth|change|diff/i.test(k)) || numKeys[0] || keys[1];
+    return { type: 'line', xAxis: xCol, yAxis: yCol };
+  }
+
+  // Rank queries → horizontal bar
+  if (keys.some(k => /rank|row_num/i.test(k)) || upperSQL.includes('RANK')) {
+    const xCol = strKeys[0] || keys[0];
+    const yCol = numKeys.find(k => !/rank|row_num/i.test(k)) || numKeys[0];
+    return { type: 'bar', xAxis: xCol, yAxis: yCol };
+  }
+
+  // Percentage / ratio / share queries → pie (if few items) or bar
+  if (keys.some(k => /pct|percent|share|ratio|margin/i.test(k))) {
+    const xCol = strKeys[0] || keys[0];
+    const yCol = keys.find(k => /pct|percent|share|ratio|margin/i.test(k)) || numKeys[0];
+    if (data.length <= 10) return { type: 'pie', xAxis: xCol, yAxis: yCol };
+    return { type: 'bar', xAxis: xCol, yAxis: yCol };
+  }
+
+  // Moving average → line
+  if (keys.some(k => /moving_avg|mov_avg|ma_/i.test(k))) {
+    const xCol = dateKeys[0] || strKeys[0] || keys[0];
+    const yCol = numKeys[0];
+    return { type: 'line', xAxis: xCol, yAxis: yCol, yAxes: numKeys.slice(0, 3) };
+  }
+
+  // Date-based with multiple numeric columns → multi-line
+  if (dateKeys.length > 0 && numKeys.length > 0) {
+    return { type: 'line', xAxis: dateKeys[0], yAxis: numKeys[0], yAxes: numKeys.slice(0, 3) };
+  }
+
+  // Category + count/total → bar or pie
   if (strKeys.length > 0 && numKeys.length > 0) {
     const uniqueValues = new Set(data.map(d => String(d[strKeys[0]]))).size;
-    if (uniqueValues <= 8) return { type: 'pie', xAxis: strKeys[0], yAxis: numKeys[0] };
-    return { type: 'bar', xAxis: strKeys[0], yAxis: numKeys[0] };
+    // Pie: 2-8 categories
+    if (uniqueValues >= 2 && uniqueValues <= 8 && numKeys.length === 1) {
+      return { type: 'pie', xAxis: strKeys[0], yAxis: numKeys[0] };
+    }
+    // Many categories → bar
+    return { type: 'bar', xAxis: strKeys[0], yAxis: numKeys[0], yAxes: numKeys.length > 1 ? numKeys.slice(0, 3) : undefined };
   }
+
+  // Two+ numeric columns without categories → scatter
   if (numKeys.length >= 2) return { type: 'scatter', xAxis: numKeys[0], yAxis: numKeys[1] };
+
   return { type: 'bar', xAxis: keys[0], yAxis: keys[1] || keys[0] };
 }
 
@@ -544,7 +598,7 @@ export default function SQLEngine() {
     }
   }, []);
 
-  const chartDetection = useMemo(() => autoDetectChartType(results), [results]);
+  const chartDetection = useMemo(() => autoDetectChartType(results, query), [results, query]);
 
   const handleRunQuery = () => {
     if (!query.trim()) return;

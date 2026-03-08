@@ -14,12 +14,26 @@ interface SubscriptionState {
 
 export function useSubscription() {
   const [state, setState] = useState<SubscriptionState>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate plan exists
+        if (parsed.plan && PLANS[parsed.plan as PlanType]) {
+          return {
+            plan: parsed.plan,
+            credits: parsed.credits ?? PLANS[parsed.plan as PlanType].credits,
+            purchasedCredits: parsed.purchasedCredits ?? 0,
+            upgradeDate: parsed.upgradeDate,
+            subscriptionEndDate: parsed.subscriptionEndDate
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse subscription state:', e);
     }
     return {
-      plan: 'free',
+      plan: 'free' as PlanType,
       credits: PLANS.free.credits,
       purchasedCredits: 0
     };
@@ -30,10 +44,11 @@ export function useSubscription() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  const currentPlan = PLANS[state.plan];
+  // Ensure currentPlan is always valid
+  const currentPlan = PLANS[state.plan] || PLANS.free;
   const isEnterprise = state.plan === 'enterprise';
   const isFree = state.plan === 'free';
-  const totalCredits = isEnterprise ? Infinity : state.credits + state.purchasedCredits;
+  const totalCredits = isEnterprise ? Infinity : (state.credits ?? 0) + (state.purchasedCredits ?? 0);
 
   // Get minimum required plan for an action
   const getRequiredPlan = useCallback((action: string): PlanType => {

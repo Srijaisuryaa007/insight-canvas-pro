@@ -615,7 +615,7 @@ export default function Datasets() {
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); selectDataset(ds.id); navigate('/dashboard/reports'); }}><FileText className="h-3.5 w-3.5 mr-2" />Generate Report</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); toast({ title: 'Renamed' }); }}><Pencil className="h-3.5 w-3.5 mr-2" />Rename</DropdownMenuItem>
-                              <DropdownMenuItem onClick={e => { e.stopPropagation(); toast({ title: 'Duplicated' }); }}><Copy className="h-3.5 w-3.5 mr-2" />Duplicate</DropdownMenuItem>
+                              
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); toast({ title: 'Downloaded' }); }}><Download className="h-3.5 w-3.5 mr-2" />Download</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(ds.id); }}><Trash2 className="h-3.5 w-3.5 mr-2" />Delete</DropdownMenuItem>

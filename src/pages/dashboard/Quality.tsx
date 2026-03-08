@@ -845,7 +845,7 @@ export default function Quality() {
                               ))}
                             </div>
                             {vr.completeness.lowRows > 0 && (
-                              <p className="text-xs text-amber-500 mt-2">⚠️ {vr.completeness.lowRows} rows have less than 50% completeness</p>
+                              <p className="text-xs text-amber-500 mt-2">{vr.completeness.lowRows} rows have less than 50% completeness</p>
                             )}
                           </CardContent>
                         </Card>

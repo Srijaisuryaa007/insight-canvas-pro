@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useData } from '@/contexts/DataContext';
+import { testConnector, discoverSchema, importTable } from '@/lib/connectorApi';
 
 interface ConnectorField {
   key: string; label: string; type: 'text' | 'password' | 'number'; placeholder: string; required: boolean;

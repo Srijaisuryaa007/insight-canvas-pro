@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { 
-  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles
+  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useSubscription } from '@/hooks/useSubscription';
+import { usePayment } from '@/hooks/usePayment';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLANS, PlanType } from '@/types/subscription';
 import { cn } from '@/lib/utils';
@@ -15,7 +16,8 @@ const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 
 export default function Settings() {
   const { user } = useAuth();
-  const { plan, credits, isEnterprise, upgradePlan, buyCredits } = useSubscription();
+  const { plan, credits, isEnterprise, upgradePlan } = useSubscription();
+  const { isProcessing, currentPackage, creditPackages, initiatePayment } = usePayment();
 
   const planConfigs = planOrder.map(id => ({
     ...PLANS[id],
@@ -97,21 +99,61 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Buy Credits */}
+      {/* Buy Credits with Razorpay */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Zap className="h-5 w-5" />Buy Additional Credits
           </CardTitle>
-          <CardDescription>Need more credits? Purchase them here.</CardDescription>
+          <CardDescription>
+            Purchase credits securely via Razorpay. Credits are added instantly after payment verification.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => buyCredits(50)}>50 Credits - $2</Button>
-            <Button variant="outline" onClick={() => buyCredits(200)}>200 Credits - $7</Button>
-            <Button variant="outline" onClick={() => buyCredits(500)}>500 Credits - $15</Button>
-            <Button variant="outline" onClick={() => buyCredits(1000)}>1000 Credits - $25</Button>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {creditPackages.map(pkg => {
+              const isLoading = isProcessing && currentPackage?.id === pkg.id;
+              return (
+                <Card 
+                  key={pkg.id} 
+                  className={cn(
+                    "relative cursor-pointer transition-all hover:border-primary",
+                    pkg.popular && "border-primary",
+                    isLoading && "opacity-75"
+                  )}
+                  onClick={() => !isProcessing && initiatePayment(pkg)}
+                >
+                  {pkg.popular && (
+                    <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs">Best Value</Badge>
+                  )}
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold">{pkg.credits}</p>
+                    <p className="text-sm text-muted-foreground">Credits</p>
+                    <p className="mt-2 font-semibold">₹{(pkg.priceINR / 100).toFixed(0)}</p>
+                    <p className="text-xs text-muted-foreground">(${pkg.priceUSD})</p>
+                    <Button 
+                      className="mt-3 w-full" 
+                      size="sm" 
+                      disabled={isProcessing}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        initiatePayment(pkg);
+                      }}
+                    >
+                      {isLoading ? (
+                        <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing</>
+                      ) : (
+                        'Buy Now'
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
+          <p className="text-xs text-muted-foreground mt-4 text-center">
+            Secured by Razorpay. Credits are only added after successful payment verification.
+          </p>
         </CardContent>
       </Card>
     </div>

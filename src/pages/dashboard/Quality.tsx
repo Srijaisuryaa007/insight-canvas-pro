@@ -18,7 +18,7 @@ import { useData } from '@/contexts/DataContext';
 import { useDataQuality } from '@/hooks/useDataQuality';
 import { useSubscription } from '@/hooks/useSubscription';
 import { profileData, DataProfile } from '@/lib/dataProfiler';
-import { runFullCleaningPipeline, CleaningSummary } from '@/lib/dataCleaner';
+import { runFullCleaningPipeline, CleaningSummary, ColumnAnalysis } from '@/lib/dataCleaner';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 

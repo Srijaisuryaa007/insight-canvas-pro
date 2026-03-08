@@ -268,17 +268,27 @@ export default function Overview() {
                     transition={{ delay: i * 0.05 }}
                   >
                     <Card className={cn("border-l-4 bg-card border-border overflow-hidden h-full", color.border)}>
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1.5 flex-1">
-                            <p className="text-xs text-muted-foreground font-medium">{kpi.title}</p>
-                            <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+                      <CardContent className="p-5 h-full flex flex-col justify-between gap-3">
+                        {/* Top: Title + Icon */}
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground font-medium truncate mr-2">{kpi.title}</p>
+                          <div className={cn("p-2 rounded-full shrink-0", color.iconBg)}>
+                            <kpi.icon className={cn("h-4 w-4", color.iconColor)} />
+                          </div>
+                        </div>
+
+                        {/* Middle: Value */}
+                        <p className="text-2xl font-bold text-foreground leading-none">{kpi.value}</p>
+
+                        {/* Bottom: Sparkline + Trend */}
+                        <div className="flex items-end justify-between gap-2 min-h-[40px]">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             {kpi.change !== undefined && (
-                              <div className="flex items-center gap-2">
+                              <>
                                 <Badge
                                   variant="secondary"
                                   className={cn(
-                                    "text-[10px] h-5 px-1.5",
+                                    "text-[10px] h-5 px-1.5 shrink-0",
                                     kpi.trend === 'up' && "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
                                     kpi.trend === 'down' && "bg-destructive/10 text-destructive border-destructive/20",
                                     kpi.trend === 'neutral' && "bg-muted text-muted-foreground"
@@ -286,24 +296,19 @@ export default function Overview() {
                                 >
                                   {kpi.trend === 'up' ? '↑' : kpi.trend === 'down' ? '↓' : '→'} {Math.abs(kpi.change)}%
                                 </Badge>
-                                <span className="text-[10px] text-muted-foreground">vs first half</span>
-                              </div>
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">vs first half</span>
+                              </>
                             )}
                           </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <div className={cn("p-2 rounded-full", color.iconBg)}>
-                              <kpi.icon className={cn("h-4 w-4", color.iconColor)} />
+                          {kpi.sparkData.length > 2 && (
+                            <div className="w-20 h-10 shrink-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={kpi.sparkData.map(v => ({ v }))}>
+                                  <Line type="monotone" dataKey="v" stroke={color.sparkColor} strokeWidth={1.5} dot={false} />
+                                </LineChart>
+                              </ResponsiveContainer>
                             </div>
-                            {kpi.sparkData.length > 2 && (
-                              <div className="w-20 h-10">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={kpi.sparkData.map(v => ({ v }))}>
-                                    <Line type="monotone" dataKey="v" stroke={color.sparkColor} strokeWidth={1.5} dot={false} />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

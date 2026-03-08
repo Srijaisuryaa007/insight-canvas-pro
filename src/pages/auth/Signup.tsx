@@ -53,8 +53,8 @@ export default function Signup() {
       } else {
         setError('Failed to create account. Please try again.');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

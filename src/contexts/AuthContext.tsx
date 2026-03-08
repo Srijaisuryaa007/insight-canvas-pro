@@ -132,10 +132,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Signup ──
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email, password, options: { data: { full_name: name }, emailRedirectTo: window.location.origin },
       });
-      return !error;
+      if (error) {
+        console.error('[Auth] Signup error:', error.message, error);
+        throw new Error(error.message);
+      }
+      console.log('[Auth] Signup success:', data);
+      return true;
     }
     const newUser: AppUser = {
       id: crypto.randomUUID(), email, name, plan: 'free',

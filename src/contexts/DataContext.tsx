@@ -133,11 +133,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const { data: ds } = await supabase.from('datasets').select('*').eq('user_id', user.id).order('created_at');
       if (ds && ds.length > 0) {
-        const mapped = ds.map(d => ({
-          id: d.id, name: d.dataset_name, fileName: d.file_name,
-          rowCount: d.row_count, columns: d.columns || [],
-          uploadedAt: d.created_at, data: [],
-        }));
+        // Merge: keep local row data if we have it, only update metadata from Supabase
+        const localCache = loadFromLocalStorage();
+        const mapped = ds.map(d => {
+          const cached = localCache.find(c => c.id === d.id);
+          return {
+            id: d.id, name: d.dataset_name, fileName: d.file_name,
+            rowCount: d.row_count, columns: d.columns || [],
+            uploadedAt: d.created_at,
+            data: cached?.data && cached.data.length > 0 ? cached.data : [],
+          };
+        });
         setDatasets(mapped as Dataset[]);
       }
     } catch (error) {

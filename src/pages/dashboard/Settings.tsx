@@ -107,7 +107,44 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Subscription Plans */}
+      {/* API Key Test */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Cpu className="h-5 w-5" />Test AI API Key
+          </CardTitle>
+          <CardDescription>
+            Test your Groq (gsk_...) or Grok/X.AI (xai-...) API key to verify it works.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-3">
+            <Input 
+              type="password"
+              placeholder="Paste your API key here (gsk_... or xai-...)"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={testApiKey} disabled={isTesting}>
+              {isTesting ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Testing...</>
+              ) : testResult === 'success' ? (
+                <><CheckCircle2 className="h-4 w-4 mr-2" />Valid!</>
+              ) : testResult === 'error' ? (
+                <><XCircle className="h-4 w-4 mr-2" />Failed</>
+              ) : (
+                'Test API'
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Your key is tested directly with the AI provider. It's not stored anywhere.
+          </p>
+        </CardContent>
+      </Card>
+
+
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <CreditCard className="h-5 w-5" />Subscription Plans

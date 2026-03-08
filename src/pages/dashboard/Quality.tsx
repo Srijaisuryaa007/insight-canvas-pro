@@ -74,7 +74,7 @@ export default function Quality() {
       setDataProfile(profile);
       setIsProfileRunning(false);
       setActiveTab('profile');
-      toast({ title: '📊 Data Profile Complete', description: `${profile.totalRows} rows, ${profile.totalColumns} columns, ${profile.issuesFound} issues found` });
+      toast({ title: 'Profile Complete', description: `${profile.totalRows} rows, ${profile.totalColumns} columns, ${profile.issuesFound} issues detected` });
     }, 300);
   };
 

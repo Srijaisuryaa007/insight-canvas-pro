@@ -499,10 +499,10 @@ export default function Quality() {
 
                           {/* Summary counts */}
                           <div className="mt-4 flex flex-wrap gap-3 text-xs">
-                            <span>✅ Dropped: {cleaningSummary.columnAnalysis.filter(c => c.action === 'AUTO_DROP').length}</span>
-                            <span>⚠️ Need Decision: {cleaningSummary.columnAnalysis.filter(c => c.action === 'WARN_USER').length}</span>
-                            <span>🔧 To Fill: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_FILL').length}</span>
-                            <span>✅ Clean: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_CLEAN').length}</span>
+                            <span>Dropped: {cleaningSummary.columnAnalysis.filter(c => c.action === 'AUTO_DROP').length}</span>
+                            <span className="text-amber-500">Pending Decision: {cleaningSummary.columnAnalysis.filter(c => c.action === 'WARN_USER').length}</span>
+                            <span>To Fill: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_FILL').length}</span>
+                            <span>Clean: {cleaningSummary.columnAnalysis.filter(c => c.action === 'KEEP_CLEAN').length}</span>
                           </div>
                         </CardContent>
                       </Card>

@@ -574,6 +574,15 @@ export default function Visualizations() {
   const [selectedChart, setSelectedChart] = useState('bar');
   const [xAxis, setXAxis] = useState('');
   const [yAxis, setYAxis] = useState('');
+  const [valuesField, setValuesField] = useState('');
+  const [legendField, setLegendField] = useState('');
+  const [tooltipFields, setTooltipFields] = useState<string[]>([]);
+  const [detailsField, setDetailsField] = useState('');
+  const [smallMultiplesField, setSmallMultiplesField] = useState('');
+  const [rowsField, setRowsField] = useState('');
+  const [columnsField, setColumnsField] = useState('');
+  const [drillThroughField, setDrillThroughField] = useState('');
+  const [secondaryYAxis, setSecondaryYAxis] = useState('');
   const [colorPalette, setColorPalette] = useState('default');
   const [aggregation, setAggregation] = useState('sum');
   const [showLegend, setShowLegend] = useState(true);

@@ -122,45 +122,38 @@ const JOKES = [
   "How does a statistician propose? 'With 95% confidence, will you marry me?' 💍",
 ];
 
-const HELP_RESPONSE = `I'm **DataPulse AI** — your senior data science assistant! 🧑‍🔬
+const HELP_RESPONSE = `I'm **DataPulse AI** — your expert Data Analyst assistant! 🧑‍🔬
 
-Here's what I bring to the table:
+I'm a senior Data Analyst + BI Developer with 10+ years experience. Here's what I do:
 
-### 💬 General Chat
-Ask me anything — tech, business, concepts, or casual conversation.
+### ✅ What I Can Help With:
+- 📊 **DAX Formulas** — Measures, calculated columns, time intelligence
+- 🔍 **SQL Queries** — Data extraction, optimization, CTEs, window functions
+- 📈 **Data Analysis** — Trends, patterns, anomalies, correlations
+- 📉 **Chart Recommendations** — Best visualization for your data
+- 🐍 **Python/Pandas** — Data cleaning and transformation
+- 🎯 **KPIs & Metrics** — Business goal tracking
+- 🏗️ **Data Models** — Relationships and schema design
 
-### 📊 Chart Recommendations
-I analyze your data structure and suggest the **best visualization types** with reasons. Try:
-- *"What chart should I use?"*
-- *"Recommend a visualization"*
-- *"Best way to show trends"*
+### 💡 Try These:
+- *"Suggest charts for my data"*
+- *"Create a DAX measure for total revenue"*
+- *"Find patterns in my dataset"*
+- *"Write a SQL query to get top 10 products"*
+- *"What KPIs should I track?"*`;
 
-### 🔬 Data Analysis
-When you have data loaded, I provide:
-- **Statistical summaries** with key metrics
-- **Pattern detection** — trends, outliers, correlations
-- **Actionable insights** with business context
+const IDENTITY_RESPONSE = `I'm **DataPulse AI** — your expert Data Analyst + BI Developer! 🧑‍🔬
 
-### 🎯 Strategy & Best Practices
-- Dashboard design tips
-- KPI selection guidance
-- Stakeholder presentation advice
+With 10+ years of experience in:
+- 📊 **DAX & Power BI** — Measures, time intelligence, data modeling
+- 🔍 **SQL** — Complex queries, CTEs, window functions, optimization
+- 📈 **Data Visualization** — Chart selection, dashboard design
+- 🐍 **Python (Pandas)** — Data cleaning, transformation, analysis
+- 🎯 **Business Analytics** — KPIs, metrics, stakeholder insights
 
-### 💡 Concepts & Learning
-- Explain analytics concepts (regression, clustering, A/B testing...)
-- Compare tools and approaches
-- Data modeling guidance`;
+I analyze your data, generate formulas, write queries, and recommend the best charts — all with detailed explanations and business context.
 
-const IDENTITY_RESPONSE = `I'm **DataPulse AI** — your senior data science assistant! 🧑‍🔬
-
-Think of me as a data scientist colleague who can:
-- 📊 **Recommend the perfect chart** for any dataset
-- 🔬 **Analyze patterns** and surface hidden insights
-- 💡 **Explain concepts** from basic stats to advanced ML
-- 🎯 **Guide strategy** on dashboards, KPIs, and presentations
-- 💬 **Chat about anything** — I'm a well-rounded assistant!
-
-I combine deep analytics expertise with a conversational approach. Load a dataset and I'll proactively suggest analysis paths!`;
+Load a dataset and I'll immediately start finding insights! 📂`;
 
 // Expanded general knowledge base
 const GENERAL_KNOWLEDGE: Array<{ patterns: RegExp[]; response: string; suggestions: string[] }> = [

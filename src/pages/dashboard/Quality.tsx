@@ -1264,8 +1264,21 @@ export default function Quality() {
                     <div className="space-y-4">
                       {/* Banner */}
                       <Card className="bg-primary/5 border-primary/20">
-                        <CardContent className="py-4 text-center">
-                          <p className="text-lg font-bold">╔══ DATA CLEANING COMPLETE ✅ ══╗</p>
+                        <CardContent className="py-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-lg font-bold">╔══ DATA CLEANING COMPLETE ✅ ══╗</p>
+                            <div className="flex items-center gap-3">
+                              <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-bold text-xl",
+                                cleaningSummary.letterGrade === 'A' ? 'bg-emerald-500' : cleaningSummary.letterGrade === 'B' ? 'bg-chart-1' : cleaningSummary.letterGrade === 'C' ? 'bg-amber-500' : 'bg-destructive'
+                              )}>
+                                {cleaningSummary.letterGrade}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {cleaningSummary.timeTakenMs < 1000 ? `${cleaningSummary.timeTakenMs}ms` : `${(cleaningSummary.timeTakenMs / 1000).toFixed(1)}s`}
+                              </div>
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
 
@@ -1278,11 +1291,12 @@ export default function Quality() {
                               <span className="text-3xl font-bold text-primary-foreground">{cleaningSummary.healthScore}</span>
                             </div>
                             <div>
-                              <h3 className="text-lg font-bold">📈 Data Health Score: {cleaningSummary.healthScore}/100</h3>
+                              <h3 className="text-lg font-bold">📈 Data Health Score: {cleaningSummary.healthScore}/100 (Grade: {cleaningSummary.letterGrade})</h3>
                               <p className="text-sm text-muted-foreground mt-1">
-                                {cleaningSummary.healthScore >= 90 ? 'Excellent! Your data is analysis-ready.' :
-                                 cleaningSummary.healthScore >= 70 ? 'Good quality. Minor improvements possible.' :
-                                 'Needs attention. Review warnings below.'}
+                                {cleaningSummary.letterGrade === 'A' ? 'Excellent! Your data is analysis-ready.' :
+                                 cleaningSummary.letterGrade === 'B' ? 'Good quality. Minor improvements possible.' :
+                                 cleaningSummary.letterGrade === 'C' ? 'Fair quality. Review issues flagged below.' :
+                                 'Needs attention. Significant issues found.'}
                               </p>
                             </div>
                           </div>

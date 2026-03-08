@@ -82,27 +82,6 @@ export default function Copilot() {
             </CardContent>
           </Card>
 
-          {/* SQL Generation */}
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Terminal className="h-5 w-5 text-primary" />SQL Query Generator
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button onClick={handleGenerateSQL} variant="outline" className="w-full text-sm" disabled={!currentData.length}>
-                Generate SQL from dataset
-              </Button>
-              {generatedSQL && (
-                <>
-                  <pre className="text-xs bg-muted/50 rounded-lg p-3 font-mono overflow-x-auto whitespace-pre-wrap">{generatedSQL}</pre>
-                  <Button onClick={handleImportToSQLEngine} className="w-full text-sm gap-2">
-                    <Terminal className="h-4 w-4" />Import to SQL Engine
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
 
           <Card className="bg-card border-border">
             <CardHeader className="pb-3"><CardTitle className="text-base">AI Models</CardTitle></CardHeader>

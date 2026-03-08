@@ -615,7 +615,7 @@ export default function Quality() {
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{dr.typoDuplicates.reduce((a, t) => a + t.groups.length, 0)}</p>
-                                <p className="text-xs text-muted-foreground">🟡 Typo Groups</p>
+                                <p className="text-xs text-muted-foreground">Typo Groups</p>
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{dr.duplicateColumns.length}</p>

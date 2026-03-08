@@ -212,6 +212,61 @@ export default function Datasets() {
     toast({ title: 'Datasets Deleted', description: `${selectedIds.size} datasets removed.` });
   };
 
+  const handleDownload = (ds: Dataset) => {
+    const data = ds.data || [];
+    if (!data.length) {
+      toast({ title: 'No Data', description: 'This dataset has no rows to download.', variant: 'destructive' });
+      return;
+    }
+    const keys = Object.keys(data[0]);
+    const csvRows = [keys.join(',')];
+    data.forEach(row => {
+      csvRows.push(keys.map(k => {
+        const val = row[k];
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"` : str;
+      }).join(','));
+    });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ds.name.replace(/\s+/g, '_')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Downloaded', description: `${ds.name}.csv saved.` });
+  };
+
+  const handleBulkDownload = () => {
+    const selected = datasets.filter(d => selectedIds.has(d.id));
+    selected.forEach(ds => handleDownload(ds));
+  };
+
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const handleStartRename = (ds: Dataset) => {
+    setRenamingId(ds.id);
+    setRenameValue(ds.name);
+  };
+
+  const handleConfirmRename = () => {
+    if (!renamingId || !renameValue.trim()) return;
+    // Update the dataset name in context
+    const ds = datasets.find(d => d.id === renamingId);
+    if (ds) {
+      ds.name = renameValue.trim();
+      refreshDatasets();
+    }
+    toast({ title: 'Renamed', description: `Dataset renamed to "${renameValue.trim()}"` });
+    setRenamingId(null);
+    setRenameValue('');
+  };
+
   // ─── Detail View ────────────────────────────────────────────────
   if (detailDataset) {
     const ds = detailDataset;

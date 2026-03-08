@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play, Undo2, Redo2, Sparkles,
-  BarChart3, FileText, Zap, ClipboardCheck
+  BarChart3, FileText, Zap, ClipboardCheck, ShieldCheck, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -399,7 +399,7 @@ export default function Quality() {
 
               {/* Tabs for Profile / Columns / Issues / Summary */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-5">
+                <TabsList className="w-full grid grid-cols-6">
                   <TabsTrigger value="profile" className="gap-1 text-xs">
                     <BarChart3 className="h-3 w-3" /> Profile
                   </TabsTrigger>
@@ -408,6 +408,9 @@ export default function Quality() {
                   </TabsTrigger>
                   <TabsTrigger value="duplicates" className="gap-1 text-xs">
                     <FileText className="h-3 w-3" /> Duplicates {cleaningSummary?.duplicateReport ? `(${cleaningSummary.duplicateReport.totalIssues})` : ''}
+                  </TabsTrigger>
+                  <TabsTrigger value="validation" className="gap-1 text-xs">
+                    <ShieldCheck className="h-3 w-3" /> Validation {cleaningSummary?.validationReport ? `(${cleaningSummary.validationReport.issues.length})` : ''}
                   </TabsTrigger>
                   <TabsTrigger value="issues" className="gap-1 text-xs">
                     <AlertTriangle className="h-3 w-3" /> Issues {report ? `(${report.issues.length})` : ''}
@@ -769,7 +772,213 @@ export default function Quality() {
                   })()}
                 </TabsContent>
 
-                {/* PROFILE TAB */}
+                {/* VALIDATION TAB */}
+                <TabsContent value="validation">
+                  {!cleaningSummary?.validationReport ? (
+                    <Card className="bg-card border-border">
+                      <CardContent className="py-12 text-center">
+                        <ShieldCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-medium">No Validation Report Yet</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Click "Full 8-Step Clean" to run comprehensive validation</p>
+                      </CardContent>
+                    </Card>
+                  ) : (() => {
+                    const vr = cleaningSummary.validationReport!;
+                    return (
+                      <div className="space-y-4">
+                        {/* Validation Score Banner */}
+                        <Card className="bg-primary/5 border-primary/20">
+                          <CardContent className="py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className={cn("w-16 h-16 rounded-full flex items-center justify-center text-primary-foreground font-bold text-2xl",
+                                  vr.letterGrade === 'A' ? 'bg-emerald-500' : vr.letterGrade === 'B' ? 'bg-chart-1' : vr.letterGrade === 'C' ? 'bg-amber-500' : 'bg-destructive'
+                                )}>
+                                  {vr.letterGrade}
+                                </div>
+                                <div>
+                                  <p className="text-lg font-bold">Validation Score: {vr.validationScore}/100</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {vr.letterGrade === 'A' ? 'Excellent — data is clean and valid' :
+                                     vr.letterGrade === 'B' ? 'Good — minor issues remain' :
+                                     vr.letterGrade === 'C' ? 'Fair — several issues need attention' :
+                                     'Poor — significant data quality issues'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">{vr.issues.length} issues</p>
+                                <p className="text-xs text-muted-foreground">{cleaningSummary.validationFixCount} auto-fixed</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Completeness */}
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3"><CardTitle className="text-base">📊 Completeness: {vr.completeness.overall}%</CardTitle></CardHeader>
+                          <CardContent>
+                            <Progress value={vr.completeness.overall} className="h-3 mb-3" />
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                              {Object.entries(vr.completeness.perColumn).slice(0, 12).map(([col, pct]) => (
+                                <div key={col} className="flex justify-between p-2 rounded bg-muted/30">
+                                  <span className="truncate mr-2">{col}</span>
+                                  <span className={cn("font-mono", pct < 60 ? "text-destructive" : pct < 80 ? "text-amber-500" : "text-emerald-500")}>{pct}%</span>
+                                </div>
+                              ))}
+                            </div>
+                            {vr.completeness.lowRows > 0 && (
+                              <p className="text-xs text-amber-500 mt-2">⚠️ {vr.completeness.lowRows} rows have less than 50% completeness</p>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Validation Issues */}
+                        {vr.issues.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">🔍 Validation Issues ({vr.issues.length})</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Category</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Column</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Type</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Severity</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Count</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Description</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Fixable</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {vr.issues.map((iss, i) => (
+                                      <tr key={i} className="border-b border-border/30">
+                                        <td className="p-2">{iss.category}</td>
+                                        <td className="p-2 font-medium">{iss.column}</td>
+                                        <td className="p-2"><Badge variant="outline" className="text-xs">{iss.type}</Badge></td>
+                                        <td className="p-2">
+                                          <Badge variant={iss.severity === 'high' ? 'destructive' : iss.severity === 'medium' ? 'outline' : 'secondary'} className="text-xs capitalize">{iss.severity}</Badge>
+                                        </td>
+                                        <td className="p-2 text-right font-bold">{iss.count}</td>
+                                        <td className="p-2 text-muted-foreground">{iss.description}</td>
+                                        <td className="p-2">{iss.autoFixable ? '✅ Auto' : '⚠️ Manual'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Distribution */}
+                        {vr.distribution.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">📈 Distribution Analysis</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Column</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Skewness</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Kurtosis</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Dominant Value</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Dominant %</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Rare Categories</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {vr.distribution.map((d, i) => (
+                                      <tr key={i} className="border-b border-border/30">
+                                        <td className="p-2 font-medium">{d.column}</td>
+                                        <td className="p-2 text-right">
+                                          <span className={cn(Math.abs(d.skewness) > 2 ? "text-amber-500" : "")}>{d.skewness || '—'}</span>
+                                        </td>
+                                        <td className="p-2 text-right">{d.kurtosis || '—'}</td>
+                                        <td className="p-2 text-muted-foreground">{d.dominantValue || '—'}</td>
+                                        <td className="p-2 text-right">
+                                          {d.dominantPct ? <span className={cn(d.dominantPct > 95 ? "text-destructive" : d.dominantPct > 80 ? "text-amber-500" : "")}>{d.dominantPct}%</span> : '—'}
+                                        </td>
+                                        <td className="p-2 text-right">{d.rareCategories ?? '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Uniqueness */}
+                        {vr.uniqueness.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">🔑 Uniqueness Check</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                {vr.uniqueness.map((u, i) => (
+                                  <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/30 text-xs">
+                                    <span className="font-medium">{u.column}</span>
+                                    {u.isUnique ? (
+                                      <Badge variant="secondary" className="text-xs">✅ Unique</Badge>
+                                    ) : (
+                                      <Badge variant="destructive" className="text-xs">❌ {u.duplicateCount} duplicates</Badge>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Column Name Issues */}
+                        {vr.columnNameIssues.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3"><CardTitle className="text-base">📝 Column Name Fixes</CardTitle></CardHeader>
+                            <CardContent>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Original</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Fixed</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Reason</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {vr.columnNameIssues.map((c, i) => (
+                                      <tr key={i} className="border-b border-border/30">
+                                        <td className="p-2 text-destructive">{c.original}</td>
+                                        <td className="p-2 text-emerald-500">{c.fixed}</td>
+                                        <td className="p-2 text-muted-foreground">{c.reason}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Auto-fix details */}
+                        {cleaningSummary.validationFixDetails.length > 0 && (
+                          <Card className="bg-emerald-500/5 border-emerald-500/20">
+                            <CardContent className="py-4">
+                              <h4 className="font-medium text-sm mb-2">✅ Auto-Fixes Applied ({cleaningSummary.validationFixCount})</h4>
+                              <ul className="space-y-1">
+                                {cleaningSummary.validationFixDetails.map((d, i) => (
+                                  <li key={i} className="text-xs text-muted-foreground">{d}</li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </TabsContent>
+
                 <TabsContent value="profile">
                   {!dataProfile ? (
                     <Card className="bg-card border-border">
@@ -789,7 +998,7 @@ export default function Quality() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
                             <div className="p-3 rounded-lg bg-muted/50 text-center">
                               <p className="text-2xl font-bold">{dataProfile.totalRows}</p>
                               <p className="text-xs text-muted-foreground">Total Rows</p>
@@ -811,6 +1020,10 @@ export default function Quality() {
                               <p className="text-xs text-muted-foreground">Issues Found</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50 text-center">
+                              <p className="text-2xl font-bold">{dataProfile.memoryEstimateKB.toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground">~KB Memory</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50 text-center col-span-2">
                               <p className={cn("text-2xl font-bold", dataProfile.issuesFound === 0 ? "text-emerald-500" : "text-amber-500")}>
                                 {dataProfile.issuesFound === 0 ? '✅' : '⚠️'}
                               </p>
@@ -838,7 +1051,9 @@ export default function Quality() {
                                   <th className="text-right p-2 font-medium text-muted-foreground">Max</th>
                                   <th className="text-right p-2 font-medium text-muted-foreground">Mean</th>
                                   <th className="text-right p-2 font-medium text-muted-foreground">Median</th>
+                                  <th className="text-right p-2 font-medium text-muted-foreground">Std Dev</th>
                                   <th className="text-right p-2 font-medium text-muted-foreground">Outliers</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Samples</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -864,10 +1079,14 @@ export default function Quality() {
                                     </td>
                                     <td className="p-2 text-right text-muted-foreground">{col.mean !== undefined ? col.mean : '—'}</td>
                                     <td className="p-2 text-right text-muted-foreground">{col.median !== undefined ? col.median : '—'}</td>
+                                    <td className="p-2 text-right text-muted-foreground">{col.stdDev !== undefined ? col.stdDev : '—'}</td>
                                     <td className="p-2 text-right">
                                       {col.outlierCount !== undefined && col.outlierCount > 0 ? (
                                         <span className="text-amber-500">{col.outlierCount}</span>
                                       ) : '—'}
+                                    </td>
+                                    <td className="p-2 text-muted-foreground text-xs max-w-32 truncate">
+                                      {col.sampleValues?.slice(0, 3).join(', ') || '—'}
                                     </td>
                                   </tr>
                                 ))}
@@ -876,6 +1095,71 @@ export default function Quality() {
                           </div>
                         </CardContent>
                       </Card>
+
+                      {/* First & Last 5 Rows Preview */}
+                      {dataProfile.firstFiveRows.length > 0 && (
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">👀 First 5 Rows</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b border-border">
+                                    {Object.keys(dataProfile.firstFiveRows[0]).slice(0, 8).map(k => (
+                                      <th key={k} className="text-left p-1.5 font-medium text-muted-foreground truncate max-w-24">{k}</th>
+                                    ))}
+                                    {Object.keys(dataProfile.firstFiveRows[0]).length > 8 && <th className="p-1.5 text-muted-foreground">...</th>}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {dataProfile.firstFiveRows.map((row, i) => (
+                                    <tr key={i} className="border-b border-border/30">
+                                      {Object.values(row).slice(0, 8).map((v, j) => (
+                                        <td key={j} className="p-1.5 truncate max-w-24">{v === null ? <span className="text-destructive">null</span> : String(v)}</td>
+                                      ))}
+                                      {Object.values(row).length > 8 && <td className="p-1.5 text-muted-foreground">...</td>}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {dataProfile.lastFiveRows.length > 0 && (
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">👀 Last 5 Rows</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b border-border">
+                                    {Object.keys(dataProfile.lastFiveRows[0]).slice(0, 8).map(k => (
+                                      <th key={k} className="text-left p-1.5 font-medium text-muted-foreground truncate max-w-24">{k}</th>
+                                    ))}
+                                    {Object.keys(dataProfile.lastFiveRows[0]).length > 8 && <th className="p-1.5 text-muted-foreground">...</th>}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {dataProfile.lastFiveRows.map((row, i) => (
+                                    <tr key={i} className="border-b border-border/30">
+                                      {Object.values(row).slice(0, 8).map((v, j) => (
+                                        <td key={j} className="p-1.5 truncate max-w-24">{v === null ? <span className="text-destructive">null</span> : String(v)}</td>
+                                      ))}
+                                      {Object.values(row).length > 8 && <td className="p-1.5 text-muted-foreground">...</td>}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
                     </div>
                   )}
                 </TabsContent>
@@ -980,8 +1264,21 @@ export default function Quality() {
                     <div className="space-y-4">
                       {/* Banner */}
                       <Card className="bg-primary/5 border-primary/20">
-                        <CardContent className="py-4 text-center">
-                          <p className="text-lg font-bold">╔══ DATA CLEANING COMPLETE ✅ ══╗</p>
+                        <CardContent className="py-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-lg font-bold">╔══ DATA CLEANING COMPLETE ✅ ══╗</p>
+                            <div className="flex items-center gap-3">
+                              <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-bold text-xl",
+                                cleaningSummary.letterGrade === 'A' ? 'bg-emerald-500' : cleaningSummary.letterGrade === 'B' ? 'bg-chart-1' : cleaningSummary.letterGrade === 'C' ? 'bg-amber-500' : 'bg-destructive'
+                              )}>
+                                {cleaningSummary.letterGrade}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {cleaningSummary.timeTakenMs < 1000 ? `${cleaningSummary.timeTakenMs}ms` : `${(cleaningSummary.timeTakenMs / 1000).toFixed(1)}s`}
+                              </div>
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
 
@@ -994,11 +1291,12 @@ export default function Quality() {
                               <span className="text-3xl font-bold text-primary-foreground">{cleaningSummary.healthScore}</span>
                             </div>
                             <div>
-                              <h3 className="text-lg font-bold">📈 Data Health Score: {cleaningSummary.healthScore}/100</h3>
+                              <h3 className="text-lg font-bold">📈 Data Health Score: {cleaningSummary.healthScore}/100 (Grade: {cleaningSummary.letterGrade})</h3>
                               <p className="text-sm text-muted-foreground mt-1">
-                                {cleaningSummary.healthScore >= 90 ? 'Excellent! Your data is analysis-ready.' :
-                                 cleaningSummary.healthScore >= 70 ? 'Good quality. Minor improvements possible.' :
-                                 'Needs attention. Review warnings below.'}
+                                {cleaningSummary.letterGrade === 'A' ? 'Excellent! Your data is analysis-ready.' :
+                                 cleaningSummary.letterGrade === 'B' ? 'Good quality. Minor improvements possible.' :
+                                 cleaningSummary.letterGrade === 'C' ? 'Fair quality. Review issues flagged below.' :
+                                 'Needs attention. Significant issues found.'}
                               </p>
                             </div>
                           </div>

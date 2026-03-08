@@ -63,28 +63,29 @@ export default function VisualQueryBuilder({ columns, onQueryChange }: VisualQue
     let query = `SELECT ${selectParts.join(', ')}\nFROM data`;
 
     if (whereEnabled && whereColumn) {
+      const qw = quoteCol(whereColumn);
       if (['IS NULL', 'IS NOT NULL'].includes(whereOperator)) {
-        query += `\nWHERE ${whereColumn} ${whereOperator}`;
+        query += `\nWHERE ${qw} ${whereOperator}`;
       } else if (whereOperator === 'LIKE' || whereOperator === 'NOT LIKE') {
-        query += `\nWHERE ${whereColumn} ${whereOperator} '%${whereValue}%'`;
+        query += `\nWHERE ${qw} ${whereOperator} '%${whereValue}%'`;
       } else if (whereOperator === 'BETWEEN') {
         const [v1, v2] = whereValue.split(',').map(s => s.trim());
-        query += `\nWHERE ${whereColumn} BETWEEN ${v1 || '0'} AND ${v2 || '0'}`;
+        query += `\nWHERE ${qw} BETWEEN ${v1 || '0'} AND ${v2 || '0'}`;
       } else if (whereOperator === 'IN') {
-        query += `\nWHERE ${whereColumn} IN (${whereValue})`;
+        query += `\nWHERE ${qw} IN (${whereValue})`;
       } else {
         const isNum = whereValue !== '' && !isNaN(Number(whereValue));
         const val = isNum ? whereValue : `'${whereValue}'`;
-        query += `\nWHERE ${whereColumn} ${whereOperator} ${val}`;
+        query += `\nWHERE ${qw} ${whereOperator} ${val}`;
       }
     }
 
     if (groupByEnabled && groupByColumn) {
-      query += `\nGROUP BY ${groupByColumn}`;
+      query += `\nGROUP BY ${quoteCol(groupByColumn)}`;
     }
 
     if (orderByEnabled && orderByColumn) {
-      query += `\nORDER BY ${orderByColumn} ${orderByDirection}`;
+      query += `\nORDER BY ${quoteCol(orderByColumn)} ${orderByDirection}`;
     }
 
     if (limitEnabled && limitValue && limitValue !== 'ALL') {

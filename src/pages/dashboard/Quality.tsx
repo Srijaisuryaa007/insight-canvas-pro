@@ -1235,35 +1235,24 @@ export default function Quality() {
                           </CardContent>
                         </Card>
 
-                        <Card className="bg-card border-border">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Scenario Breakdown</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="border-b border-border">
-                                    <th className="text-left p-2 font-medium text-muted-foreground">Scenario</th>
-                                    <th className="text-right p-2 font-medium text-muted-foreground">Count</th>
-                                    <th className="text-left p-2 font-medium text-muted-foreground">Details</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {dr.scenarios.map((s, i) => (
-                                    <tr key={i} className="border-b border-border/30">
-                                      <td className="p-2 font-medium">{s.name}</td>
-                                      <td className="p-2 text-right">
-                                        <Badge variant={s.count > 0 ? 'destructive' : 'secondary'} className="text-xs">{s.count}</Badge>
-                                      </td>
-                                      <td className="p-2 text-muted-foreground">{s.description}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        {/* Detailed per-column partial duplicates */}
+                        {Object.entries(dr.partialDuplicates).length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-base">Partial Duplicate Breakdown</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                {Object.entries(dr.partialDuplicates).map(([col, count]) => (
+                                  <div key={col} className="flex items-center justify-between p-2 rounded bg-muted/30 text-xs">
+                                    <span className="font-medium">{col}</span>
+                                    <Badge variant={count > 0 ? 'destructive' : 'secondary'} className="text-xs">{count} duplicates</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
 
                         {dr.nearDuplicates.length > 0 && (
                           <Card className="bg-card border-border">

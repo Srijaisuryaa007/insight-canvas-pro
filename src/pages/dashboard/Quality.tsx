@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Shield, AlertTriangle, CheckCircle, Loader2, Wand2, Database, Eye, Play, Undo2, Redo2, Sparkles,
-  BarChart3, FileText, Zap, ClipboardCheck
+  BarChart3, FileText, Zap, ClipboardCheck, ShieldCheck, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   LayoutDashboard, Database, BarChart3, Sparkles, FileText, Settings,
-  ChevronLeft, ChevronRight, Shield, Lightbulb, LogOut, Zap, Crown, Terminal
+  ChevronLeft, ChevronRight, Shield, Lightbulb, LogOut, Zap, Crown, Terminal, Plug
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

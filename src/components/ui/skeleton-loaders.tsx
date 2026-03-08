@@ -1,11 +1,9 @@
 import { cn } from '@/lib/utils';
+import { CSSProperties } from 'react';
 
-function Shimmer({ className }: { className?: string }) {
+function Shimmer({ className, style }: { className?: string; style?: CSSProperties }) {
   return (
-    <div className={cn(
-      'animate-pulse rounded-lg bg-muted',
-      className
-    )} />
+    <div className={cn('animate-pulse rounded-lg bg-muted', className)} style={style} />
   );
 }
 

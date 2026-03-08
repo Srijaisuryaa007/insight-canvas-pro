@@ -29,6 +29,21 @@ function validateSQL(sql: string): { safe: boolean; reason?: string } {
   return { safe: true };
 }
 
+/** Splits SELECT parts by comma, respecting parentheses depth */
+function splitSelectParts(selectPart: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let depth = 0;
+  for (const ch of selectPart) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) { parts.push(current); current = ''; }
+    else current += ch;
+  }
+  if (current.trim()) parts.push(current);
+  return parts;
+}
+
 function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { result: Record<string, unknown>[]; error?: string } {
   if (!data.length) return { result: [], error: 'No data available.' };
   try {

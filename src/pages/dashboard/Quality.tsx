@@ -982,7 +982,7 @@ export default function Quality() {
                         {cleaningSummary.validationFixDetails.length > 0 && (
                           <Card className="bg-emerald-500/5 border-emerald-500/20">
                             <CardContent className="py-4">
-                              <h4 className="font-medium text-sm mb-2">✅ Auto-Fixes Applied ({cleaningSummary.validationFixCount})</h4>
+                              <h4 className="font-medium text-sm mb-2">Auto-Fixes Applied ({cleaningSummary.validationFixCount})</h4>
                               <ul className="space-y-1">
                                 {cleaningSummary.validationFixDetails.map((d, i) => (
                                   <li key={i} className="text-xs text-muted-foreground">{d}</li>

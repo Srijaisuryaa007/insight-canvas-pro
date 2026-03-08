@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronUp, ArrowLeftRight, Plus, Code, Undo2, Redo2, FlaskConical } from 'lucide-react';
+import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronUp, ArrowLeftRight, Plus, Undo2, Redo2, FlaskConical } from 'lucide-react';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { ColumnInspector } from '@/components/data/ColumnInspector';
 import { FormulaColumnEditor } from '@/components/data/FormulaColumnEditor';

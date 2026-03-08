@@ -565,6 +565,7 @@ function QuickFilterChips({ data, yAxis, onApplyFilter }: {
 export default function Visualizations() {
   const { datasets, currentDataset, currentData, selectDataset } = useData();
   const { plan, isChartAvailable, getAvailableCharts } = useSubscription();
+  const { user } = useAuth();
   const { exportCSV, exportPNG } = useExport();
 
   const [selectedChart, setSelectedChart] = useState('bar');

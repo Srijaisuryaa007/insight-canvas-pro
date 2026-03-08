@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Trash2, X, ChevronDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Trash2, X, ChevronDown, GripVertical, Plus } from 'lucide-react';
 import { CHART_TYPES_BY_PLAN } from '@/types/subscription';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 const AGGREGATIONS = ['sum', 'avg', 'count', 'min', 'max'] as const;
@@ -31,6 +32,87 @@ function Section({ title, defaultOpen = true, children }: { title: string; defau
   );
 }
 
+/** A field well that accepts one column (single select) */
+function SingleFieldWell({
+  label, value, columns, onChange, onClear, icon
+}: {
+  label: string; value?: string; columns: string[];
+  onChange: (v: string) => void; onClear: () => void; icon?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+        {icon && <span className="text-xs">{icon}</span>}
+        {label}
+      </Label>
+      <div className="rounded-md border border-dashed border-border bg-muted/20 p-1.5 min-h-[32px]">
+        {value ? (
+          <div className="flex items-center gap-1">
+            <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
+              <GripVertical className="h-2.5 w-2.5 text-muted-foreground" />
+              {value}
+              <button onClick={onClear} className="ml-0.5 hover:text-destructive">
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </Badge>
+          </div>
+        ) : (
+          <Select value="" onValueChange={onChange}>
+            <SelectTrigger className="h-6 text-[10px] border-0 bg-transparent shadow-none p-0 px-1">
+              <span className="text-muted-foreground/60">Drop column here</span>
+            </SelectTrigger>
+            <SelectContent>
+              {columns.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A field well that accepts multiple columns */
+function MultiFieldWell({
+  label, values, columns, onChange, icon
+}: {
+  label: string; values: string[]; columns: string[];
+  onChange: (vals: string[]) => void; icon?: string;
+}) {
+  const available = columns.filter(c => !values.includes(c));
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+        {icon && <span className="text-xs">{icon}</span>}
+        {label}
+        {values.length > 0 && <span className="text-muted-foreground/60">({values.length})</span>}
+      </Label>
+      <div className="rounded-md border border-dashed border-border bg-muted/20 p-1.5 min-h-[32px] space-y-1">
+        {values.map(v => (
+          <Badge key={v} variant="secondary" className="text-[10px] gap-1 pr-1 mr-1">
+            <GripVertical className="h-2.5 w-2.5 text-muted-foreground" />
+            {v}
+            <button onClick={() => onChange(values.filter(x => x !== v))} className="ml-0.5 hover:text-destructive">
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </Badge>
+        ))}
+        {available.length > 0 && (
+          <Select value="" onValueChange={v => onChange([...values, v])}>
+            <SelectTrigger className="h-6 text-[10px] border-0 bg-transparent shadow-none p-0 px-1 w-auto inline-flex">
+              <Plus className="h-2.5 w-2.5 mr-0.5 text-muted-foreground" />
+              <span className="text-muted-foreground/60">Add</span>
+            </SelectTrigger>
+            <SelectContent>
+              {available.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function WidgetConfigPanel() {
   const { currentPage, selectedWidgetId, updateWidgetConfig, removeWidget, selectWidget } = useDashboard();
   const { currentData, currentDataset } = useData();
@@ -45,6 +127,9 @@ export function WidgetConfigPanel() {
 
   const update = (cfg: Partial<typeof widget.config>) => updateWidgetConfig(widget.id, cfg);
 
+  const isChart = widget.type === 'chart';
+  const isTable = widget.type === 'table';
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -56,85 +141,184 @@ export function WidgetConfigPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-        {/* Title Section */}
+        {/* Title */}
         <Section title="Title" defaultOpen={true}>
-          <div className="space-y-1">
-            <Input value={widget.config.title || ''} onChange={e => update({ title: e.target.value })} className="h-8 text-sm" placeholder="Widget title" />
-          </div>
+          <Input value={widget.config.title || ''} onChange={e => update({ title: e.target.value })} className="h-8 text-sm" placeholder="Widget title" />
         </Section>
 
         <Separator />
 
-        {/* Data Section */}
-        <Section title="Data" defaultOpen={true}>
-          {widget.type === 'chart' && (
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Chart Type</Label>
-                <Select value={widget.config.chartType || 'bar'} onValueChange={v => update({ chartType: v })}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {availableCharts.map(ct => (
-                      <SelectItem key={ct} value={ct}>{ct.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">X Axis</Label>
-                <Select value={widget.config.xAxis || ''} onValueChange={v => update({ xAxis: v })}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select column" /></SelectTrigger>
-                  <SelectContent>{columns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Y Axis</Label>
-                <Select value={widget.config.yAxis || ''} onValueChange={v => update({ yAxis: v })}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select column" /></SelectTrigger>
-                  <SelectContent>{numericCols.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {widget.type === 'kpi' && (
-            <div className="space-y-1">
-              <Label className="text-xs">KPI Column</Label>
-              <Select value={widget.config.kpiColumn || ''} onValueChange={v => update({ kpiColumn: v })}>
-                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select column" /></SelectTrigger>
-                <SelectContent>{columns.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+        {/* Chart Type */}
+        {isChart && (
+          <>
+            <Section title="Chart Type" defaultOpen={true}>
+              <Select value={widget.config.chartType || 'bar'} onValueChange={v => update({ chartType: v })}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {availableCharts.map(ct => (
+                    <SelectItem key={ct} value={ct}>{ct.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
-            </div>
-          )}
+            </Section>
+            <Separator />
+          </>
+        )}
 
-          {(widget.type === 'chart' || widget.type === 'kpi') && (
-            <div className="space-y-1">
-              <Label className="text-xs">Aggregation</Label>
+        {/* ═══════ FIELD WELLS ═══════ */}
+        {(isChart || isTable) && (
+          <Section title="Field Wells" defaultOpen={true}>
+            <div className="space-y-2.5">
+              {/* X-Axis */}
+              <SingleFieldWell
+                label="X-Axis" icon="📊"
+                value={widget.config.xAxis}
+                columns={columns}
+                onChange={v => update({ xAxis: v })}
+                onClear={() => update({ xAxis: undefined })}
+              />
+
+              {/* Y-Axis */}
+              <SingleFieldWell
+                label="Y-Axis" icon="📈"
+                value={widget.config.yAxis}
+                columns={numericCols}
+                onChange={v => update({ yAxis: v })}
+                onClear={() => update({ yAxis: undefined })}
+              />
+
+              {/* Values (multi) */}
+              <MultiFieldWell
+                label="Values" icon="🔢"
+                values={widget.config.values || []}
+                columns={numericCols}
+                onChange={vals => update({ values: vals })}
+              />
+
+              {/* Legend */}
+              <SingleFieldWell
+                label="Legend" icon="🏷️"
+                value={widget.config.legend}
+                columns={columns}
+                onChange={v => update({ legend: v })}
+                onClear={() => update({ legend: undefined })}
+              />
+
+              {/* Tooltip */}
+              <MultiFieldWell
+                label="Tooltip" icon="💬"
+                values={widget.config.tooltip || []}
+                columns={columns}
+                onChange={vals => update({ tooltip: vals })}
+              />
+
+              {/* Details */}
+              <MultiFieldWell
+                label="Details" icon="📋"
+                values={widget.config.details || []}
+                columns={columns}
+                onChange={vals => update({ details: vals })}
+              />
+
+              {/* Small Multiples */}
+              <SingleFieldWell
+                label="Small Multiples" icon="🔲"
+                value={widget.config.smallMultiples}
+                columns={columns}
+                onChange={v => update({ smallMultiples: v })}
+                onClear={() => update({ smallMultiples: undefined })}
+              />
+
+              {/* Filters */}
+              <MultiFieldWell
+                label="Filters" icon="🔍"
+                values={widget.config.filters || []}
+                columns={columns}
+                onChange={vals => update({ filters: vals })}
+              />
+
+              {/* Rows */}
+              <MultiFieldWell
+                label="Rows" icon="↔️"
+                values={widget.config.rows || []}
+                columns={columns}
+                onChange={vals => update({ rows: vals })}
+              />
+
+              {/* Columns */}
+              <MultiFieldWell
+                label="Columns" icon="↕️"
+                values={widget.config.columns || []}
+                columns={columns}
+                onChange={vals => update({ columns: vals })}
+              />
+
+              {/* Drill Through */}
+              <MultiFieldWell
+                label="Drill Through" icon="🔗"
+                values={widget.config.drillThrough || []}
+                columns={columns}
+                onChange={vals => update({ drillThrough: vals })}
+              />
+
+              {/* Secondary Y-Axis */}
+              <SingleFieldWell
+                label="Secondary Y-Axis" icon="📉"
+                value={widget.config.secondaryYAxis}
+                columns={numericCols}
+                onChange={v => update({ secondaryYAxis: v })}
+                onClear={() => update({ secondaryYAxis: undefined })}
+              />
+            </div>
+          </Section>
+        )}
+
+        {/* KPI field */}
+        {widget.type === 'kpi' && (
+          <Section title="Data" defaultOpen={true}>
+            <SingleFieldWell
+              label="KPI Column" icon="🔢"
+              value={widget.config.kpiColumn}
+              columns={columns}
+              onChange={v => update({ kpiColumn: v })}
+              onClear={() => update({ kpiColumn: undefined })}
+            />
+          </Section>
+        )}
+
+        {/* Aggregation */}
+        {(isChart || widget.type === 'kpi') && (
+          <>
+            <Separator />
+            <Section title="Aggregation" defaultOpen={true}>
               <Select value={widget.config.aggregation || 'sum'} onValueChange={v => update({ aggregation: v as any })}>
                 <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>{AGGREGATIONS.map(a => <SelectItem key={a} value={a}>{a.toUpperCase()}</SelectItem>)}</SelectContent>
               </Select>
-            </div>
-          )}
+            </Section>
+          </>
+        )}
 
-          {widget.type === 'text' && (
-            <div className="space-y-1">
-              <Label className="text-xs">Content</Label>
-              <Input value={widget.config.textContent || ''} onChange={e => update({ textContent: e.target.value })} className="h-8 text-sm" />
-            </div>
-          )}
+        {/* Text config */}
+        {widget.type === 'text' && (
+          <Section title="Content" defaultOpen={true}>
+            <Input value={widget.config.textContent || ''} onChange={e => update({ textContent: e.target.value })} className="h-8 text-sm" />
+          </Section>
+        )}
 
-          {widget.type === 'table' && (
+        {/* Table config */}
+        {isTable && (
+          <Section title="Table" defaultOpen={true}>
             <div className="space-y-1">
               <Label className="text-xs">Row Limit</Label>
               <Input type="number" value={widget.config.tableRowLimit || 50} onChange={e => update({ tableRowLimit: parseInt(e.target.value) || 50 })} className="h-8 text-sm" />
             </div>
-          )}
-        </Section>
+          </Section>
+        )}
 
         <Separator />
 
-        {/* Style Section */}
+        {/* Style */}
         <Section title="Style" defaultOpen={false}>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -159,8 +343,8 @@ export function WidgetConfigPanel() {
           </div>
         </Section>
 
-        {/* Advanced Section */}
-        {widget.type === 'chart' && (
+        {/* Advanced / Sort */}
+        {isChart && (
           <>
             <Separator />
             <Section title="Advanced" defaultOpen={false}>

@@ -19,6 +19,17 @@ export interface WidgetConfig {
   showLegend?: boolean;
   showGrid?: boolean;
   showLabels?: boolean;
+  // Field wells (Power BI-style)
+  values?: string[];
+  legend?: string;
+  tooltip?: string[];
+  details?: string[];
+  smallMultiples?: string;
+  filters?: string[];
+  rows?: string[];
+  columns?: string[];
+  drillThrough?: string[];
+  secondaryYAxis?: string;
   // KPI
   kpiColumn?: string;
   kpiFormat?: 'number' | 'currency' | 'percent';

@@ -18,9 +18,21 @@ function isEffectivelyEmpty(value: unknown, colName: string): boolean {
   if (value === null || value === undefined) return true;
   if (typeof value === 'number' && isNaN(value)) return true;
   if (typeof value === 'string') {
-    const trimmed = value.trim().toLowerCase();
+    const trimmed = value.trim();
     if (trimmed === '') return true;
-    if (EMPTY_VALUES.has(trimmed)) return true;
+    const lower = trimmed.toLowerCase();
+    if (EMPTY_VALUES.has(lower)) {
+      // Only unambiguous placeholders treated as empty
+      const UNAMBIGUOUS = new Set([
+        'null', 'nan', 'nat', 'n/a', 'not available',
+        '????', '####', '****', '////',
+        '#div/0!', '#value!', '#ref!', '#n/a!', '#name!',
+        '00/00/0000', '0000-00-00',
+      ]);
+      if (UNAMBIGUOUS.has(lower)) return true;
+      if (lower === '--' || lower === '---') return true;
+      return false;
+    }
   }
   if (typeof value === 'number' && value === 0 && ZERO_IS_MISSING_PATTERNS.test(colName)) return true;
   return false;

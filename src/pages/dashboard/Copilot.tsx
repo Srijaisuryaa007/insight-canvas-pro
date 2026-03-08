@@ -6,18 +6,51 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Database, Lightbulb, BarChart3, Eye, Zap, Target } from 'lucide-react';
+import { Sparkles, Database, Lightbulb, BarChart3, Eye, Zap, Target, Terminal } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PLANS } from '@/types/subscription';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 export default function Copilot() {
-  const { currentDataset, datasets, selectDataset } = useData();
+  const { currentDataset, currentData, datasets, selectDataset } = useData();
   const { plan } = useSubscription();
+  const navigate = useNavigate();
   const [stakeholderView, setStakeholderView] = useState(false);
   const [aiMode, setAiMode] = useState<'fast' | 'precise'>('fast');
+  const [generatedSQL, setGeneratedSQL] = useState('');
 
   const planConfig = PLANS[plan];
   const availableModels = planConfig.aiModels;
+
+  const handleGenerateSQL = () => {
+    if (!currentData.length) {
+      toast({ title: 'No dataset selected', variant: 'destructive' });
+      return;
+    }
+    const cols = Object.keys(currentData[0]);
+    const numCols = cols.filter(c => typeof currentData[0][c] === 'number');
+    const strCols = cols.filter(c => typeof currentData[0][c] === 'string');
+    const tableName = currentDataset?.name?.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'dataset';
+
+    // Generate a sample SQL based on data structure
+    let sql = '';
+    if (strCols.length > 0 && numCols.length > 0) {
+      sql = `SELECT ${strCols[0]}, SUM(${numCols[0]}) as total_${numCols[0]}\nFROM ${tableName}\nGROUP BY ${strCols[0]}\nORDER BY total_${numCols[0]} DESC\nLIMIT 10`;
+    } else if (numCols.length > 0) {
+      sql = `SELECT *\nFROM ${tableName}\nORDER BY ${numCols[0]} DESC\nLIMIT 20`;
+    } else {
+      sql = `SELECT *\nFROM ${tableName}\nLIMIT 20`;
+    }
+    setGeneratedSQL(sql);
+  };
+
+  const handleImportToSQLEngine = () => {
+    if (!generatedSQL) return;
+    sessionStorage.setItem('datapulse_sql_query', generatedSQL);
+    navigate('/dashboard/sql');
+    toast({ title: 'Query imported to SQL Engine' });
+  };
 
   const features = [
     { icon: Lightbulb, title: 'Structured Insights', description: 'Key findings, evidence, risks, opportunities, and actions' },
@@ -76,6 +109,28 @@ export default function Copilot() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">Select a dataset to enable context-aware analysis</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* SQL Generation */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Terminal className="h-5 w-5 text-primary" />SQL Query Generator
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button onClick={handleGenerateSQL} variant="outline" className="w-full text-sm" disabled={!currentData.length}>
+                Generate SQL from dataset
+              </Button>
+              {generatedSQL && (
+                <>
+                  <pre className="text-xs bg-muted/50 rounded-lg p-3 font-mono overflow-x-auto whitespace-pre-wrap">{generatedSQL}</pre>
+                  <Button onClick={handleImportToSQLEngine} className="w-full text-sm gap-2">
+                    <Terminal className="h-4 w-4" />Import to SQL Engine
+                  </Button>
+                </>
               )}
             </CardContent>
           </Card>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FileText, Download, CheckSquare, FileDown, Presentation, File, Layers, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +15,14 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { useDataQuality } from '@/hooks/useDataQuality';
-import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
+import { exportRichPDF } from '@/lib/exportPDF';
+import { exportRichPPTX } from '@/lib/exportPPTX';
+import { exportRichDOCX } from '@/lib/exportDOCX';
+import { buildReportStats, generateNarrative } from '@/lib/reportNarrativeBuilder';
+import { getTemplate, type TemplateId } from '@/lib/reportTemplates';
 import { toast } from '@/hooks/use-toast';
 import ScheduledReports from '@/components/reports/ScheduledReports';
+import TemplateSelector from '@/components/reports/TemplateSelector';
 import DashboardComments from '@/components/collaboration/DashboardComments';
 import VersionHistory from '@/components/collaboration/VersionHistory';
 
@@ -31,10 +36,13 @@ const REPORT_SECTIONS = [
   { id: 'negatives', label: 'Negative Findings', default: true },
   { id: 'risks', label: 'Risks', default: true },
   { id: 'opportunities', label: 'Opportunities', default: true },
-  { id: 'recommendations', label: 'Recommendations', default: true },
   { id: 'quality', label: 'Data Quality Summary', default: true },
+  { id: 'deep-insights', label: 'Deep Insights', default: true },
+  { id: 'recommendations', label: 'Recommendations', default: true },
   { id: 'data-table', label: 'Data Table (Top 50)', default: false },
 ];
+
+const TEMPLATE_STORAGE_KEY = 'datapulse_report_template';
 
 export default function Reports() {
   const { isFeatureAvailable } = useSubscription();
@@ -46,32 +54,30 @@ export default function Reports() {
   const [sections, setSections] = useState<string[]>(REPORT_SECTIONS.filter(s => s.default).map(s => s.id));
   const [reportTitle, setReportTitle] = useState('');
   const [isExporting, setIsExporting] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(() => {
+    return (localStorage.getItem(TEMPLATE_STORAGE_KEY) as TemplateId) || 'executive';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, selectedTemplate);
+  }, [selectedTemplate]);
 
   const toggleSection = (id: string) => {
     setSections(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
   };
 
   const title = reportTitle || currentDataset?.name || 'Analytics Report';
-
-  const getReportData = () => {
-    return buildReportData(
-      currentData,
-      currentDataset?.name || 'Dataset',
-      user?.name || 'User',
-      title,
-      qualityReport
-    );
-  };
+  const tpl = getTemplate(selectedTemplate);
 
   const handleExport = async (format: 'pdf' | 'pptx' | 'docx') => {
-    if (!currentData.length) { toast({ title: 'No data', variant: 'destructive' }); return; }
+    if (!currentData.length) { toast({ title: 'No data available', variant: 'destructive' }); return; }
     setIsExporting(format);
     try {
-      const report = getReportData();
+      const args = [currentData, currentDataset?.name || 'Dataset', user?.name || 'Analyst', title, selectedTemplate, qualityReport] as const;
       switch (format) {
-        case 'pdf': await exportPDF(report); break;
-        case 'pptx': await exportPPTX(report); break;
-        case 'docx': await exportDOCX(report); break;
+        case 'pdf': await exportRichPDF(...args); break;
+        case 'pptx': await exportRichPPTX(...args); break;
+        case 'docx': await exportRichDOCX(...args); break;
       }
     } catch (e) {
       toast({ title: 'Export Failed', variant: 'destructive' });
@@ -85,10 +91,10 @@ export default function Reports() {
     exportCSV(currentData, `${currentDataset?.name || 'data'}-cleaned`);
   };
 
-  const reportData = useMemo(() => {
+  const reportStats = useMemo(() => {
     if (!currentData.length) return null;
-    try { return getReportData(); } catch { return null; }
-  }, [currentData, title, qualityReport]);
+    try { return buildReportStats(currentData, currentDataset?.name || 'Dataset', user?.name || 'Analyst', title, qualityReport); } catch { return null; }
+  }, [currentData, title, qualityReport, user?.name, currentDataset?.name]);
 
   return (
     <div className="space-y-6">
@@ -103,8 +109,10 @@ export default function Reports() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button disabled={!currentData.length}>
-                <Download className="h-4 w-4 mr-2" />Export Dashboard
+              <Button disabled={!currentData.length || !!isExporting}>
+                {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Export Report
+                <Badge variant="outline" className="ml-2 text-[9px]">{tpl.name}</Badge>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-popover">
@@ -124,6 +132,9 @@ export default function Reports() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Template Selector */}
+      <TemplateSelector selected={selectedTemplate} onSelect={setSelectedTemplate} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="bg-card border-border">
@@ -162,7 +173,7 @@ export default function Reports() {
                   <CardContent className="py-6 text-center">
                     <File className="h-8 w-8 mx-auto text-primary mb-2" />
                     <h3 className="font-medium">PDF Report</h3>
-                    <p className="text-xs text-muted-foreground mt-1">A4 format, high-resolution PDF with KPIs, trends, and AI narrative.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Professional multi-page PDF with KPIs, trends, insights, and narrative analysis.</p>
                     <Button className="mt-3 w-full" onClick={() => handleExport('pdf')} disabled={!!isExporting}>
                       {isExporting === 'pdf' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                       Download PDF
@@ -174,7 +185,7 @@ export default function Reports() {
                   <CardContent className="py-6 text-center">
                     <Presentation className="h-8 w-8 mx-auto text-primary mb-2" />
                     <h3 className="font-medium">PowerPoint</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Board-ready slides: KPIs, trends, risks, strategy, and AI insights.</p>
+                    <p className="text-xs text-muted-foreground mt-1">12-slide storytelling deck with executive summary, KPIs, trends, and strategic recommendations.</p>
                     <Button className="mt-3 w-full" variant="outline" onClick={() => handleExport('pptx')} disabled={!!isExporting}>
                       {isExporting === 'pptx' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
                       Download PPTX
@@ -186,7 +197,7 @@ export default function Reports() {
                   <CardContent className="py-6 text-center">
                     <FileText className="h-8 w-8 mx-auto text-primary mb-2" />
                     <h3 className="font-medium">Word Document</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Professional DOCX with executive summary, KPIs, risks, and recommendations.</p>
+                    <p className="text-xs text-muted-foreground mt-1">10-section professional report with deep narrative, quality analysis, and data appendix.</p>
                     <Button className="mt-3 w-full" variant="outline" onClick={() => handleExport('docx')} disabled={!!isExporting}>
                       {isExporting === 'docx' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
                       Download DOCX
@@ -196,29 +207,44 @@ export default function Reports() {
               </div>
 
               {/* Report Preview */}
-              {reportData && (
+              {reportStats && (
                 <Card className="bg-card border-border">
-                  <CardHeader className="pb-3"><CardTitle className="text-base">Report Preview</CardTitle></CardHeader>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">Report Preview</CardTitle>
+                      <Badge variant="outline" className="text-[10px]">{tpl.icon} {tpl.name}</Badge>
+                    </div>
+                  </CardHeader>
                   <CardContent>
                     <ScrollArea className="h-[500px]">
                       <div className="space-y-4 pr-4">
                         {sections.includes('title') && (
                           <div className="text-center py-6 border-b border-border">
-                            <h2 className="text-xl font-bold">{reportData.title}</h2>
-                            <p className="text-xs text-muted-foreground mt-1">{reportData.generatedDate} • {reportData.rowCount} rows • {reportData.userName}</p>
+                            <div className="flex gap-0.5 mx-auto w-32 rounded overflow-hidden h-2 mb-4">
+                              {tpl.colors.map((c, i) => <div key={i} className="flex-1" style={{ backgroundColor: c }} />)}
+                            </div>
+                            <h2 className="text-xl font-bold">{reportStats.title}</h2>
+                            <p className="text-xs text-primary font-medium mt-1">Data Intelligence Report</p>
+                            <p className="text-xs text-muted-foreground mt-1">{reportStats.date} • {reportStats.rowCount.toLocaleString()} rows • {reportStats.userName}</p>
                           </div>
                         )}
                         {sections.includes('executive-summary') && (
                           <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                             <h3 className="text-sm font-semibold mb-2 text-primary">Executive Summary</h3>
-                            <p className="text-sm text-muted-foreground">{reportData.aiSummary}</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{generateNarrative('executive-summary', reportStats, tpl.tone).substring(0, 500)}...</p>
+                          </div>
+                        )}
+                        {sections.includes('summary') && (
+                          <div>
+                            <h3 className="text-sm font-semibold mb-2">Dataset Overview</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{generateNarrative('dataset-overview', reportStats, tpl.tone).substring(0, 400)}...</p>
                           </div>
                         )}
                         {sections.includes('kpis') && (
                           <div>
                             <h3 className="text-sm font-semibold mb-2">KPI Performance</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                              {reportData.kpis.map((k, i) => (
+                              {reportStats.kpis.map((k, i) => (
                                 <div key={i} className="p-3 rounded-lg bg-muted/50">
                                   <p className="text-[10px] text-muted-foreground uppercase">{k.label}</p>
                                   <p className="text-lg font-bold">{k.value}</p>
@@ -231,7 +257,7 @@ export default function Reports() {
                           <div>
                             <h3 className="text-sm font-semibold mb-2">Trends</h3>
                             <div className="space-y-1">
-                              {reportData.trends.map((t, i) => (
+                              {reportStats.trends.map((t, i) => (
                                 <div key={i} className="flex items-center justify-between text-sm">
                                   <span>{t.col}</span>
                                   <span className={t.change > 1 ? 'text-emerald-500 font-medium' : t.change < -1 ? 'text-destructive font-medium' : 'text-muted-foreground'}>
@@ -244,26 +270,29 @@ export default function Reports() {
                         )}
                         {sections.includes('positives') && (
                           <div>
-                            <h3 className="text-sm font-semibold mb-2 text-emerald-500">✅ Positives</h3>
-                            <ul className="space-y-1">{(reportData.positives.length ? reportData.positives : ['Metrics stable']).map((p, i) => <li key={i} className="text-sm text-emerald-600">✓ {p}</li>)}</ul>
+                            <h3 className="text-sm font-semibold mb-2 text-emerald-500">Positive Findings</h3>
+                            <p className="text-xs text-muted-foreground mb-1">{generateNarrative('positives', reportStats, tpl.tone).substring(0, 200)}...</p>
+                            <ul className="space-y-1">{(reportStats.positives.length ? reportStats.positives : ['Metrics stable']).map((p, i) => <li key={i} className="text-sm text-emerald-600">• {p}</li>)}</ul>
                           </div>
                         )}
                         {sections.includes('negatives') && (
                           <div>
-                            <h3 className="text-sm font-semibold mb-2 text-destructive">⚠️ Concerns</h3>
-                            <ul className="space-y-1">{(reportData.negatives.length ? reportData.negatives : ['No declines']).map((n, i) => <li key={i} className="text-sm text-destructive">⚠ {n}</li>)}</ul>
+                            <h3 className="text-sm font-semibold mb-2 text-destructive">Risks & Concerns</h3>
+                            <p className="text-xs text-muted-foreground mb-1">{generateNarrative('negatives', reportStats, tpl.tone).substring(0, 200)}...</p>
+                            <ul className="space-y-1">{reportStats.risks.map((r, i) => <li key={i} className="text-sm text-destructive">• {r}</li>)}</ul>
                           </div>
                         )}
-                        {sections.includes('risks') && (
+                        {sections.includes('deep-insights') && (
                           <div>
-                            <h3 className="text-sm font-semibold mb-2">🔴 Risks</h3>
-                            <ul className="space-y-1">{reportData.risks.map((r, i) => <li key={i} className="text-sm text-muted-foreground">{r}</li>)}</ul>
+                            <h3 className="text-sm font-semibold mb-2">Deep Insights</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{generateNarrative('deep-insights', reportStats, tpl.tone).substring(0, 400)}...</p>
                           </div>
                         )}
                         {sections.includes('recommendations') && (
                           <div>
-                            <h3 className="text-sm font-semibold mb-2">💡 Recommendations</h3>
-                            <ul className="space-y-1">{reportData.recommendations.map((r, i) => <li key={i} className="text-sm text-muted-foreground">→ {r}</li>)}</ul>
+                            <h3 className="text-sm font-semibold mb-2">Recommendations</h3>
+                            <p className="text-xs text-muted-foreground mb-1">{generateNarrative('recommendations', reportStats, tpl.tone).substring(0, 200)}...</p>
+                            <ul className="space-y-1">{reportStats.recommendations.map((r, i) => <li key={i} className="text-sm text-muted-foreground">→ {r}</li>)}</ul>
                           </div>
                         )}
                       </div>
@@ -276,11 +305,9 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Scheduled Reports */}
       <Separator />
       <ScheduledReports />
 
-      {/* Team Collaboration */}
       <Separator />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardComments dashboardId={dashboard?.id || 'default'} />

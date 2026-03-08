@@ -50,10 +50,15 @@ export interface CleaningSummary {
   featuresAdded: string[];
   healthScore: number;
   healthBreakdown: { label: string; score: number; max: number }[];
+  letterGrade: string;
   warnings: string[];
   recommendations: string[];
   flaggedRows: { row: number; column: string; value: string; reason: string }[];
   duplicateReport?: DuplicateReport;
+  validationReport?: ValidationReport;
+  validationFixCount: number;
+  validationFixDetails: string[];
+  timeTakenMs: number;
 }
 
 // All values treated as empty/missing

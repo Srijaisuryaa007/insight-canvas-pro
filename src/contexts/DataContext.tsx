@@ -46,9 +46,34 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const WORKSPACE_ID = 'default';
 const MAX_HISTORY = 20;
+const LS_KEY = 'datapulse_datasets';
+const LS_ACTIVE = 'datapulse_active_dataset';
+
+function saveToLocalStorage(datasets: Dataset[]) {
+  try {
+    // Store datasets with their data (limit rows to prevent quota issues)
+    const toStore = datasets.map(d => ({
+      ...d,
+      data: (d.data || []).slice(0, 5000), // cap at 5k rows for localStorage
+    }));
+    localStorage.setItem(LS_KEY, JSON.stringify(toStore));
+  } catch (e) {
+    console.warn('[DataContext] localStorage save failed (quota?):', e);
+  }
+}
+
+function loadFromLocalStorage(): Dataset[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('[DataContext] localStorage load failed:', e);
+  }
+  return [];
+}
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [datasets, setDatasets] = useState<Dataset[]>(() => loadFromLocalStorage());
   const [currentDataset, setCurrentDataset] = useState<Dataset | null>(null);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +120,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Redo', description: 'Reapplied data change.' });
   }, [currentDataset]);
 
-  useEffect(() => { refreshDatasets(); }, []);
+  // Persist datasets to localStorage whenever they change
+  useEffect(() => {
+    if (datasets.length > 0) saveToLocalStorage(datasets);
+  }, [datasets]);
+
+
 
   const refreshDatasets = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase || !user) return;
@@ -122,11 +152,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setCurrentData(data);
     setIsDataCleaned(false);
     setCleaningReport(null);
-    // Reset history for new dataset
     historyRef.current = [data];
     historyIndexRef.current = 0;
+    localStorage.setItem(LS_ACTIVE, dataset.id);
     console.log('Active dataset:', dataset.name, 'Rows:', data.length);
   }, []);
+
+  // Auto-restore last active dataset on mount
+  useEffect(() => {
+    if (currentDataset || datasets.length === 0) return;
+    const lastActiveId = localStorage.getItem(LS_ACTIVE);
+    const target = datasets.find(d => d.id === lastActiveId) || datasets[datasets.length - 1];
+    if (target?.data && target.data.length > 0) {
+      activateDataset(target, target.data);
+    }
+  }, [datasets, currentDataset, activateDataset]);
 
 
   const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[]): Promise<boolean> => {

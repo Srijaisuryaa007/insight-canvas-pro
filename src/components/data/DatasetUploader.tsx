@@ -25,7 +25,7 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
   const [success, setSuccess] = useState(false);
 
   const { uploadData, datasets } = useData();
-  const { canAddDataset, getCreditCost } = useSubscription();
+  const { canAddDataset, getCreditCost, hasPersistentStorage, maxStorageMB, canUploadFile, isFree } = useSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canUpload = canAddDataset(datasets.length);

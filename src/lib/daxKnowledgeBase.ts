@@ -376,28 +376,50 @@ Date = CALENDARAUTO()
 \`\`\``,
 };
 
+/** Checks if query contains the key as a whole word (not inside another word) */
+function matchesWholeWord(query: string, key: string): boolean {
+  const regex = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+  return regex.test(query);
+}
+
+/** Finds the best matching formula key — prefers longer (more specific) matches */
+function findBestFormulaMatch(query: string, formulas: Record<string, { formula: string; description: string; example: string; category: string }>): [string, typeof formulas[string]] | null {
+  const matches: [string, typeof formulas[string]][] = [];
+  for (const [key, info] of Object.entries(formulas)) {
+    if (matchesWholeWord(query, key)) {
+      matches.push([key, info]);
+    }
+  }
+  if (matches.length === 0) return null;
+  // Return longest match (most specific)
+  matches.sort((a, b) => b[0].length - a[0].length);
+  return matches[0];
+}
+
 export function searchDAXKnowledge(query: string): string | null {
   const lower = query.toLowerCase();
   
-  // Search formulas
-  for (const [key, info] of Object.entries(DAX_FORMULAS)) {
-    if (lower.includes(key)) {
-      return `**${info.formula}**\n\n${info.description}\n\n**Example:**\n\`\`\`dax\n${info.example}\n\`\`\`\n\n**Category:** ${info.category}`;
-    }
-  }
-  
-  // Search concepts
+  // Search concepts first (more specific multi-word keys)
   for (const [key, content] of Object.entries(DAX_CONCEPTS)) {
     if (lower.includes(key)) {
       return content;
     }
   }
   
-  // Search troubleshooting
-  for (const [key, content] of Object.entries(DAX_TROUBLESHOOTING)) {
-    if (lower.includes(key) || lower.includes('error') || lower.includes('problem') || lower.includes('issue') || lower.includes('not working')) {
-      return content;
+  // Search troubleshooting (only if user explicitly mentions issue-related words)
+  if (/\b(error|problem|issue|not working|fix|broken|wrong|debug|troubleshoot)\b/i.test(query)) {
+    for (const [key, content] of Object.entries(DAX_TROUBLESHOOTING)) {
+      if (lower.includes(key)) {
+        return content;
+      }
     }
+  }
+
+  // Search formulas with whole-word matching
+  const formulaMatch = findBestFormulaMatch(query, DAX_FORMULAS);
+  if (formulaMatch) {
+    const [, info] = formulaMatch;
+    return `**${info.formula}**\n\n${info.description}\n\n**Example:**\n\`\`\`dax\n${info.example}\n\`\`\`\n\n**Category:** ${info.category}`;
   }
   
   return null;

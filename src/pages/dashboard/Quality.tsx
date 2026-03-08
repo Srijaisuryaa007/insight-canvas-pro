@@ -1299,6 +1299,169 @@ export default function Quality() {
                         </CardContent>
                       </Card>
 
+                      {/* ═══ CHANGELOG — What Exactly Changed ═══ */}
+                      {(() => {
+                        const totalChanges = cleaningSummary.steps.reduce((a, s) => a + s.changesMade, 0);
+                        const allDetails = cleaningSummary.steps.flatMap(s => s.details.map(d => ({ ...d, stepName: s.name, stepNum: s.step, stepIcon: s.icon })));
+                        return (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-primary" />
+                                What Changed — {totalChanges} total changes across {cleaningSummary.steps.filter(s => s.changesMade > 0).length} steps
+                              </CardTitle>
+                              <p className="text-xs text-muted-foreground">Every change made to your data, step by step. Nothing is hidden.</p>
+                            </CardHeader>
+                            <CardContent>
+                              {/* Quick overview row */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                                {cleaningSummary.duplicatesRemoved > 0 && (
+                                  <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-xs">
+                                    <span className="font-bold text-destructive">{cleaningSummary.duplicatesRemoved}</span>
+                                    <span className="text-muted-foreground">duplicate rows removed</span>
+                                  </div>
+                                )}
+                                {cleaningSummary.missingFixed > 0 && (
+                                  <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 text-xs">
+                                    <span className="font-bold text-amber-600">{cleaningSummary.missingFixed}</span>
+                                    <span className="text-muted-foreground">missing values filled</span>
+                                  </div>
+                                )}
+                                {cleaningSummary.outliersCapped > 0 && (
+                                  <div className="flex items-center gap-2 p-2 rounded-lg bg-chart-1/10 text-xs">
+                                    <span className="font-bold text-chart-1">{cleaningSummary.outliersCapped}</span>
+                                    <span className="text-muted-foreground">outliers capped</span>
+                                  </div>
+                                )}
+                                {cleaningSummary.columnsDropped > 0 && (
+                                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted text-xs">
+                                    <span className="font-bold text-foreground">{cleaningSummary.columnsDropped}</span>
+                                    <span className="text-muted-foreground">useless columns dropped</span>
+                                  </div>
+                                )}
+                                {cleaningSummary.typesFixed > 0 && (
+                                  <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 text-xs">
+                                    <span className="font-bold text-primary">{cleaningSummary.typesFixed}</span>
+                                    <span className="text-muted-foreground">type conversions</span>
+                                  </div>
+                                )}
+                                {cleaningSummary.textStandardized > 0 && (
+                                  <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 text-xs">
+                                    <span className="font-bold text-emerald-600">{cleaningSummary.textStandardized}</span>
+                                    <span className="text-muted-foreground">text values standardized</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Step-by-step pipeline table */}
+                              <div className="overflow-x-auto border border-border rounded-lg">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="bg-muted/50 border-b border-border">
+                                      <th className="text-left p-2.5 font-semibold text-foreground w-8">#</th>
+                                      <th className="text-left p-2.5 font-semibold text-foreground">Pipeline Step</th>
+                                      <th className="text-left p-2.5 font-semibold text-foreground">What We Did</th>
+                                      <th className="text-right p-2.5 font-semibold text-foreground">Rows Before</th>
+                                      <th className="text-right p-2.5 font-semibold text-foreground">Rows After</th>
+                                      <th className="text-right p-2.5 font-semibold text-foreground">Changes</th>
+                                      <th className="text-center p-2.5 font-semibold text-foreground">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {cleaningSummary.steps.map((step, i) => (
+                                      <tr key={i} className={cn("border-b border-border/50", step.changesMade > 0 ? "bg-primary/[0.02]" : "")}>
+                                        <td className="p-2.5 font-mono text-muted-foreground">{step.step}</td>
+                                        <td className="p-2.5 font-medium">
+                                          <span className="mr-1.5">{step.icon}</span>{step.name}
+                                        </td>
+                                        <td className="p-2.5 text-muted-foreground max-w-[300px]">
+                                          {step.actions.length > 0 ? step.actions[0] : 'No changes needed'}
+                                          {step.actions.length > 1 && (
+                                            <span className="text-primary ml-1">+{step.actions.length - 1} more</span>
+                                          )}
+                                        </td>
+                                        <td className="p-2.5 text-right font-mono">{step.rowsBefore.toLocaleString()}</td>
+                                        <td className="p-2.5 text-right font-mono">
+                                          {step.rowsAfter.toLocaleString()}
+                                          {step.rowsBefore !== step.rowsAfter && (
+                                            <span className="text-destructive ml-1">(-{(step.rowsBefore - step.rowsAfter).toLocaleString()})</span>
+                                          )}
+                                        </td>
+                                        <td className="p-2.5 text-right">
+                                          <Badge variant={step.changesMade > 0 ? 'default' : 'outline'} className="text-[10px]">
+                                            {step.changesMade}
+                                          </Badge>
+                                        </td>
+                                        <td className="p-2.5 text-center">
+                                          {step.changesMade > 0 ? (
+                                            <CheckCircle className="h-4 w-4 text-emerald-500 inline" />
+                                          ) : (
+                                            <span className="text-muted-foreground">—</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="bg-muted/30 font-medium">
+                                      <td className="p-2.5" colSpan={3}>Total</td>
+                                      <td className="p-2.5 text-right font-mono">{cleaningSummary.rowsBefore.toLocaleString()}</td>
+                                      <td className="p-2.5 text-right font-mono">{cleaningSummary.rowsAfter.toLocaleString()}</td>
+                                      <td className="p-2.5 text-right">
+                                        <Badge className="text-[10px]">{totalChanges}</Badge>
+                                      </td>
+                                      <td className="p-2.5 text-center">
+                                        <CheckCircle className="h-4 w-4 text-emerald-500 inline" />
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+
+                              {/* Detailed before/after for each change */}
+                              {allDetails.length > 0 && (
+                                <div className="mt-4">
+                                  <p className="text-xs font-semibold text-foreground mb-2">Detailed Before → After (sample changes)</p>
+                                  <div className="overflow-x-auto border border-border rounded-lg max-h-[300px] overflow-y-auto">
+                                    <table className="w-full text-xs">
+                                      <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                                        <tr className="border-b border-border">
+                                          <th className="text-left p-2 font-semibold text-foreground">Step</th>
+                                          <th className="text-left p-2 font-semibold text-foreground">Column</th>
+                                          <th className="text-left p-2 font-semibold text-foreground">Before</th>
+                                          <th className="text-left p-2 font-semibold text-foreground">After</th>
+                                          <th className="text-left p-2 font-semibold text-foreground">Action Taken</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {allDetails.slice(0, 100).map((d, j) => (
+                                          <tr key={j} className="border-b border-border/30 hover:bg-muted/30">
+                                            <td className="p-2 text-muted-foreground whitespace-nowrap">
+                                              <span className="mr-1">{d.stepIcon}</span>{d.stepName}
+                                            </td>
+                                            <td className="p-2 font-medium">{d.column}</td>
+                                            <td className="p-2">
+                                              <span className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-mono">{d.before || '(empty)'}</span>
+                                            </td>
+                                            <td className="p-2">
+                                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-mono">{d.after || '(removed)'}</span>
+                                            </td>
+                                            <td className="p-2 text-muted-foreground">{d.action}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                    {allDetails.length > 100 && (
+                                      <p className="text-[10px] text-muted-foreground text-center py-2">Showing first 100 of {allDetails.length} changes</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })()}
+
                       {/* Health Score with breakdown */}
                       <Card className="bg-card border-border">
                         <CardContent className="py-6">
@@ -1329,107 +1492,6 @@ export default function Quality() {
                                   />
                                 </div>
                                 <span className="text-xs font-mono w-12 text-right">{item.score}/{item.max}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Summary Stats */}
-                      <Card className="bg-card border-border">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Rows</p>
-                              <p className="font-bold">{cleaningSummary.rowsBefore} → {cleaningSummary.rowsAfter}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Columns</p>
-                              <p className="font-bold">{cleaningSummary.colsBefore} → {cleaningSummary.colsAfter}</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Missing Fixed</p>
-                              <p className="font-bold">{cleaningSummary.missingFixed} values</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Duplicates Removed</p>
-                              <p className="font-bold">{cleaningSummary.duplicatesRemoved} rows (kept 1 each)</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Types Fixed</p>
-                              <p className="font-bold">{cleaningSummary.typesFixed} values</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Outliers Capped</p>
-                              <p className="font-bold">{cleaningSummary.outliersCapped} values</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Text Standardized</p>
-                              <p className="font-bold">{cleaningSummary.textStandardized} values</p>
-                            </div>
-                            <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">Columns Dropped / Features Added</p>
-                              <p className="font-bold">{cleaningSummary.columnsDropped} dropped / {cleaningSummary.featuresAdded.length} added</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Step-by-step Details with tables */}
-                      <Card className="bg-card border-border">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">Step-by-Step Details</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            {cleaningSummary.steps.map((step, i) => (
-                              <div key={i} className="p-4 rounded-lg border border-border bg-muted/10">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-medium text-sm">
-                                    {step.icon} Step {step.step}: {step.name}
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    {step.rowsBefore !== step.rowsAfter && (
-                                      <span className="text-xs text-muted-foreground">{step.rowsBefore} → {step.rowsAfter} rows</span>
-                                    )}
-                                    <Badge variant={step.changesMade > 0 ? 'default' : 'outline'} className="text-xs">
-                                      {step.changesMade} changes
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <ul className="space-y-1 mb-2">
-                                  {step.actions.map((action, j) => (
-                                    <li key={j} className="text-xs text-muted-foreground">• {action}</li>
-                                  ))}
-                                </ul>
-                                {/* Detail table */}
-                                {step.details && step.details.length > 0 && (
-                                  <div className="mt-2 overflow-x-auto">
-                                    <table className="w-full text-xs">
-                                      <thead>
-                                        <tr className="border-b border-border">
-                                          <th className="text-left p-1.5 font-medium text-muted-foreground">Column</th>
-                                          <th className="text-left p-1.5 font-medium text-muted-foreground">Before</th>
-                                          <th className="text-left p-1.5 font-medium text-muted-foreground">After</th>
-                                          <th className="text-left p-1.5 font-medium text-muted-foreground">Action</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {step.details.map((d, j) => (
-                                          <tr key={j} className="border-b border-border/30">
-                                            <td className="p-1.5 font-medium">{d.column}</td>
-                                            <td className="p-1.5 text-destructive">{d.before}</td>
-                                            <td className="p-1.5 text-emerald-500">{d.after}</td>
-                                            <td className="p-1.5 text-muted-foreground">{d.action}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
                               </div>
                             ))}
                           </div>

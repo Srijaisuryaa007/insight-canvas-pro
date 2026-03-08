@@ -24,6 +24,13 @@ interface VisualQueryBuilderProps {
 const AGGREGATIONS = ['NONE', 'SUM', 'COUNT', 'AVG', 'MIN', 'MAX', 'COUNT DISTINCT'];
 const OPERATORS = ['=', '!=', '>', '<', '>=', '<=', 'LIKE', 'NOT LIKE', 'IS NULL', 'IS NOT NULL', 'IN', 'BETWEEN'];
 
+/** Wraps column name in backticks if it contains spaces or special chars */
+function quoteCol(col: string): string {
+  if (col === '*') return col;
+  if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(col)) return col;
+  return `\`${col}\``;
+}
+
 export default function VisualQueryBuilder({ columns, onQueryChange }: VisualQueryBuilderProps) {
   const [selectedColumns, setSelectedColumns] = useState<ColumnSelection[]>([
     { id: 1, column: columns[0] || '', aggregation: 'NONE', alias: '' }

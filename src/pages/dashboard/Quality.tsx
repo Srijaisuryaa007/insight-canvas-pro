@@ -19,6 +19,7 @@ import { useDataQuality } from '@/hooks/useDataQuality';
 import { useSubscription } from '@/hooks/useSubscription';
 import { profileData, DataProfile } from '@/lib/dataProfiler';
 import { runFullCleaningPipeline, CleaningSummary, ColumnAnalysis } from '@/lib/dataCleaner';
+import { DuplicateReport } from '@/lib/duplicateEngine';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -398,12 +399,15 @@ export default function Quality() {
 
               {/* Tabs for Profile / Columns / Issues / Summary */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-4">
+                <TabsList className="w-full grid grid-cols-5">
                   <TabsTrigger value="profile" className="gap-1 text-xs">
                     <BarChart3 className="h-3 w-3" /> Profile
                   </TabsTrigger>
                   <TabsTrigger value="columns" className="gap-1 text-xs">
                     <Database className="h-3 w-3" /> Columns {cleaningSummary?.columnsNeedingDecision.length ? `(⚠️${cleaningSummary.columnsNeedingDecision.length})` : ''}
+                  </TabsTrigger>
+                  <TabsTrigger value="duplicates" className="gap-1 text-xs">
+                    <FileText className="h-3 w-3" /> Duplicates {cleaningSummary?.duplicateReport ? `(${cleaningSummary.duplicateReport.totalIssues})` : ''}
                   </TabsTrigger>
                   <TabsTrigger value="issues" className="gap-1 text-xs">
                     <AlertTriangle className="h-3 w-3" /> Issues {report ? `(${report.issues.length})` : ''}
@@ -550,6 +554,219 @@ export default function Quality() {
                       )}
                     </div>
                   )}
+                </TabsContent>
+
+                {/* DUPLICATES TAB */}
+                <TabsContent value="duplicates">
+                  {!cleaningSummary?.duplicateReport ? (
+                    <Card className="bg-card border-border">
+                      <CardContent className="py-12 text-center">
+                        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-medium">No Duplicate Analysis Yet</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Click "Full 8-Step Clean" to run comprehensive duplicate detection</p>
+                      </CardContent>
+                    </Card>
+                  ) : (() => {
+                    const dr = cleaningSummary.duplicateReport!;
+                    return (
+                      <div className="space-y-4">
+                        {/* Banner */}
+                        <Card className="bg-primary/5 border-primary/20">
+                          <CardContent className="py-4 text-center">
+                            <p className="text-lg font-bold">╔══ DUPLICATE ANALYSIS REPORT ══╗</p>
+                          </CardContent>
+                        </Card>
+
+                        {/* Summary Grid */}
+                        <Card className="bg-card border-border">
+                          <CardContent className="py-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                              <div className="p-3 rounded-lg bg-destructive/10">
+                                <p className="text-2xl font-bold text-destructive">{dr.fullDuplicates}</p>
+                                <p className="text-xs text-muted-foreground">🔴 Full Duplicates</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-amber-500/10">
+                                <p className="text-2xl font-bold text-amber-600">{Object.values(dr.partialDuplicates).reduce((a, b) => a + b, 0)}</p>
+                                <p className="text-xs text-muted-foreground">🟡 Partial Duplicates</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-amber-500/10">
+                                <p className="text-2xl font-bold text-amber-600">{dr.caseDuplicates + dr.whitespaceDuplicates + dr.formatDuplicates}</p>
+                                <p className="text-xs text-muted-foreground">🟡 Case/Space/Format</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-amber-500/10">
+                                <p className="text-2xl font-bold text-amber-600">{dr.typoDuplicates.reduce((a, t) => a + t.groups.length, 0)}</p>
+                                <p className="text-xs text-muted-foreground">🟡 Typo Groups</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-amber-500/10">
+                                <p className="text-2xl font-bold text-amber-600">{dr.duplicateColumns.length}</p>
+                                <p className="text-xs text-muted-foreground">🟡 Duplicate Columns</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-orange-500/10">
+                                <p className="text-2xl font-bold text-orange-600">{dr.nearDuplicates.length}</p>
+                                <p className="text-xs text-muted-foreground">🟠 Near Duplicates</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-muted/50 col-span-2">
+                                <p className="text-2xl font-bold">{dr.totalIssues}</p>
+                                <p className="text-xs text-muted-foreground">Total Issues Found</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Detailed Breakdown */}
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Scenario Breakdown</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b border-border">
+                                    <th className="text-left p-2 font-medium text-muted-foreground">Scenario</th>
+                                    <th className="text-left p-2 font-medium text-muted-foreground">Type</th>
+                                    <th className="text-right p-2 font-medium text-muted-foreground">Count</th>
+                                    <th className="text-left p-2 font-medium text-muted-foreground">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="border-b border-border/30">
+                                    <td className="p-2">1. Full Duplicates</td>
+                                    <td className="p-2">🔴 Exact row copies</td>
+                                    <td className="p-2 text-right font-bold">{dr.fullDuplicates}</td>
+                                    <td className="p-2">{dr.fullDuplicates > 0 ? '✅ Removed (kept 1 each)' : '—'}</td>
+                                  </tr>
+                                  {Object.entries(dr.partialDuplicates).map(([col, count]) => (
+                                    <tr key={col} className="border-b border-border/30">
+                                      <td className="p-2">2. Partial Duplicate</td>
+                                      <td className="p-2">🟡 Same {col}</td>
+                                      <td className="p-2 text-right font-bold">{count}</td>
+                                      <td className="p-2">✅ Removed (keep='first')</td>
+                                    </tr>
+                                  ))}
+                                  <tr className="border-b border-border/30">
+                                    <td className="p-2">3. Case Duplicates</td>
+                                    <td className="p-2">🟡 Different casing</td>
+                                    <td className="p-2 text-right font-bold">{dr.caseDuplicates}</td>
+                                    <td className="p-2">{dr.caseDuplicates > 0 ? '✅ Standardized + removed' : '—'}</td>
+                                  </tr>
+                                  <tr className="border-b border-border/30">
+                                    <td className="p-2">4. Whitespace Duplicates</td>
+                                    <td className="p-2">🟡 Extra spaces</td>
+                                    <td className="p-2 text-right font-bold">{dr.whitespaceDuplicates}</td>
+                                    <td className="p-2">{dr.whitespaceDuplicates > 0 ? '✅ Stripped + removed' : '—'}</td>
+                                  </tr>
+                                  {dr.typoDuplicates.map((t, i) => (
+                                    <tr key={i} className="border-b border-border/30">
+                                      <td className="p-2">5. Typo Duplicates</td>
+                                      <td className="p-2">🟡 "{t.column}" ({t.groups.length} groups)</td>
+                                      <td className="p-2 text-right font-bold">{t.groups.reduce((a, g) => a + g.similar.length, 0)}</td>
+                                      <td className="p-2">✅ Merged to canonical</td>
+                                    </tr>
+                                  ))}
+                                  <tr className="border-b border-border/30">
+                                    <td className="p-2">6. Format Duplicates</td>
+                                    <td className="p-2">🟡 Phone/date formats</td>
+                                    <td className="p-2 text-right font-bold">{dr.formatDuplicates}</td>
+                                    <td className="p-2">{dr.formatDuplicates > 0 ? '✅ Normalized + removed' : '—'}</td>
+                                  </tr>
+                                  {dr.duplicateColumns.map((dc, i) => (
+                                    <tr key={i} className="border-b border-border/30">
+                                      <td className="p-2">7. Duplicate Columns</td>
+                                      <td className="p-2">🟡 "{dc.col1}" = "{dc.col2}"</td>
+                                      <td className="p-2 text-right font-bold">1</td>
+                                      <td className="p-2">✅ Dropped "{dc.col2}"</td>
+                                    </tr>
+                                  ))}
+                                  <tr className="border-b border-border/30">
+                                    <td className="p-2">8. Near Duplicates</td>
+                                    <td className="p-2">🟠 ≥90% similar rows</td>
+                                    <td className="p-2 text-right font-bold">{dr.nearDuplicates.length}</td>
+                                    <td className="p-2">{dr.nearDuplicates.length > 0 ? '⚠️ Flagged for review' : '—'}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Typo Groups Detail */}
+                        {dr.typoDuplicates.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-base">🔤 Typo Groups Merged</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                {dr.typoDuplicates.flatMap(t => t.groups.map((g, i) => (
+                                  <div key={`${t.column}-${i}`} className="flex items-center gap-2 text-xs p-2 rounded bg-muted/30">
+                                    <Badge variant="outline" className="text-xs">{t.column}</Badge>
+                                    <span className="font-medium">"{g.original}"</span>
+                                    <span className="text-muted-foreground">←</span>
+                                    {g.similar.map((s, j) => (
+                                      <Badge key={j} variant="secondary" className="text-xs">"{s}" ({g.score}%)</Badge>
+                                    ))}
+                                  </div>
+                                )))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Near Duplicates Detail */}
+                        {dr.nearDuplicates.length > 0 && (
+                          <Card className="bg-card border-border">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-base">🟠 Near Duplicate Rows (Needs Review)</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-xs text-muted-foreground mb-3">These rows are ≥90% similar but NOT identical. Review before removing.</p>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border">
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Row A</th>
+                                      <th className="text-left p-2 font-medium text-muted-foreground">Row B</th>
+                                      <th className="text-right p-2 font-medium text-muted-foreground">Similarity</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {dr.nearDuplicates.map((nd, i) => (
+                                      <tr key={i} className="border-b border-border/30">
+                                        <td className="p-2">Row {nd.row1 + 1}</td>
+                                        <td className="p-2">Row {nd.row2 + 1}</td>
+                                        <td className="p-2 text-right font-bold text-orange-600">{nd.similarity}%</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Actions Log */}
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">✅ Actions Taken</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ul className="space-y-1">
+                              {dr.actions.map((a, i) => (
+                                <li key={i} className="text-xs text-muted-foreground">• {a}</li>
+                              ))}
+                            </ul>
+                            <div className="mt-4 flex gap-4 text-xs">
+                              <span>📊 Rows before: {cleaningSummary.rowsBefore}</span>
+                              <span>📊 Rows after: {cleaningSummary.rowsAfter}</span>
+                              <span>📊 Columns before: {cleaningSummary.colsBefore}</span>
+                              <span>📊 Columns after: {cleaningSummary.colsAfter}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    );
+                  })()}
                 </TabsContent>
 
                 {/* PROFILE TAB */}

@@ -21,7 +21,7 @@ export default function Copilot() {
   const availableModels = planConfig.aiModels;
 
   // Block free users from AI Copilot (temporarily disabled for API testing)
-  if (false && (isFree || !isAIAvailable())) {
+  if (isFree || !isAIAvailable()) {
     return (
       <div className="space-y-6">
         <div>

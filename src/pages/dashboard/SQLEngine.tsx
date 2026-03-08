@@ -144,17 +144,17 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
       const whereClause = query.substring(whereIdx + 7, whereEnd).trim();
 
       // Handle "IS NOT NULL"
-      const notNullMatch = whereClause.match(/(\w+)\s+IS\s+NOT\s+NULL/i);
+      const notNullMatch = whereClause.match(/`?([^`]+)`?\s+IS\s+NOT\s+NULL/i);
       if (notNullMatch) {
-        const actualCol = cols.find(c => c.toLowerCase() === notNullMatch[1].toLowerCase());
+        const actualCol = resolveColumnName(notNullMatch[1], cols);
         if (actualCol) filtered = filtered.filter(row => row[actualCol] !== null && row[actualCol] !== undefined && row[actualCol] !== '');
       }
 
       // Handle comparison operators
-      const condMatch = whereClause.match(/(\w+)\s*(=|!=|>|<|>=|<=|LIKE)\s*'?([^']*)'?/i);
+      const condMatch = whereClause.match(/`?([^`]+)`?\s*(=|!=|>|<|>=|<=|LIKE)\s*'?([^']*)'?/i);
       if (condMatch && !notNullMatch) {
         const [, col, op, val] = condMatch;
-        const actualCol = cols.find(c => c.toLowerCase() === col.toLowerCase());
+        const actualCol = resolveColumnName(col, cols);
         if (actualCol) {
           filtered = filtered.filter(row => {
             const rv = row[actualCol];

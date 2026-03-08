@@ -212,7 +212,7 @@ export async function exportPPTX(report: ReportData) {
     report.kpis.forEach((kpi, i) => {
       const col = i % 3;
       const row = Math.floor(i / 3);
-      kpiSlide.addShape(pptxgenjs.default.ShapeType.roundRect, {
+      kpiSlide.addShape('roundRect' as any, {
         x: 0.5 + col * 3.5, y: 1.2 + row * 2, w: 3, h: 1.5,
         fill: { color: 'F0F0FF' }, rectRadius: 0.1,
       });

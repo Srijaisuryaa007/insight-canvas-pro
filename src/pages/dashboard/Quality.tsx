@@ -623,7 +623,7 @@ export default function Quality() {
                               </div>
                               <div className="p-3 rounded-lg bg-orange-500/10">
                                 <p className="text-2xl font-bold text-orange-600">{dr.nearDuplicates.length}</p>
-                                <p className="text-xs text-muted-foreground">🟠 Near Duplicates</p>
+                                <p className="text-xs text-muted-foreground">Near Duplicates</p>
                               </div>
                               <div className="p-3 rounded-lg bg-muted/50 col-span-2">
                                 <p className="text-2xl font-bold">{dr.totalIssues}</p>

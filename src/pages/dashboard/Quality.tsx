@@ -1440,7 +1440,7 @@ export default function Quality() {
                       {cleaningSummary.flaggedRows.length > 0 && (
                         <Card className="bg-card border-border">
                           <CardHeader className="pb-3">
-                            <CardTitle className="text-base">⚠️ Flagged Values (Not Capped — Needs Review)</CardTitle>
+                            <CardTitle className="text-base">Flagged Values — Requires Manual Review</CardTitle>
                           </CardHeader>
                           <CardContent>
                             <div className="overflow-x-auto">

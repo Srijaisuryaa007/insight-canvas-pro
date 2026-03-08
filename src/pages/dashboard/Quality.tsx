@@ -619,7 +619,7 @@ export default function Quality() {
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{dr.duplicateColumns.length}</p>
-                                <p className="text-xs text-muted-foreground">🟡 Duplicate Columns</p>
+                                <p className="text-xs text-muted-foreground">Duplicate Columns</p>
                               </div>
                               <div className="p-3 rounded-lg bg-orange-500/10">
                                 <p className="text-2xl font-bold text-orange-600">{dr.nearDuplicates.length}</p>

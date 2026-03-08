@@ -1371,7 +1371,7 @@ export default function Quality() {
                               <p className="font-bold">{cleaningSummary.textStandardized} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Columns Dropped / Features Added</p>
+                              <p className="text-xs text-muted-foreground">Columns Dropped / Features Added</p>
                               <p className="font-bold">{cleaningSummary.columnsDropped} dropped / {cleaningSummary.featuresAdded.length} added</p>
                             </div>
                           </div>

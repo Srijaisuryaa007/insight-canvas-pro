@@ -9,6 +9,7 @@ import { askCopilot } from '@/lib/api';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { searchDAXKnowledge, DAX_FORMULAS, DAX_CONCEPTS, DAX_TROUBLESHOOTING } from '@/lib/daxKnowledgeBase';
 
 interface DAXMessage {
   id: string;

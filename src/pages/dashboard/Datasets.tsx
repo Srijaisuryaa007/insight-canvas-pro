@@ -34,7 +34,7 @@ export default function Datasets() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formulaEditorOpen, setFormulaEditorOpen] = useState(false);
   const [formulaColumns, setFormulaColumns] = useState<FormulaColumn[]>([]);
-  const [daxMeasures, setDaxMeasures] = useState<DAXMeasure[]>([]);
+  
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const navigate = useNavigate();

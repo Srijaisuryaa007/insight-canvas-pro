@@ -1,12 +1,12 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import GridLayout from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { useData } from '@/contexts/DataContext';
 import { DashboardWidget } from '@/types/dashboard';
 import { ChartRenderer } from '@/components/charts/ChartRenderer';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GripVertical, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { GripVertical, X, Maximize2, MoreHorizontal, BarChart3, Hash, Table2, LayoutDashboard, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function aggregateData(
@@ -47,11 +47,19 @@ function aggregateData(
   return result;
 }
 
+function formatNumber(val: number): string {
+  if (Math.abs(val) >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M';
+  if (Math.abs(val) >= 1_000) return (val / 1_000).toFixed(1) + 'K';
+  return val.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
 function KPIWidget({ widget, data }: { widget: DashboardWidget; data: Record<string, unknown>[] }) {
   const col = widget.config.kpiColumn || widget.config.yAxis;
-  const vals = col ? data.map(r => Number(r[col]) || 0) : [];
+  const vals = col ? data.map(r => Number(r[col]) || 0).filter(v => !isNaN(v)) : [];
+  const hasData = vals.length > 0 && col;
+
   let value = 0;
-  if (vals.length) {
+  if (hasData) {
     switch (widget.config.aggregation) {
       case 'avg': value = vals.reduce((a, b) => a + b, 0) / vals.length; break;
       case 'count': value = vals.length; break;
@@ -60,10 +68,18 @@ function KPIWidget({ widget, data }: { widget: DashboardWidget; data: Record<str
       default: value = vals.reduce((a, b) => a + b, 0);
     }
   }
+
+  const label = widget.config.title || (col ? col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'KPI');
+
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-1">
-      <span className="text-3xl font-bold text-foreground">{value.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-      <span className="text-xs text-muted-foreground">{widget.config.title || col || 'KPI'}</span>
+    <div className="flex flex-col items-center justify-center h-full gap-1.5 px-3">
+      <span className={cn("text-3xl font-bold", hasData ? "text-foreground" : "text-muted-foreground")}>
+        {hasData ? formatNumber(value) : '--'}
+      </span>
+      <span className="text-xs text-muted-foreground text-center leading-tight">{label}</span>
+      {!hasData && (
+        <span className="text-[10px] text-muted-foreground/60">Connect data to see value</span>
+      )}
     </div>
   );
 }
@@ -74,8 +90,8 @@ function TableWidget({ widget, data }: { widget: DashboardWidget; data: Record<s
   return (
     <div className="overflow-auto h-full">
       <table className="w-full text-xs">
-        <thead><tr>{cols.map(c => <th key={c} className="text-left p-1 border-b border-border text-muted-foreground font-medium">{c}</th>)}</tr></thead>
-        <tbody>{rows.map((r, i) => <tr key={i} className="hover:bg-muted/50">{cols.map(c => <td key={c} className="p-1 border-b border-border/50">{String(r[c] ?? '')}</td>)}</tr>)}</tbody>
+        <thead><tr>{cols.map(c => <th key={c} className="text-left p-1.5 border-b border-border text-muted-foreground font-medium sticky top-0 bg-card">{c}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={i} className="hover:bg-muted/50">{cols.map(c => <td key={c} className="p-1.5 border-b border-border/50">{String(r[c] ?? '')}</td>)}</tr>)}</tbody>
       </table>
     </div>
   );
@@ -88,11 +104,13 @@ function TextWidget({ widget }: { widget: DashboardWidget }) {
 
 interface DashboardCanvasProps {
   width: number;
+  onAddWidget?: (type: any, config?: any) => void;
 }
 
-export function DashboardCanvas({ width }: DashboardCanvasProps) {
+export function DashboardCanvas({ width, onAddWidget }: DashboardCanvasProps) {
   const { currentPage, selectedWidgetId, selectWidget, updateLayouts, removeWidget, crossFilter, setCrossFilter, zoom } = useDashboard();
   const { currentData } = useData();
+  const [hoveredWidget, setHoveredWidget] = useState<string | null>(null);
 
   const filteredData = useMemo(() => {
     if (!crossFilter) return currentData;
@@ -112,13 +130,12 @@ export function DashboardCanvas({ width }: DashboardCanvasProps) {
   }, [updateLayouts]);
 
   const handleDataClick = useCallback((widgetId: string, dataPoint: Record<string, unknown>) => {
-    // Cross-filter: find the first string key as the filter dimension
     const keys = Object.keys(dataPoint);
     const strKey = keys.find(k => typeof dataPoint[k] === 'string');
     if (!strKey) return;
     const val = String(dataPoint[strKey]);
     if (crossFilter?.key === strKey && crossFilter?.value === val) {
-      setCrossFilter(null); // toggle off
+      setCrossFilter(null);
     } else {
       setCrossFilter({ key: strKey, value: val });
     }
@@ -131,60 +148,90 @@ export function DashboardCanvas({ width }: DashboardCanvasProps) {
   const scaledWidth = Math.max(600, width * (100 / zoom));
   const cols = 12;
 
-  return (
-    <div className="flex-1 overflow-auto bg-muted/30 rounded-lg p-2" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
-      {currentPage.widgets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-96 text-muted-foreground gap-3">
-          <p className="text-lg font-medium">Empty Canvas</p>
-          <p className="text-sm">Add widgets from the toolbar above</p>
+  // Empty state
+  if (currentPage.widgets.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 rounded-lg gap-4 p-8">
+        <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border flex items-center justify-center">
+          <LayoutDashboard className="w-8 h-8 text-muted-foreground/50" />
         </div>
-      ) : (
-        <GridLayout
-          className="layout"
-          layout={layout}
-          cols={cols}
-          rowHeight={60}
-          width={scaledWidth}
-          onLayoutChange={handleLayoutChange}
-          draggableHandle=".drag-handle"
-          compactType="vertical"
-          isResizable
-          isDraggable
-          margin={[12, 12]}
-        >
-          {currentPage.widgets.map(widget => {
-            const isSelected = widget.id === selectedWidgetId;
-            return (
-              <div
-                key={widget.id}
-                className={cn(
-                  'rounded-lg border bg-card shadow-sm overflow-hidden transition-shadow cursor-pointer',
-                  isSelected ? 'ring-2 ring-primary border-primary' : 'border-border hover:shadow-md'
-                )}
-                onClick={(e) => { e.stopPropagation(); selectWidget(widget.id); }}
-              >
-                {/* Widget header with drag handle */}
-                <div className="drag-handle flex items-center justify-between px-2 py-1 bg-muted/50 cursor-grab active:cursor-grabbing border-b border-border/50">
-                  <div className="flex items-center gap-1">
-                    <GripVertical className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground truncate max-w-[150px]">{widget.config.title || widget.type}</span>
-                  </div>
+        <div className="text-center">
+          <p className="text-sm font-medium text-foreground">Your dashboard is empty</p>
+          <p className="text-xs text-muted-foreground mt-1">Add widgets to start visualizing your data</p>
+        </div>
+        {onAddWidget && (
+          <div className="flex items-center gap-2 mt-2">
+            <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => onAddWidget('kpi', { title: 'KPI' })}>
+              <Hash className="h-3.5 w-3.5" />KPI Card
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => onAddWidget('chart', { chartType: 'bar' })}>
+              <BarChart3 className="h-3.5 w-3.5" />Chart
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => onAddWidget('table', { title: 'Data Table' })}>
+              <Table2 className="h-3.5 w-3.5" />Table
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-auto bg-muted/20 rounded-lg p-2" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
+      <GridLayout
+        className="layout"
+        layout={layout}
+        cols={cols}
+        rowHeight={60}
+        width={scaledWidth}
+        onLayoutChange={handleLayoutChange}
+        draggableHandle=".drag-handle"
+        compactType="vertical"
+        isResizable
+        isDraggable
+        margin={[12, 12]}
+      >
+        {currentPage.widgets.map(widget => {
+          const isSelected = widget.id === selectedWidgetId;
+          const isHovered = widget.id === hoveredWidget;
+          return (
+            <div
+              key={widget.id}
+              className={cn(
+                'rounded-lg border bg-card overflow-hidden transition-all',
+                isSelected
+                  ? 'ring-2 ring-primary border-primary shadow-md'
+                  : isHovered
+                    ? 'border-muted-foreground/30 shadow-md'
+                    : 'border-border shadow-sm'
+              )}
+              onClick={(e) => { e.stopPropagation(); selectWidget(widget.id); }}
+              onMouseEnter={() => setHoveredWidget(widget.id)}
+              onMouseLeave={() => setHoveredWidget(null)}
+            >
+              {/* Widget header */}
+              <div className="drag-handle flex items-center justify-between px-2 py-1 bg-muted/30 cursor-grab active:cursor-grabbing border-b border-border/50">
+                <div className="flex items-center gap-1 min-w-0">
+                  <GripVertical className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                  <span className="text-[11px] font-medium text-muted-foreground truncate">{widget.config.title || widget.type}</span>
+                </div>
+                <div className={cn("flex items-center gap-0.5 transition-opacity", isHovered || isSelected ? "opacity-100" : "opacity-0")}>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeWidget(widget.id); }}
-                    className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-destructive"
+                    className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </div>
-                {/* Widget body */}
-                <div className="p-2 h-[calc(100%-28px)]">
-                  <WidgetBody widget={widget} data={filteredData} onDataClick={(dp) => handleDataClick(widget.id, dp)} />
-                </div>
               </div>
-            );
-          })}
-        </GridLayout>
-      )}
+              {/* Widget body */}
+              <div className="p-2 h-[calc(100%-28px)]">
+                <WidgetBody widget={widget} data={filteredData} onDataClick={(dp) => handleDataClick(widget.id, dp)} />
+              </div>
+            </div>
+          );
+        })}
+      </GridLayout>
     </div>
   );
 }

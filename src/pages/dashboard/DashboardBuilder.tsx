@@ -4,7 +4,6 @@ import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { DashboardCanvas } from '@/components/dashboard/DashboardCanvas';
 import { WidgetConfigPanel } from '@/components/dashboard/WidgetConfigPanel';
-import { WorkspacePanel, PanelPosition } from '@/components/dashboard/WorkspacePanel';
 import { PanelContent } from '@/components/dashboard/PanelContent';
 import TemplateGallery from '@/components/dashboard/TemplateGallery';
 import { DASHBOARD_TEMPLATES } from '@/lib/dashboardTemplates';
@@ -13,45 +12,38 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   LayoutDashboard, Plus, Undo2, Redo2, Save, ZoomIn, ZoomOut,
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
-  ChevronLeft, Download, FolderOpen, Lock, Image, Copy, FileText, Presentation, File,
-  PanelLeft, PanelRight, PanelTop, PanelBottom
+  ChevronLeft, ChevronRight, Download, FolderOpen, Lock, Copy, FileText, Presentation, File,
+  PanelLeft, Eye, RefreshCw, Database, X, Pencil, Check,
+  TrendingUp, SlidersHorizontal
 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const WIDGET_LIMITS: Record<string, number> = {
-  free: 6,
-  basic: 15,
-  pro: 40,
-  enterprise: Infinity,
+  free: 6, basic: 15, pro: 40, enterprise: Infinity,
 };
 
-// Panel layout persistence
-const PANEL_STORAGE_KEY = 'datapulse_panel_layout';
-
-interface PanelState {
-  activePanels: PanelPosition[];
-  sizes: Record<PanelPosition, number>;
-  collapsed: Record<PanelPosition, boolean>;
-}
-
-function loadPanelState(): PanelState {
-  try {
-    const saved = localStorage.getItem(PANEL_STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return { activePanels: ['left'], sizes: { left: 240, right: 240, top: 200, bottom: 200 }, collapsed: { left: false, right: false, top: false, bottom: false } };
-}
-
-function savePanelState(state: PanelState) {
-  localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify(state));
+// Human-readable title generator
+function generateWidgetTitle(chartType: string, xAxis?: string, yAxis?: string): string {
+  const typeNames: Record<string, string> = {
+    bar: 'Distribution', line: 'Trend', pie: 'Breakdown', area: 'Growth',
+    scatter: 'Correlation', donut: 'Composition', radar: 'Profile',
+    'stacked-bar': 'Stacked View', 'grouped-bar': 'Comparison',
+    funnel: 'Funnel', treemap: 'Treemap', histogram: 'Histogram',
+    heatmap: 'Heatmap', waterfall: 'Waterfall', gauge: 'Gauge',
+  };
+  const suffix = typeNames[chartType] || 'Chart';
+  const col = (yAxis || xAxis || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase());
+  return col ? `${col} ${suffix}` : suffix;
 }
 
 export default function DashboardBuilder() {
@@ -64,38 +56,20 @@ export default function DashboardBuilder() {
     saveDashboard, savedDashboards, deleteSavedDashboard,
     zoom, setZoom, crossFilter, setCrossFilter,
   } = useDashboard();
-  const { currentDataset, currentData } = useData();
+  const { currentDataset, currentData, datasets, selectDataset } = useData();
   const { user } = useAuth();
   const { plan, isChartAvailable } = useSubscription();
   const [showTemplates, setShowTemplates] = useState(!dashboard);
   const [showSaved, setShowSaved] = useState(false);
   const [newPageName, setNewPageName] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState('');
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [pageNameValue, setPageNameValue] = useState('');
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
-
-  // Panel state
-  const [panelState, setPanelState] = useState<PanelState>(loadPanelState);
-
-  useEffect(() => { savePanelState(panelState); }, [panelState]);
-
-  const togglePanel = useCallback((pos: PanelPosition) => {
-    setPanelState(prev => {
-      const isActive = prev.activePanels.includes(pos);
-      return {
-        ...prev,
-        activePanels: isActive ? prev.activePanels.filter(p => p !== pos) : [...prev.activePanels, pos],
-        collapsed: { ...prev.collapsed, [pos]: false },
-      };
-    });
-  }, []);
-
-  const toggleCollapse = useCallback((pos: PanelPosition) => {
-    setPanelState(prev => ({ ...prev, collapsed: { ...prev.collapsed, [pos]: !prev.collapsed[pos] } }));
-  }, []);
-
-  const resizePanel = useCallback((pos: PanelPosition, size: number) => {
-    setPanelState(prev => ({ ...prev, sizes: { ...prev.sizes, [pos]: size } }));
-  }, []);
 
   const widgetLimit = WIDGET_LIMITS[plan] || 6;
   const currentWidgetCount = currentPage?.widgets.length || 0;
@@ -113,13 +87,16 @@ export default function DashboardBuilder() {
 
   const handleAddWidget = useCallback((type: any, config?: any) => {
     if (!canAddWidget) {
-      toast({ title: 'Widget Limit Reached', description: `${plan} plan allows ${widgetLimit} widgets per page. Upgrade for more.`, variant: 'destructive' });
+      toast({ title: 'Widget Limit Reached', description: `${plan} plan allows ${widgetLimit} widgets per page.`, variant: 'destructive' });
       return;
     }
-    // Check chart availability for chart widgets
     if (type === 'chart' && config?.chartType && !isChartAvailable(config.chartType)) {
       toast({ title: 'Chart Locked', description: `${config.chartType} is not available on your ${plan} plan.`, variant: 'destructive' });
       return;
+    }
+    // Auto-generate readable title for charts
+    if (type === 'chart' && config?.chartType) {
+      config.title = config.title || generateWidgetTitle(config.chartType, config.xAxis, config.yAxis);
     }
     addWidget(type, config);
   }, [canAddWidget, plan, widgetLimit, isChartAvailable, addWidget]);
@@ -133,13 +110,11 @@ export default function DashboardBuilder() {
     const numCols = keys.filter(k => typeof currentData[0][k] === 'number');
     const strCols = keys.filter(k => typeof currentData[0][k] === 'string');
 
-    // Remove existing chart widgets to make room
     const existingCharts = currentPage?.widgets.filter(w => w.type === 'chart') || [];
     existingCharts.forEach(w => removeWidget(w.id));
 
     const chartTypes = ['bar', 'line', 'pie', 'area', 'scatter'];
     const added: string[] = [];
-    // After removing, recalculate remaining non-chart widgets
     const nonChartCount = (currentPage?.widgets.length || 0) - existingCharts.length;
     chartTypes.forEach((type, i) => {
       if (nonChartCount + added.length >= widgetLimit) return;
@@ -147,11 +122,11 @@ export default function DashboardBuilder() {
       const xAxis = strCols[0] || keys[0];
       const yAxis = numCols[i % numCols.length] || numCols[0] || keys[1];
       if (xAxis && yAxis) {
-        addWidget('chart', { chartType: type, title: `${type.charAt(0).toUpperCase() + type.slice(1)}: ${yAxis}`, xAxis, yAxis, aggregation: 'sum' });
+        addWidget('chart', { chartType: type, title: generateWidgetTitle(type, xAxis, yAxis), xAxis, yAxis, aggregation: 'sum' });
         added.push(type);
       }
     });
-    toast({ title: 'Charts Replaced', description: `Replaced with ${added.length} recommended charts from your dataset.` });
+    toast({ title: 'Charts Replaced', description: `Replaced with ${added.length} recommended charts.` });
   }, [currentData, currentPage, widgetLimit, isChartAvailable, addWidget, removeWidget]);
 
   const handleExportDashboard = useCallback(async (format: 'pdf' | 'pptx' | 'docx') => {
@@ -209,6 +184,41 @@ render();
     toast({ title: 'Dashboard Exported', description: 'Interactive HTML file downloaded.' });
   }, [dashboard, currentData]);
 
+  const handleSave = useCallback(() => {
+    saveDashboard();
+    setLastSaved(new Date());
+  }, [saveDashboard]);
+
+  const getTimeSinceSave = () => {
+    if (!lastSaved) return null;
+    const diff = Math.floor((Date.now() - lastSaved.getTime()) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+  };
+
+  const startEditName = () => {
+    setNameValue(dashboard?.name || '');
+    setEditingName(true);
+  };
+
+  const saveName = () => {
+    if (nameValue.trim()) renameDashboard(nameValue.trim());
+    setEditingName(false);
+  };
+
+  const startEditPageName = (pageId: string, currentName: string) => {
+    setEditingPageId(pageId);
+    setPageNameValue(currentName);
+  };
+
+  const savePageName = () => {
+    if (editingPageId && pageNameValue.trim()) {
+      renamePage(editingPageId, pageNameValue.trim());
+    }
+    setEditingPageId(null);
+  };
+
   // Template picker
   if (showTemplates && !dashboard) {
     return (
@@ -227,7 +237,7 @@ render();
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Saved Dashboards</h1>
+            <h1 className="text-2xl font-bold text-foreground">Saved Dashboards</h1>
             <p className="text-muted-foreground">{savedDashboards.length} dashboard(s)</p>
           </div>
           <Button variant="outline" onClick={() => { setShowSaved(false); setShowTemplates(true); }}>
@@ -243,7 +253,7 @@ render();
                 onClick={() => { loadDashboard(d); setShowSaved(false); }}>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">{d.name}</CardTitle></CardHeader>
                 <CardContent>
-                  <p className="text-xs text-muted-foreground">{d.pages.length} page(s) • Updated {new Date(d.updatedAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground">{d.pages.length} page(s) · Updated {new Date(d.updatedAt).toLocaleDateString()}</p>
                   <Button variant="destructive" size="sm" className="mt-3 w-full" onClick={e => { e.stopPropagation(); deleteSavedDashboard(d.id); }}>
                     <Trash2 className="h-3 w-3 mr-1" />Delete
                   </Button>
@@ -258,177 +268,229 @@ render();
 
   // Main builder
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] gap-3">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => { closeDashboard(); setShowTemplates(true); }}>
-          <ChevronLeft className="h-4 w-4 mr-1" />Templates
+    <div className="flex flex-col h-[calc(100vh-7rem)] gap-0">
+      {/* ─── Top Toolbar ─────────────────────────────────────── */}
+      <div className="flex items-center gap-2 px-2 py-2 border-b border-border bg-card rounded-t-lg flex-wrap">
+        {/* Left: Back + Name + Breadcrumb */}
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { closeDashboard(); setShowTemplates(true); }}>
+          <ChevronLeft className="h-4 w-4" />
         </Button>
-        <Separator orientation="vertical" className="h-6" />
-        <Input value={dashboard?.name || ''} onChange={e => renameDashboard(e.target.value)} className="h-8 w-48 text-sm font-medium" />
-        <Separator orientation="vertical" className="h-6" />
 
-        {/* Add widgets */}
-        <Button variant="outline" size="sm" onClick={() => handleAddWidget('chart', { chartType: 'bar', title: 'Chart' })} disabled={!canAddWidget}>
-          <BarChart3 className="h-4 w-4 mr-1" />Chart
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => handleAddWidget('kpi', { title: 'KPI' })} disabled={!canAddWidget}>
-          <Hash className="h-4 w-4 mr-1" />KPI
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => handleAddWidget('table', { title: 'Table' })} disabled={!canAddWidget}>
-          <Table2 className="h-4 w-4 mr-1" />Table
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => handleAddWidget('text', { textContent: 'Text', title: '' })} disabled={!canAddWidget}>
-          <Type className="h-4 w-4 mr-1" />Text
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleCopyFromVisualization} disabled={!currentData.length}>
-          <Copy className="h-4 w-4 mr-1" />Copy from Viz
-        </Button>
+        <div className="flex flex-col min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-1">
+              <Input
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveName()}
+                onBlur={saveName}
+                autoFocus
+                className="h-7 w-48 text-sm font-semibold"
+              />
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveName}>
+                <Check className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <button onClick={startEditName} className="flex items-center gap-1.5 text-left group">
+              <span className="text-sm font-semibold text-foreground truncate max-w-[200px]">{dashboard?.name || 'Untitled'}</span>
+              <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          )}
+          <span className="text-[10px] text-muted-foreground">Dashboards / {dashboard?.name || 'Untitled'}</span>
+        </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* Middle: Add Widget dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5" disabled={!canAddWidget}>
+              <Plus className="h-3.5 w-3.5" />Add Widget
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuItem onClick={() => handleAddWidget('chart', { chartType: 'bar' })}>
+              <BarChart3 className="h-4 w-4 mr-2" />Chart
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAddWidget('kpi', { title: 'KPI' })}>
+              <Hash className="h-4 w-4 mr-2" />KPI Card
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAddWidget('table', { title: 'Data Table' })}>
+              <Table2 className="h-4 w-4 mr-2" />Table
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAddWidget('text', { textContent: 'Text block', title: '' })}>
+              <Type className="h-4 w-4 mr-2" />Text Block
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleCopyFromVisualization} disabled={!currentData.length}>
+              <Copy className="h-4 w-4 mr-2" />Auto-generate from Data
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {!canAddWidget && (
-          <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30">
-            <Lock className="h-3 w-3 mr-1" />{widgetLimit} widget limit
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            <Lock className="h-3 w-3 mr-1" />{widgetLimit} limit
           </Badge>
         )}
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Panel layout toggles */}
-        <Button variant={panelState.activePanels.includes('left') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('left')} title="Left Panel">
-          <PanelLeft className="h-4 w-4" />
-        </Button>
-        <Button variant={panelState.activePanels.includes('right') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('right')} title="Right Panel">
-          <PanelRight className="h-4 w-4" />
-        </Button>
-        <Button variant={panelState.activePanels.includes('top') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('top')} title="Top Panel">
-          <PanelTop className="h-4 w-4" />
-        </Button>
-        <Button variant={panelState.activePanels.includes('bottom') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('bottom')} title="Bottom Panel">
-          <PanelBottom className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="h-6" />
-
+        {/* Undo/Redo/Zoom */}
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(50, zoom - 10))}><ZoomOut className="h-4 w-4" /></Button>
-        <span className="text-xs text-muted-foreground w-10 text-center">{zoom}%</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.min(150, zoom + 10))}><ZoomIn className="h-4 w-4" /></Button>
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom(Math.max(50, zoom - 10))}><ZoomOut className="h-3.5 w-3.5" /></Button>
+          <span className="text-[10px] text-muted-foreground w-8 text-center">{zoom}%</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom(Math.min(150, zoom + 10))}><ZoomIn className="h-3.5 w-3.5" /></Button>
+        </div>
 
         <div className="flex-1" />
 
-        {crossFilter && (
-          <Badge variant="secondary" className="gap-1">
-            <FilterIcon className="h-3 w-3" />{crossFilter.key}: {crossFilter.value}
-            <button onClick={() => setCrossFilter(null)} className="ml-1 hover:text-destructive">×</button>
-          </Badge>
+        {/* Right: Save status + Export + Save */}
+        {lastSaved && (
+          <span className="text-[10px] text-muted-foreground hidden sm:inline">Saved {getTimeSinceSave()}</span>
         )}
+
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setFilterPanelOpen(!filterPanelOpen)}>
+          <FilterIcon className="h-3.5 w-3.5" />Filters
+        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={!currentData.length}>
-              <Download className="h-4 w-4 mr-1" />Export
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={!currentData.length}>
+              <Download className="h-3.5 w-3.5" />Export
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-popover">
+          <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={handleExportHTML}><File className="h-4 w-4 mr-2" />HTML (Interactive)</DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExportDashboard('pdf')}><FileText className="h-4 w-4 mr-2" />PDF Report</DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExportDashboard('pptx')}><Presentation className="h-4 w-4 mr-2" />PowerPoint</DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExportDashboard('docx')}><FileText className="h-4 w-4 mr-2" />Word Document</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button size="sm" onClick={saveDashboard}>
-          <Save className="h-4 w-4 mr-1" />Save
+
+        <Button size="sm" className="gap-1.5 text-xs" onClick={handleSave}>
+          <Save className="h-3.5 w-3.5" />Save
         </Button>
       </div>
 
-      {/* Page tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      {/* ─── Info Bar ────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-3 py-1.5 border-b border-border bg-muted/30 text-xs flex-wrap">
+        {currentDataset && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-card border border-border">
+            <Database className="h-3 w-3 text-muted-foreground" />
+            <span className="text-foreground font-medium">{currentDataset.name}</span>
+          </div>
+        )}
+        {!currentDataset && datasets.length > 0 && (
+          <span className="text-muted-foreground">No dataset selected</span>
+        )}
+        <span className="text-muted-foreground">{currentWidgetCount} widget{currentWidgetCount !== 1 ? 's' : ''}</span>
+
+        {crossFilter && (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20">
+            <FilterIcon className="h-3 w-3 text-primary" />
+            <span className="text-foreground">{crossFilter.key}: {crossFilter.value}</span>
+            <button onClick={() => setCrossFilter(null)} className="ml-1 text-muted-foreground hover:text-destructive">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Page Tabs ───────────────────────────────────────── */}
+      <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-card overflow-x-auto">
         {dashboard?.pages.map(p => (
-          <div key={p.id} className="flex items-center gap-1">
-            <Button variant={p.id === currentPageId ? 'default' : 'outline'} size="sm" className="text-xs h-7" onClick={() => setCurrentPage(p.id)}>
-              {p.name}
-            </Button>
-            {dashboard.pages.length > 1 && (
-              <button onClick={() => removePage(p.id)} className="text-muted-foreground hover:text-destructive">
-                <Trash2 className="h-3 w-3" />
+          <div key={p.id} className="flex items-center">
+            {editingPageId === p.id ? (
+              <div className="flex items-center gap-0.5">
+                <Input
+                  value={pageNameValue}
+                  onChange={e => setPageNameValue(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && savePageName()}
+                  onBlur={savePageName}
+                  autoFocus
+                  className="h-7 w-28 text-xs"
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setCurrentPage(p.id)}
+                onDoubleClick={() => startEditPageName(p.id, p.name)}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-colors relative",
+                  p.id === currentPageId
+                    ? "text-foreground bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                {p.name}
+                {p.id === currentPageId && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-0.5 bg-primary rounded-full" />
+                )}
+              </button>
+            )}
+            {dashboard.pages.length > 1 && p.id === currentPageId && (
+              <button onClick={() => removePage(p.id)} className="ml-0.5 p-0.5 text-muted-foreground hover:text-destructive rounded">
+                <X className="h-3 w-3" />
               </button>
             )}
           </div>
         ))}
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-xs h-7"><Plus className="h-3 w-3 mr-1" />Page</Button>
+            <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-muted-foreground">
+              <Plus className="h-3 w-3" />
+            </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Add Page</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>New Page</DialogTitle></DialogHeader>
             <div className="flex gap-2">
-              <Input value={newPageName} onChange={e => setNewPageName(e.target.value)} placeholder="Page name" />
+              <Input value={newPageName} onChange={e => setNewPageName(e.target.value)} placeholder="Page name" onKeyDown={e => { if (e.key === 'Enter' && newPageName.trim()) { addPage(newPageName.trim()); setNewPageName(''); } }} />
               <Button onClick={() => { if (newPageName.trim()) { addPage(newPageName.trim()); setNewPageName(''); } }}>Add</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Workspace with panels */}
-      <div className="flex flex-col flex-1 overflow-hidden gap-1">
-        {/* Top panel */}
-        {panelState.activePanels.includes('top') && (
-          <WorkspacePanel
-            position="top"
-            collapsed={panelState.collapsed.top}
-            onToggle={() => toggleCollapse('top')}
-            size={panelState.sizes.top}
-            onResize={(s) => resizePanel('top', s)}
-          >
-            <PanelContent />
-          </WorkspacePanel>
+      {/* ─── Canvas Area ─────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden" ref={containerRef}>
+        {/* Filter sidebar (pushes canvas) */}
+        {filterPanelOpen && (
+          <div className="w-64 shrink-0 border-r border-border bg-card overflow-y-auto">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+              <span className="text-xs font-semibold text-foreground">Filters</span>
+              <div className="flex items-center gap-2">
+                {crossFilter && (
+                  <button onClick={() => setCrossFilter(null)} className="text-[10px] text-primary hover:underline">Clear all</button>
+                )}
+                <button onClick={() => setFilterPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-3">
+              <PanelContent />
+            </div>
+          </div>
         )}
 
-        {/* Middle row: left + canvas + right */}
-        <div className="flex gap-1 flex-1 overflow-hidden" ref={containerRef}>
-          {panelState.activePanels.includes('left') && (
-            <WorkspacePanel
-              position="left"
-              collapsed={panelState.collapsed.left}
-              onToggle={() => toggleCollapse('left')}
-              size={panelState.sizes.left}
-              onResize={(s) => resizePanel('left', s)}
-            >
-              <PanelContent />
-            </WorkspacePanel>
-          )}
+        {/* Main canvas */}
+        <div className="flex-1 flex gap-0 overflow-hidden min-w-0">
+          <DashboardCanvas
+            width={containerWidth - (filterPanelOpen ? 256 : 0) - (selectedWidgetId ? 288 : 0)}
+            onAddWidget={handleAddWidget}
+          />
 
-          <div className="flex-1 flex gap-3 overflow-hidden min-w-0">
-            <DashboardCanvas width={selectedWidgetId ? containerWidth - 300 : containerWidth} />
-            {selectedWidgetId && <WidgetConfigPanel />}
-          </div>
-
-          {panelState.activePanels.includes('right') && (
-            <WorkspacePanel
-              position="right"
-              collapsed={panelState.collapsed.right}
-              onToggle={() => toggleCollapse('right')}
-              size={panelState.sizes.right}
-              onResize={(s) => resizePanel('right', s)}
-            >
-              <PanelContent />
-            </WorkspacePanel>
+          {/* Widget settings (pushes canvas from right) */}
+          {selectedWidgetId && (
+            <div className="w-72 shrink-0 border-l border-border bg-card overflow-y-auto">
+              <WidgetConfigPanel />
+            </div>
           )}
         </div>
-
-        {/* Bottom panel */}
-        {panelState.activePanels.includes('bottom') && (
-          <WorkspacePanel
-            position="bottom"
-            collapsed={panelState.collapsed.bottom}
-            onToggle={() => toggleCollapse('bottom')}
-            size={panelState.sizes.bottom}
-            onResize={(s) => resizePanel('bottom', s)}
-          >
-            <PanelContent />
-          </WorkspacePanel>
-        )}
       </div>
     </div>
   );

@@ -1351,7 +1351,7 @@ export default function Quality() {
                               <p className="font-bold">{cleaningSummary.colsBefore} → {cleaningSummary.colsAfter}</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Missing Fixed</p>
+                              <p className="text-xs text-muted-foreground">Missing Fixed</p>
                               <p className="font-bold">{cleaningSummary.missingFixed} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">

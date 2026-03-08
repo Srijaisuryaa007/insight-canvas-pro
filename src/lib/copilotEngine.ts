@@ -832,6 +832,9 @@ export interface RecommendedQuery {
 
 export function generateRecommendedQueries(schema: DataSchema): RecommendedQuery[] {
   const { tableName, columns } = schema;
+  const t = tableName || 'data';
+  /** Backtick-wrap column names for safe SQL */
+  const q = (c: string) => `\`${c}\``;
   const numCols = columns.filter(c => c.type === 'number').map(c => c.name);
   const strCols = columns.filter(c => c.type === 'string').map(c => c.name);
   const dateCols = columns.filter(c => c.type === 'date').map(c => c.name);
@@ -841,171 +844,188 @@ export function generateRecommendedQueries(schema: DataSchema): RecommendedQuery
   const queries: RecommendedQuery[] = [];
 
   // ── Basic (Level 1) ──
-  queries.push({ category: 'Basic', label: 'Preview all data (100 rows)', sql: `SELECT *\nFROM ${tableName}\nLIMIT 100`, level: 'Level 1' });
-  queries.push({ category: 'Basic', label: 'Count total rows', sql: `SELECT COUNT(*) AS total_rows\nFROM ${tableName}`, level: 'Level 1' });
+  queries.push({ category: 'Basic', label: 'Preview all data (100 rows)', sql: `SELECT *\nFROM ${t}\nLIMIT 100`, level: 'Level 1' });
+  queries.push({ category: 'Basic', label: 'Count total rows', sql: `SELECT COUNT(*) AS total_rows\nFROM ${t}`, level: 'Level 1' });
   if (numCols.length > 0) {
-    queries.push({ category: 'Basic', label: 'Select numeric columns', sql: `SELECT ${numCols.slice(0, 4).join(', ')}\nFROM ${tableName}\nLIMIT 100`, level: 'Level 1' });
+    queries.push({ category: 'Basic', label: 'Select numeric columns', sql: `SELECT ${numCols.slice(0, 4).map(q).join(', ')}\nFROM ${t}\nLIMIT 100`, level: 'Level 1' });
   }
   if (strCols.length > 0) {
-    queries.push({ category: 'Basic', label: 'Select text columns', sql: `SELECT ${strCols.slice(0, 4).join(', ')}\nFROM ${tableName}\nLIMIT 100`, level: 'Level 1' });
+    queries.push({ category: 'Basic', label: 'Select text columns', sql: `SELECT ${strCols.slice(0, 4).map(q).join(', ')}\nFROM ${t}\nLIMIT 100`, level: 'Level 1' });
   }
-  // Unique values for EACH string column
   for (const dim of strCols.slice(0, 3)) {
-    queries.push({ category: 'Basic', label: `Unique ${dim} values`, sql: `SELECT DISTINCT ${dim}\nFROM ${tableName}\nORDER BY ${dim}`, level: 'Level 1' });
+    queries.push({ category: 'Basic', label: `Unique ${dim} values`, sql: `SELECT DISTINCT ${q(dim)}\nFROM ${t}\nORDER BY ${q(dim)}`, level: 'Level 1' });
   }
 
-  // ── Aggregation (Level 2) — spread across ALL numeric columns ──
+  // ── Aggregation (Level 2) ──
   for (const m of numCols.slice(0, 4)) {
-    queries.push({ category: 'Aggregation', label: `Total ${m}`, sql: `SELECT SUM(${m}) AS total_${m}\nFROM ${tableName}`, level: 'Level 2' });
-    queries.push({ category: 'Aggregation', label: `Average ${m}`, sql: `SELECT AVG(${m}) AS avg_${m}\nFROM ${tableName}`, level: 'Level 2' });
+    queries.push({ category: 'Aggregation', label: `Total ${m}`, sql: `SELECT SUM(${q(m)}) AS total_${m.replace(/[^a-zA-Z0-9_]/g, '_')}\nFROM ${t}`, level: 'Level 2' });
+    queries.push({ category: 'Aggregation', label: `Average ${m}`, sql: `SELECT AVG(${q(m)}) AS avg_${m.replace(/[^a-zA-Z0-9_]/g, '_')}\nFROM ${t}`, level: 'Level 2' });
   }
   if (numCols.length >= 2) {
-    queries.push({ category: 'Aggregation', label: 'Full stats all columns', sql: `SELECT\n  ${numCols.slice(0, 5).map(c => `SUM(${c}) AS total_${c}`).join(',\n  ')}\nFROM ${tableName}`, level: 'Level 2' });
-    queries.push({ category: 'Aggregation', label: 'Min & Max all columns', sql: `SELECT\n  ${numCols.slice(0, 4).map(c => `MIN(${c}) AS min_${c}, MAX(${c}) AS max_${c}`).join(',\n  ')}\nFROM ${tableName}`, level: 'Level 2' });
+    queries.push({ category: 'Aggregation', label: 'Full stats all columns', sql: `SELECT\n  ${numCols.slice(0, 5).map(c => `SUM(${q(c)}) AS total_${c.replace(/[^a-zA-Z0-9_]/g, '_')}`).join(',\n  ')}\nFROM ${t}`, level: 'Level 2' });
+    queries.push({ category: 'Aggregation', label: 'Min & Max all columns', sql: `SELECT\n  ${numCols.slice(0, 4).map(c => `MIN(${q(c)}) AS min_${c.replace(/[^a-zA-Z0-9_]/g, '_')}, MAX(${q(c)}) AS max_${c.replace(/[^a-zA-Z0-9_]/g, '_')}`).join(',\n  ')}\nFROM ${t}`, level: 'Level 2' });
   }
-  // GROUP BY each string column with each numeric column
   for (const dim of strCols.slice(0, 2)) {
     for (const m of numCols.slice(0, 3)) {
-      queries.push({ category: 'Aggregation', label: `${m} by ${dim}`, sql: `SELECT ${dim}, SUM(${m}) AS total_${m}\nFROM ${tableName}\nGROUP BY ${dim}\nORDER BY total_${m} DESC`, level: 'Level 2' });
+      const sa = m.replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Aggregation', label: `${m} by ${dim}`, sql: `SELECT ${q(dim)}, SUM(${q(m)}) AS total_${sa}\nFROM ${t}\nGROUP BY ${q(dim)}\nORDER BY total_${sa} DESC`, level: 'Level 2' });
     }
-    queries.push({ category: 'Aggregation', label: `Count records by ${dim}`, sql: `SELECT ${dim}, COUNT(*) AS record_count\nFROM ${tableName}\nGROUP BY ${dim}\nORDER BY record_count DESC`, level: 'Level 2' });
+    queries.push({ category: 'Aggregation', label: `Count records by ${dim}`, sql: `SELECT ${q(dim)}, COUNT(*) AS record_count\nFROM ${t}\nGROUP BY ${q(dim)}\nORDER BY record_count DESC`, level: 'Level 2' });
   }
   if (strCols.length >= 2 && numCols.length > 0) {
-    queries.push({ category: 'Aggregation', label: `${numCols[0]} by ${strCols[0]} and ${strCols[1]}`, sql: `SELECT ${strCols[0]}, ${strCols[1]}, SUM(${numCols[0]}) AS total_${numCols[0]}\nFROM ${tableName}\nGROUP BY ${strCols[0]}, ${strCols[1]}\nORDER BY total_${numCols[0]} DESC`, level: 'Level 2' });
+    const sa = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+    queries.push({ category: 'Aggregation', label: `${numCols[0]} by ${strCols[0]} and ${strCols[1]}`, sql: `SELECT ${q(strCols[0])}, ${q(strCols[1])}, SUM(${q(numCols[0])}) AS total_${sa}\nFROM ${t}\nGROUP BY ${q(strCols[0])}, ${q(strCols[1])}\nORDER BY total_${sa} DESC`, level: 'Level 2' });
   }
 
-  // ── Filtering (Level 3) — spread across columns ──
+  // ── Filtering (Level 3) ──
   for (const m of numCols.slice(0, 3)) {
-    queries.push({ category: 'Filtering', label: `${m} above average`, sql: `SELECT *\nFROM ${tableName}\nWHERE ${m} > (SELECT AVG(${m}) FROM ${tableName})\nORDER BY ${m} DESC\nLIMIT 50`, level: 'Level 3' });
+    queries.push({ category: 'Filtering', label: `${m} above average`, sql: `SELECT *\nFROM ${t}\nWHERE ${q(m)} > (SELECT AVG(${q(m)}) FROM ${t})\nORDER BY ${q(m)} DESC\nLIMIT 50`, level: 'Level 3' });
   }
   if (numCols.length > 0) {
-    queries.push({ category: 'Filtering', label: `Top 20% by ${numCols[0]}`, sql: `SELECT *\nFROM ${tableName}\nWHERE ${numCols[0]} > (SELECT MAX(${numCols[0]}) * 0.8 FROM ${tableName})\nORDER BY ${numCols[0]} DESC`, level: 'Level 3' });
-    queries.push({ category: 'Filtering', label: `Zero or null ${numCols[0]}`, sql: `SELECT *\nFROM ${tableName}\nWHERE ${numCols[0]} = 0 OR ${numCols[0]} IS NULL`, level: 'Level 3' });
+    queries.push({ category: 'Filtering', label: `Top 20% by ${numCols[0]}`, sql: `SELECT *\nFROM ${t}\nWHERE ${q(numCols[0])} > (SELECT MAX(${q(numCols[0])}) * 0.8 FROM ${t})\nORDER BY ${q(numCols[0])} DESC`, level: 'Level 3' });
+    queries.push({ category: 'Filtering', label: `Zero or null ${numCols[0]}`, sql: `SELECT *\nFROM ${t}\nWHERE ${q(numCols[0])} = 0 OR ${q(numCols[0])} IS NULL`, level: 'Level 3' });
   }
   for (const dim of strCols.slice(0, 2)) {
-    queries.push({ category: 'Filtering', label: `Filter by specific ${dim}`, sql: `SELECT *\nFROM ${tableName}\nWHERE ${dim} = 'value'\nORDER BY ${numCols[0] || firstCol} DESC\nLIMIT 50`, level: 'Level 3' });
+    queries.push({ category: 'Filtering', label: `Filter by specific ${dim}`, sql: `SELECT *\nFROM ${t}\nWHERE ${q(dim)} = 'value'\nORDER BY ${q(numCols[0] || firstCol)} DESC\nLIMIT 50`, level: 'Level 3' });
   }
   if (dateCols.length > 0) {
-    queries.push({ category: 'Filtering', label: 'Recent records', sql: `SELECT *\nFROM ${tableName}\nORDER BY ${dateCols[0]} DESC\nLIMIT 50`, level: 'Level 3' });
-    queries.push({ category: 'Filtering', label: 'Oldest records', sql: `SELECT *\nFROM ${tableName}\nORDER BY ${dateCols[0]} ASC\nLIMIT 50`, level: 'Level 3' });
+    queries.push({ category: 'Filtering', label: 'Recent records', sql: `SELECT *\nFROM ${t}\nORDER BY ${q(dateCols[0])} DESC\nLIMIT 50`, level: 'Level 3' });
+    queries.push({ category: 'Filtering', label: 'Oldest records', sql: `SELECT *\nFROM ${t}\nORDER BY ${q(dateCols[0])} ASC\nLIMIT 50`, level: 'Level 3' });
   }
   if (numCols.length >= 2) {
-    queries.push({ category: 'Filtering', label: `Where ${numCols[0]} > ${numCols[1]}`, sql: `SELECT *\nFROM ${tableName}\nWHERE ${numCols[0]} > ${numCols[1]}\nORDER BY ${numCols[0]} DESC\nLIMIT 50`, level: 'Level 3' });
+    queries.push({ category: 'Filtering', label: `Where ${numCols[0]} > ${numCols[1]}`, sql: `SELECT *\nFROM ${t}\nWHERE ${q(numCols[0])} > ${q(numCols[1])}\nORDER BY ${q(numCols[0])} DESC\nLIMIT 50`, level: 'Level 3' });
   }
 
-  // ── Ranking (Level 4) — across columns ──
+  // ── Ranking (Level 4) ──
   for (const dim of strCols.slice(0, 2)) {
     for (const m of numCols.slice(0, 2)) {
-      queries.push({ category: 'Ranking', label: `Top 10 ${dim} by ${m}`, sql: `SELECT ${dim}, SUM(${m}) AS total_${m}\nFROM ${tableName}\nGROUP BY ${dim}\nORDER BY total_${m} DESC\nLIMIT 10`, level: 'Level 4' });
-      queries.push({ category: 'Ranking', label: `Bottom 5 ${dim} by ${m}`, sql: `SELECT ${dim}, SUM(${m}) AS total_${m}\nFROM ${tableName}\nGROUP BY ${dim}\nORDER BY total_${m} ASC\nLIMIT 5`, level: 'Level 4' });
+      const sa = m.replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Ranking', label: `Top 10 ${dim} by ${m}`, sql: `SELECT ${q(dim)}, SUM(${q(m)}) AS total_${sa}\nFROM ${t}\nGROUP BY ${q(dim)}\nORDER BY total_${sa} DESC\nLIMIT 10`, level: 'Level 4' });
+      queries.push({ category: 'Ranking', label: `Bottom 5 ${dim} by ${m}`, sql: `SELECT ${q(dim)}, SUM(${q(m)}) AS total_${sa}\nFROM ${t}\nGROUP BY ${q(dim)}\nORDER BY total_${sa} ASC\nLIMIT 5`, level: 'Level 4' });
     }
-    queries.push({ category: 'Ranking', label: `Top 3 ${dim} by count`, sql: `SELECT ${dim}, COUNT(*) AS record_count\nFROM ${tableName}\nGROUP BY ${dim}\nORDER BY record_count DESC\nLIMIT 3`, level: 'Level 4' });
+    queries.push({ category: 'Ranking', label: `Top 3 ${dim} by count`, sql: `SELECT ${q(dim)}, COUNT(*) AS record_count\nFROM ${t}\nGROUP BY ${q(dim)}\nORDER BY record_count DESC\nLIMIT 3`, level: 'Level 4' });
   }
 
   // ── Percentage & Ratio (Level 4) ──
   for (const dim of strCols.slice(0, 2)) {
     if (numCols.length > 0) {
-      queries.push({ category: 'Percentage & Ratio', label: `% share of ${numCols[0]} by ${dim}`, sql: `SELECT ${dim},\n  SUM(${numCols[0]}) AS total_${numCols[0]},\n  SUM(${numCols[0]}) * 100.0 / (SELECT SUM(${numCols[0]}) FROM ${tableName}) AS pct_share\nFROM ${tableName}\nGROUP BY ${dim}\nORDER BY pct_share DESC`, level: 'Level 4' });
+      const sa = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Percentage & Ratio', label: `% share of ${numCols[0]} by ${dim}`, sql: `SELECT ${q(dim)},\n  SUM(${q(numCols[0])}) AS total_${sa},\n  SUM(${q(numCols[0])}) * 100.0 / (SELECT SUM(${q(numCols[0])}) FROM ${t}) AS pct_share\nFROM ${t}\nGROUP BY ${q(dim)}\nORDER BY pct_share DESC`, level: 'Level 4' });
     }
   }
   if (numCols.length >= 2) {
-    queries.push({ category: 'Percentage & Ratio', label: `${numCols[0]} to ${numCols[1]} ratio`, sql: `SELECT ${strCols[0] || firstCol},\n  ${numCols[0]},\n  ${numCols[1]},\n  ROUND(${numCols[0]} * 1.0 / NULLIF(${numCols[1]}, 0), 2) AS ratio\nFROM ${tableName}\nORDER BY ratio DESC\nLIMIT 50`, level: 'Level 4' });
-    queries.push({ category: 'Percentage & Ratio', label: `Margin (${numCols[0]} - ${numCols[1]})`, sql: `SELECT ${strCols[0] || firstCol},\n  ${numCols[0]},\n  ${numCols[1]},\n  (${numCols[0]} - ${numCols[1]}) AS margin\nFROM ${tableName}\nORDER BY margin DESC\nLIMIT 50`, level: 'Level 4' });
+    const sa0 = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+    const sa1 = numCols[1].replace(/[^a-zA-Z0-9_]/g, '_');
+    queries.push({ category: 'Percentage & Ratio', label: `${numCols[0]} to ${numCols[1]} ratio`, sql: `SELECT ${q(strCols[0] || firstCol)},\n  ${q(numCols[0])},\n  ${q(numCols[1])},\n  ROUND(${q(numCols[0])} * 1.0 / NULLIF(${q(numCols[1])}, 0), 2) AS ratio\nFROM ${t}\nORDER BY ratio DESC\nLIMIT 50`, level: 'Level 4' });
+    queries.push({ category: 'Percentage & Ratio', label: `Margin (${numCols[0]} - ${numCols[1]})`, sql: `SELECT ${q(strCols[0] || firstCol)},\n  ${q(numCols[0])},\n  ${q(numCols[1])},\n  (${q(numCols[0])} - ${q(numCols[1])}) AS margin\nFROM ${t}\nORDER BY margin DESC\nLIMIT 50`, level: 'Level 4' });
   }
 
-  // ── Trend Analysis (Level 5) — across date + each numeric col ──
+  // ── Trend Analysis (Level 5) ──
   for (const dc of dateCols.slice(0, 2)) {
     for (const m of numCols.slice(0, 3)) {
-      queries.push({ category: 'Trend Analysis', label: `Daily ${m} by ${dc}`, sql: `SELECT ${dc}, SUM(${m}) AS total_${m}\nFROM ${tableName}\nGROUP BY ${dc}\nORDER BY ${dc}`, level: 'Level 5' });
+      const sa = m.replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Trend Analysis', label: `Daily ${m} by ${dc}`, sql: `SELECT ${q(dc)}, SUM(${q(m)}) AS total_${sa}\nFROM ${t}\nGROUP BY ${q(dc)}\nORDER BY ${q(dc)}`, level: 'Level 5' });
     }
-    queries.push({ category: 'Trend Analysis', label: `Daily record count by ${dc}`, sql: `SELECT ${dc}, COUNT(*) AS daily_count\nFROM ${tableName}\nGROUP BY ${dc}\nORDER BY ${dc}`, level: 'Level 5' });
+    queries.push({ category: 'Trend Analysis', label: `Daily record count by ${dc}`, sql: `SELECT ${q(dc)}, COUNT(*) AS daily_count\nFROM ${t}\nGROUP BY ${q(dc)}\nORDER BY ${q(dc)}`, level: 'Level 5' });
     if (strCols.length > 0 && numCols.length > 0) {
-      queries.push({ category: 'Trend Analysis', label: `${numCols[0]} by ${dc} and ${strCols[0]}`, sql: `SELECT ${dc}, ${strCols[0]}, SUM(${numCols[0]}) AS total_${numCols[0]}\nFROM ${tableName}\nGROUP BY ${dc}, ${strCols[0]}\nORDER BY ${dc}`, level: 'Level 5' });
+      const sa = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Trend Analysis', label: `${numCols[0]} by ${dc} and ${strCols[0]}`, sql: `SELECT ${q(dc)}, ${q(strCols[0])}, SUM(${q(numCols[0])}) AS total_${sa}\nFROM ${t}\nGROUP BY ${q(dc)}, ${q(strCols[0])}\nORDER BY ${q(dc)}`, level: 'Level 5' });
     }
   }
 
-  // ── Window Functions (Level 6) — across columns ──
+  // ── Window Functions (Level 6) ──
   for (const m of numCols.slice(0, 2)) {
     const orderCol = dateCols[0] || strCols[0] || firstCol;
-    queries.push({ category: 'Window Functions', label: `Running total of ${m}`, sql: `SELECT ${orderCol},\n  ${m},\n  SUM(${m}) OVER (ORDER BY ${orderCol}) AS running_total\nFROM ${tableName}\nORDER BY ${orderCol}`, level: 'Level 6' });
+    queries.push({ category: 'Window Functions', label: `Running total of ${m}`, sql: `SELECT ${q(orderCol)},\n  ${q(m)},\n  SUM(${q(m)}) OVER (ORDER BY ${q(orderCol)}) AS running_total\nFROM ${t}\nORDER BY ${q(orderCol)}`, level: 'Level 6' });
   }
   for (const dim of strCols.slice(0, 2)) {
     for (const m of numCols.slice(0, 2)) {
-      queries.push({ category: 'Window Functions', label: `Rank ${dim} by ${m}`, sql: `SELECT ${dim},\n  SUM(${m}) AS total_${m},\n  RANK() OVER (ORDER BY SUM(${m}) DESC) AS rank\nFROM ${tableName}\nGROUP BY ${dim}\nORDER BY rank`, level: 'Level 6' });
+      const sa = m.replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Window Functions', label: `Rank ${dim} by ${m}`, sql: `SELECT ${q(dim)},\n  SUM(${q(m)}) AS total_${sa},\n  RANK() OVER (ORDER BY SUM(${q(m)}) DESC) AS rank\nFROM ${t}\nGROUP BY ${q(dim)}\nORDER BY rank`, level: 'Level 6' });
     }
   }
   if (dateCols.length > 0 && numCols.length > 0) {
     const dc = dateCols[0];
     const m = numCols[0];
-    queries.push({ category: 'Window Functions', label: `${m} growth (LAG)`, sql: `SELECT ${dc},\n  ${m},\n  LAG(${m}) OVER (ORDER BY ${dc}) AS prev_${m},\n  ${m} - LAG(${m}) OVER (ORDER BY ${dc}) AS growth\nFROM ${tableName}\nORDER BY ${dc}`, level: 'Level 6' });
-    queries.push({ category: 'Window Functions', label: `Moving average (3 period) ${m}`, sql: `SELECT ${dc},\n  ${m},\n  AVG(${m}) OVER (ORDER BY ${dc} ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_avg_3\nFROM ${tableName}\nORDER BY ${dc}`, level: 'Level 6' });
-    queries.push({ category: 'Window Functions', label: `Cumulative % of ${m}`, sql: `SELECT ${dc},\n  ${m},\n  SUM(${m}) OVER (ORDER BY ${dc}) * 100.0 / SUM(${m}) OVER () AS cumulative_pct\nFROM ${tableName}\nORDER BY ${dc}`, level: 'Level 6' });
+    const sa = m.replace(/[^a-zA-Z0-9_]/g, '_');
+    queries.push({ category: 'Window Functions', label: `${m} growth (LAG)`, sql: `SELECT ${q(dc)},\n  ${q(m)},\n  LAG(${q(m)}) OVER (ORDER BY ${q(dc)}) AS prev_${sa},\n  ${q(m)} - LAG(${q(m)}) OVER (ORDER BY ${q(dc)}) AS growth\nFROM ${t}\nORDER BY ${q(dc)}`, level: 'Level 6' });
+    queries.push({ category: 'Window Functions', label: `Moving average (3 period) ${m}`, sql: `SELECT ${q(dc)},\n  ${q(m)},\n  AVG(${q(m)}) OVER (ORDER BY ${q(dc)} ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_avg_3\nFROM ${t}\nORDER BY ${q(dc)}`, level: 'Level 6' });
+    queries.push({ category: 'Window Functions', label: `Cumulative % of ${m}`, sql: `SELECT ${q(dc)},\n  ${q(m)},\n  SUM(${q(m)}) OVER (ORDER BY ${q(dc)}) * 100.0 / SUM(${q(m)}) OVER () AS cumulative_pct\nFROM ${t}\nORDER BY ${q(dc)}`, level: 'Level 6' });
     if (numCols.length >= 2) {
-      queries.push({ category: 'Window Functions', label: `${numCols[1]} growth (LAG)`, sql: `SELECT ${dc},\n  ${numCols[1]},\n  LAG(${numCols[1]}) OVER (ORDER BY ${dc}) AS prev_${numCols[1]},\n  ${numCols[1]} - LAG(${numCols[1]}) OVER (ORDER BY ${dc}) AS growth\nFROM ${tableName}\nORDER BY ${dc}`, level: 'Level 6' });
+      const sa1 = numCols[1].replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Window Functions', label: `${numCols[1]} growth (LAG)`, sql: `SELECT ${q(dc)},\n  ${q(numCols[1])},\n  LAG(${q(numCols[1])}) OVER (ORDER BY ${q(dc)}) AS prev_${sa1},\n  ${q(numCols[1])} - LAG(${q(numCols[1])}) OVER (ORDER BY ${q(dc)}) AS growth\nFROM ${t}\nORDER BY ${q(dc)}`, level: 'Level 6' });
     }
   }
   for (const dim of strCols.slice(0, 2)) {
     if (numCols.length > 0) {
-      queries.push({ category: 'Window Functions', label: `% of total ${numCols[0]} per ${dim}`, sql: `SELECT ${dim},\n  ${numCols[0]},\n  ${numCols[0]} * 100.0 / SUM(${numCols[0]}) OVER () AS pct_of_total\nFROM ${tableName}\nORDER BY pct_of_total DESC`, level: 'Level 6' });
+      queries.push({ category: 'Window Functions', label: `% of total ${numCols[0]} per ${dim}`, sql: `SELECT ${q(dim)},\n  ${q(numCols[0])},\n  ${q(numCols[0])} * 100.0 / SUM(${q(numCols[0])}) OVER () AS pct_of_total\nFROM ${t}\nORDER BY pct_of_total DESC`, level: 'Level 6' });
     }
   }
 
   // ── Statistical (Level 5) ──
   for (const m of numCols.slice(0, 2)) {
     if (strCols.length > 0) {
-      queries.push({ category: 'Statistical', label: `${m} stats by ${strCols[0]}`, sql: `SELECT ${strCols[0]},\n  COUNT(*) AS count,\n  SUM(${m}) AS total,\n  AVG(${m}) AS average,\n  MIN(${m}) AS min_val,\n  MAX(${m}) AS max_val\nFROM ${tableName}\nGROUP BY ${strCols[0]}\nORDER BY total DESC`, level: 'Level 5' });
+      queries.push({ category: 'Statistical', label: `${m} stats by ${strCols[0]}`, sql: `SELECT ${q(strCols[0])},\n  COUNT(*) AS count,\n  SUM(${q(m)}) AS total,\n  AVG(${q(m)}) AS average,\n  MIN(${q(m)}) AS min_val,\n  MAX(${q(m)}) AS max_val\nFROM ${t}\nGROUP BY ${q(strCols[0])}\nORDER BY total DESC`, level: 'Level 5' });
     }
   }
   if (numCols.length >= 2) {
-    queries.push({ category: 'Statistical', label: `Compare ${numCols[0]} vs ${numCols[1]}`, sql: `SELECT\n  SUM(${numCols[0]}) AS ${numCols[0]}_total,\n  SUM(${numCols[1]}) AS ${numCols[1]}_total,\n  SUM(${numCols[0]}) - SUM(${numCols[1]}) AS difference\nFROM ${tableName}`, level: 'Level 5' });
+    const sa0 = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+    const sa1 = numCols[1].replace(/[^a-zA-Z0-9_]/g, '_');
+    queries.push({ category: 'Statistical', label: `Compare ${numCols[0]} vs ${numCols[1]}`, sql: `SELECT\n  SUM(${q(numCols[0])}) AS ${sa0}_total,\n  SUM(${q(numCols[1])}) AS ${sa1}_total,\n  SUM(${q(numCols[0])}) - SUM(${q(numCols[1])}) AS difference\nFROM ${t}`, level: 'Level 5' });
   }
 
   // ── Data Quality (Level 3) ──
-  queries.push({ category: 'Data Quality', label: 'Null count per column', sql: `SELECT\n  ${allCols.slice(0, 6).map(c => `SUM(CASE WHEN ${c} IS NULL THEN 1 ELSE 0 END) AS null_${c}`).join(',\n  ')}\nFROM ${tableName}`, level: 'Level 3' });
+  queries.push({ category: 'Data Quality', label: 'Null count per column', sql: `SELECT\n  ${allCols.slice(0, 6).map(c => `SUM(CASE WHEN ${q(c)} IS NULL THEN 1 ELSE 0 END) AS null_${c.replace(/[^a-zA-Z0-9_]/g, '_')}`).join(',\n  ')}\nFROM ${t}`, level: 'Level 3' });
   for (const dim of strCols.slice(0, 2)) {
-    queries.push({ category: 'Data Quality', label: `Duplicate ${dim} values`, sql: `SELECT ${dim}, COUNT(*) AS occurrences\nFROM ${tableName}\nGROUP BY ${dim}\nHAVING COUNT(*) > 1\nORDER BY occurrences DESC`, level: 'Level 3' });
+    queries.push({ category: 'Data Quality', label: `Duplicate ${dim} values`, sql: `SELECT ${q(dim)}, COUNT(*) AS occurrences\nFROM ${t}\nGROUP BY ${q(dim)}\nHAVING COUNT(*) > 1\nORDER BY occurrences DESC`, level: 'Level 3' });
   }
   for (const m of numCols.slice(0, 2)) {
-    queries.push({ category: 'Data Quality', label: `Outliers in ${m}`, sql: `SELECT *\nFROM ${tableName}\nWHERE ${m} > (SELECT AVG(${m}) + 2 * AVG(${m}) FROM ${tableName})\nORDER BY ${m} DESC\nLIMIT 20`, level: 'Level 3' });
+    queries.push({ category: 'Data Quality', label: `Outliers in ${m}`, sql: `SELECT *\nFROM ${t}\nWHERE ${q(m)} > (SELECT AVG(${q(m)}) + 2 * AVG(${q(m)}) FROM ${t})\nORDER BY ${q(m)} DESC\nLIMIT 20`, level: 'Level 3' });
   }
 
   // ── Grouping & HAVING (Level 4) ──
   for (const dim of strCols.slice(0, 2)) {
     if (numCols.length > 0) {
-      queries.push({ category: 'Grouping & HAVING', label: `${dim} with high total ${numCols[0]}`, sql: `SELECT ${dim}, SUM(${numCols[0]}) AS total_${numCols[0]}\nFROM ${tableName}\nGROUP BY ${dim}\nHAVING SUM(${numCols[0]}) > (SELECT AVG(${numCols[0]}) FROM ${tableName})\nORDER BY total_${numCols[0]} DESC`, level: 'Level 4' });
+      const sa = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'Grouping & HAVING', label: `${dim} with high total ${numCols[0]}`, sql: `SELECT ${q(dim)}, SUM(${q(numCols[0])}) AS total_${sa}\nFROM ${t}\nGROUP BY ${q(dim)}\nHAVING SUM(${q(numCols[0])}) > (SELECT AVG(${q(numCols[0])}) FROM ${t})\nORDER BY total_${sa} DESC`, level: 'Level 4' });
     }
-    queries.push({ category: 'Grouping & HAVING', label: `${dim} with multiple records`, sql: `SELECT ${dim}, COUNT(*) AS record_count\nFROM ${tableName}\nGROUP BY ${dim}\nHAVING COUNT(*) > 1\nORDER BY record_count DESC`, level: 'Level 4' });
+    queries.push({ category: 'Grouping & HAVING', label: `${dim} with multiple records`, sql: `SELECT ${q(dim)}, COUNT(*) AS record_count\nFROM ${t}\nGROUP BY ${q(dim)}\nHAVING COUNT(*) > 1\nORDER BY record_count DESC`, level: 'Level 4' });
   }
 
   // ── CASE Statements (Level 5) ──
   for (const m of numCols.slice(0, 2)) {
-    queries.push({ category: 'CASE Statements', label: `Categorize ${m} (High/Med/Low)`, sql: `SELECT ${strCols[0] || firstCol},\n  ${m},\n  CASE\n    WHEN ${m} >= (SELECT MAX(${m}) * 0.75 FROM ${tableName}) THEN 'High'\n    WHEN ${m} >= (SELECT MAX(${m}) * 0.25 FROM ${tableName}) THEN 'Medium'\n    ELSE 'Low'\n  END AS ${m}_category\nFROM ${tableName}\nORDER BY ${m} DESC`, level: 'Level 5' });
+    queries.push({ category: 'CASE Statements', label: `Categorize ${m} (High/Med/Low)`, sql: `SELECT ${q(strCols[0] || firstCol)},\n  ${q(m)},\n  CASE\n    WHEN ${q(m)} >= (SELECT MAX(${q(m)}) * 0.75 FROM ${t}) THEN 'High'\n    WHEN ${q(m)} >= (SELECT MAX(${q(m)}) * 0.25 FROM ${t}) THEN 'Medium'\n    ELSE 'Low'\n  END AS ${m.replace(/[^a-zA-Z0-9_]/g, '_')}_category\nFROM ${t}\nORDER BY ${q(m)} DESC`, level: 'Level 5' });
   }
 
   // ── CTE (Level 7) ──
   for (const dim of strCols.slice(0, 2)) {
     if (numCols.length > 0) {
       const m = numCols[0];
-      queries.push({ category: 'CTE', label: `Top 5 ${dim} by ${m} (CTE)`, sql: `WITH ranked AS (\n  SELECT ${dim},\n    SUM(${m}) AS total_${m},\n    RANK() OVER (ORDER BY SUM(${m}) DESC) AS rank\n  FROM ${tableName}\n  GROUP BY ${dim}\n)\n\nSELECT *\nFROM ranked\nWHERE rank <= 5`, level: 'Level 7' });
-      queries.push({ category: 'CTE', label: `${dim} full summary (CTE)`, sql: `WITH summary AS (\n  SELECT ${dim},\n    COUNT(*) AS records,\n    SUM(${m}) AS total_${m},\n    AVG(${m}) AS avg_${m},\n    MAX(${m}) AS max_${m}\n  FROM ${tableName}\n  GROUP BY ${dim}\n)\n\nSELECT *\nFROM summary\nORDER BY total_${m} DESC`, level: 'Level 7' });
+      const sa = m.replace(/[^a-zA-Z0-9_]/g, '_');
+      queries.push({ category: 'CTE', label: `Top 5 ${dim} by ${m} (CTE)`, sql: `WITH ranked AS (\n  SELECT ${q(dim)},\n    SUM(${q(m)}) AS total_${sa},\n    RANK() OVER (ORDER BY SUM(${q(m)}) DESC) AS rank\n  FROM ${t}\n  GROUP BY ${q(dim)}\n)\n\nSELECT *\nFROM ranked\nWHERE rank <= 5`, level: 'Level 7' });
+      queries.push({ category: 'CTE', label: `${dim} full summary (CTE)`, sql: `WITH summary AS (\n  SELECT ${q(dim)},\n    COUNT(*) AS records,\n    SUM(${q(m)}) AS total_${sa},\n    AVG(${q(m)}) AS avg_${sa},\n    MAX(${q(m)}) AS max_${sa}\n  FROM ${t}\n  GROUP BY ${q(dim)}\n)\n\nSELECT *\nFROM summary\nORDER BY total_${sa} DESC`, level: 'Level 7' });
     }
   }
   if (dateCols.length > 0 && numCols.length > 0 && strCols.length > 0) {
-    queries.push({ category: 'CTE', label: `Monthly growth (CTE)`, sql: `WITH monthly AS (\n  SELECT ${dateCols[0]} AS period,\n    SUM(${numCols[0]}) AS total_${numCols[0]}\n  FROM ${tableName}\n  GROUP BY ${dateCols[0]}\n)\n\nSELECT period,\n  total_${numCols[0]},\n  LAG(total_${numCols[0]}) OVER (ORDER BY period) AS prev,\n  total_${numCols[0]} - LAG(total_${numCols[0]}) OVER (ORDER BY period) AS growth\nFROM monthly\nORDER BY period`, level: 'Level 7' });
+    const sa = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+    queries.push({ category: 'CTE', label: 'Monthly growth (CTE)', sql: `WITH monthly AS (\n  SELECT ${q(dateCols[0])} AS period,\n    SUM(${q(numCols[0])}) AS total_${sa}\n  FROM ${t}\n  GROUP BY ${q(dateCols[0])}\n)\n\nSELECT period,\n  total_${sa},\n  LAG(total_${sa}) OVER (ORDER BY period) AS prev,\n  total_${sa} - LAG(total_${sa}) OVER (ORDER BY period) AS growth\nFROM monthly\nORDER BY period`, level: 'Level 7' });
   }
 
   // ── Comparison (Level 5) ──
   if (numCols.length >= 2) {
-    queries.push({ category: 'Comparison', label: `${numCols[0]} vs ${numCols[1]} by ${strCols[0] || firstCol}`, sql: `SELECT ${strCols[0] || firstCol},\n  SUM(${numCols[0]}) AS total_${numCols[0]},\n  SUM(${numCols[1]}) AS total_${numCols[1]}\nFROM ${tableName}\nGROUP BY ${strCols[0] || firstCol}\nORDER BY total_${numCols[0]} DESC\nLIMIT 20`, level: 'Level 5' });
-    queries.push({ category: 'Comparison', label: `Where ${numCols[0]} > ${numCols[1]}`, sql: `SELECT ${strCols[0] || firstCol},\n  ${numCols[0]},\n  ${numCols[1]},\n  (${numCols[0]} - ${numCols[1]}) AS difference\nFROM ${tableName}\nWHERE ${numCols[0]} > ${numCols[1]}\nORDER BY difference DESC\nLIMIT 20`, level: 'Level 5' });
+    const sa0 = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+    const sa1 = numCols[1].replace(/[^a-zA-Z0-9_]/g, '_');
+    queries.push({ category: 'Comparison', label: `${numCols[0]} vs ${numCols[1]} by ${strCols[0] || firstCol}`, sql: `SELECT ${q(strCols[0] || firstCol)},\n  SUM(${q(numCols[0])}) AS total_${sa0},\n  SUM(${q(numCols[1])}) AS total_${sa1}\nFROM ${t}\nGROUP BY ${q(strCols[0] || firstCol)}\nORDER BY total_${sa0} DESC\nLIMIT 20`, level: 'Level 5' });
+    queries.push({ category: 'Comparison', label: `Where ${numCols[0]} > ${numCols[1]}`, sql: `SELECT ${q(strCols[0] || firstCol)},\n  ${q(numCols[0])},\n  ${q(numCols[1])},\n  (${q(numCols[0])} - ${q(numCols[1])}) AS difference\nFROM ${t}\nWHERE ${q(numCols[0])} > ${q(numCols[1])}\nORDER BY difference DESC\nLIMIT 20`, level: 'Level 5' });
     if (numCols.length >= 3) {
-      queries.push({ category: 'Comparison', label: 'All numeric metrics side by side', sql: `SELECT ${strCols[0] || firstCol},\n  ${numCols.slice(0, 4).join(', ')}\nFROM ${tableName}\nORDER BY ${numCols[0]} DESC\nLIMIT 30`, level: 'Level 5' });
+      queries.push({ category: 'Comparison', label: 'All numeric metrics side by side', sql: `SELECT ${q(strCols[0] || firstCol)},\n  ${numCols.slice(0, 4).map(q).join(', ')}\nFROM ${t}\nORDER BY ${q(numCols[0])} DESC\nLIMIT 30`, level: 'Level 5' });
     }
   }
 
   // ── Cross-Tab (Level 6) ──
   if (strCols.length >= 2 && numCols.length > 0) {
-    queries.push({ category: 'Cross-Tab', label: `${numCols[0]} by ${strCols[0]} × ${strCols[1]}`, sql: `SELECT ${strCols[0]}, ${strCols[1]},\n  SUM(${numCols[0]}) AS total_${numCols[0]},\n  COUNT(*) AS count\nFROM ${tableName}\nGROUP BY ${strCols[0]}, ${strCols[1]}\nORDER BY total_${numCols[0]} DESC`, level: 'Level 6' });
+    const sa = numCols[0].replace(/[^a-zA-Z0-9_]/g, '_');
+    queries.push({ category: 'Cross-Tab', label: `${numCols[0]} by ${strCols[0]} × ${strCols[1]}`, sql: `SELECT ${q(strCols[0])}, ${q(strCols[1])},\n  SUM(${q(numCols[0])}) AS total_${sa},\n  COUNT(*) AS count\nFROM ${t}\nGROUP BY ${q(strCols[0])}, ${q(strCols[1])}\nORDER BY total_${sa} DESC`, level: 'Level 6' });
   }
 
   return queries;

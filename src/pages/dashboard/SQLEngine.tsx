@@ -789,7 +789,7 @@ export default function SQLEngine() {
     toast({ title: 'Query loaded', description: 'Click Run to execute.' });
   };
 
-  const tableName = currentDataset?.name?.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'dataset';
+  const tableName = 'data';
   const columns = currentData.length > 0 ? Object.keys(currentData[0]) : [];
 
   return (

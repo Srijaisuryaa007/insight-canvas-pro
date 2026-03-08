@@ -86,7 +86,7 @@ export default function Quality() {
     setIsCleaningRunning(true);
     setTimeout(() => {
       const { cleanedData, summary } = runFullCleaningPipeline(currentData, columnDecisions);
-      updateCurrentData(cleanedData);
+      updateCleanedData(cleanedData, summary as unknown as Record<string, unknown>);
       setCleaningSummary(summary);
       setIsCleaningRunning(false);
       // If columns need decisions, show analysis tab first

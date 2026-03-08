@@ -826,26 +826,94 @@ export function runFullCleaningPipeline(
   }
 
   // ══════════════════════════════════════════════
-  // STEP 8: Final Quality Report & Health Score
+  // STEP 8: Validation & Text Quality Fixes
+  // ══════════════════════════════════════════════
+  {
+    const actions: string[] = [];
+    const details: CleaningStepDetail[] = [];
+
+    // Run full validation scan
+    validationReportData = runFullValidation(current);
+
+    // Apply auto-fixable issues
+    const fixResult = applyValidationFixes(current);
+    current = fixResult.data;
+    validationFixCount = fixResult.fixCount;
+    validationFixDetails = fixResult.fixDetails;
+
+    fixResult.fixDetails.forEach(d => actions.push(d));
+
+    // Report non-fixable validation issues as warnings
+    const nonFixable = validationReportData.issues.filter(i => !i.autoFixable);
+    nonFixable.forEach(i => {
+      warnings.push(`${i.category}: ${i.description} in "${i.column}"`);
+      flaggedRows.push(...Array.from({ length: Math.min(3, i.count) }, (_, idx) => ({
+        row: idx, column: i.column, value: '—', reason: `${i.category}: ${i.type}`
+      })));
+    });
+
+    if (nonFixable.length > 0) {
+      actions.push(`⚠️ ${nonFixable.length} validation issues flagged for manual review`);
+    }
+
+    // Column name issues
+    if (validationReportData.columnNameIssues.length > 0) {
+      actions.push(`📝 Renamed ${validationReportData.columnNameIssues.length} columns to snake_case`);
+      validationReportData.columnNameIssues.forEach(iss => {
+        details.push({ column: iss.original, before: iss.original, after: iss.fixed, action: iss.reason });
+      });
+    }
+
+    // Completeness warnings
+    if (validationReportData.completeness.lowRows > 0) {
+      warnings.push(`${validationReportData.completeness.lowRows} rows have <50% completeness`);
+      actions.push(`⚠️ ${validationReportData.completeness.lowRows} rows with <50% completeness`);
+    }
+
+    // Distribution warnings
+    validationReportData.distribution.forEach(d => {
+      if (d.dominantPct && d.dominantPct > 95) {
+        warnings.push(`Column "${d.column}" is ${d.dominantPct}% one value ("${d.dominantValue}") — may not be useful`);
+      }
+      if (d.skewness && Math.abs(d.skewness) > 2) {
+        warnings.push(`Column "${d.column}" is highly skewed (${d.skewness}) — consider log transformation`);
+      }
+    });
+
+    // Uniqueness violations
+    validationReportData.uniqueness.forEach(u => {
+      if (!u.isUnique && u.duplicateCount > 0) {
+        warnings.push(`ID column "${u.column}" has ${u.duplicateCount} non-unique values`);
+      }
+    });
+
+    if (actions.length === 0) actions.push('✅ All validations passed');
+    steps.push({ step: 8, name: 'Validation & Quality Checks', icon: '✅', actions, details, rowsBefore: current.length, rowsAfter: current.length, changesMade: validationFixCount });
+  }
+
+  // ══════════════════════════════════════════════
+  // STEP 9: Final Quality Report & Health Score
   // ══════════════════════════════════════════════
   const finalKeys = Object.keys(current[0] || {});
   const totalCells = current.length * finalKeys.length;
   const remainingMissing = current.reduce((acc, r) => acc + Object.values(r).filter(v => v === null || v === undefined).length, 0);
 
-  // Detailed health score breakdown
-  const missingScore = remainingMissing === 0 ? 25 : Math.max(0, 25 - Math.round((remainingMissing / totalCells) * 100));
+  // Detailed health score breakdown (out of 100)
+  const completenessScore = Math.min(25, Math.round((validationReportData?.completeness.overall ?? 100) / 4));
   const dupeScore = duplicatesRemoved === 0 && current.length === new Set(current.map(r => JSON.stringify(r))).size ? 20 : 15;
-  const typeScore = typesFixed > 0 ? 20 : 20; // Fixed = good
-  const outlierScore = outliersCapped === 0 ? 20 : Math.max(10, 20 - Math.min(10, outliersCapped));
-  const textScore = 15; // Always get base score after standardization
-  const healthScore = Math.min(100, missingScore + dupeScore + typeScore + outlierScore + textScore);
+  const validityScore = Math.min(20, 20 - Math.min(20, (validationReportData?.issues.length ?? 0)));
+  const consistencyScore = Math.min(20, 20 - Math.min(10, warnings.length));
+  const textScore = Math.min(15, 15 - Math.min(5, Math.round(textStandardized / Math.max(1, current.length) * 5)));
+  const healthScore = Math.min(100, completenessScore + dupeScore + validityScore + consistencyScore + textScore);
+
+  const letterGrade = healthScore >= 90 ? 'A' : healthScore >= 75 ? 'B' : healthScore >= 60 ? 'C' : 'D';
 
   const healthBreakdown = [
-    { label: 'No Missing Values', score: missingScore, max: 25 },
-    { label: 'No Duplicates', score: dupeScore, max: 20 },
-    { label: 'Correct Data Types', score: typeScore, max: 20 },
-    { label: 'No Outliers', score: outlierScore, max: 20 },
-    { label: 'Clean Text Data', score: textScore, max: 15 },
+    { label: 'Completeness', score: completenessScore, max: 25 },
+    { label: 'Uniqueness', score: dupeScore, max: 20 },
+    { label: 'Validity', score: validityScore, max: 20 },
+    { label: 'Consistency', score: consistencyScore, max: 20 },
+    { label: 'Text Quality', score: textScore, max: 15 },
   ];
 
   // Smart recommendations
@@ -860,6 +928,8 @@ export function runFullCleaningPipeline(
   if (current.length < 50) recommendations.push('Dataset is small — collect more data for reliable statistical analysis');
   if (current.length > 1000) recommendations.push('Large dataset — consider sampling for faster exploratory analysis');
   if (featuresAdded.length > 0) recommendations.push('Review engineered features for business relevance before analysis');
+
+  const timeTakenMs = Math.round(performance.now() - startTime);
 
   const summary: CleaningSummary = {
     steps,
@@ -878,10 +948,15 @@ export function runFullCleaningPipeline(
     featuresAdded,
     healthScore,
     healthBreakdown,
+    letterGrade,
     warnings,
     recommendations,
-    flaggedRows: flaggedRows.slice(0, 20),
+    flaggedRows: flaggedRows.slice(0, 30),
     duplicateReport: duplicateReportData,
+    validationReport: validationReportData,
+    validationFixCount,
+    validationFixDetails,
+    timeTakenMs,
   };
 
   return { cleanedData: current, summary };

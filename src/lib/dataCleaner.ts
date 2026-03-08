@@ -153,6 +153,7 @@ export function runFullCleaningPipeline(
   const recommendations: string[] = [];
   const flaggedRows: CleaningSummary['flaggedRows'] = [];
   const columnsNeedingDecision: string[] = [];
+  let duplicateReportData: DuplicateReport | undefined;
 
   const keys = Object.keys(current[0] || {});
   let { numCols, strCols, dateCols } = detectColumnTypes(current, keys);

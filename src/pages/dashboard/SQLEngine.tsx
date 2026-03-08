@@ -787,9 +787,19 @@ export default function SQLEngine() {
         {/* Main Editor + Results */}
         <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden">
           {/* SQL Editor */}
+          {/* SQL Editor with line numbers */}
           <div className="flex gap-2 items-start">
-            <Textarea value={query} onChange={e => setQuery(e.target.value)} placeholder={`SELECT * FROM ${tableName} LIMIT 10`}
-              className="font-mono text-sm min-h-[100px] flex-1 resize-y" onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRunQuery(); }} />
+            <div className="flex-1 relative">
+              <div className="absolute left-0 top-0 bottom-0 w-8 bg-muted/50 rounded-l-md border-r border-border flex flex-col items-end pt-2 pr-1 pointer-events-none overflow-hidden z-10">
+                {(query || ' ').split('\n').map((_, i) => (
+                  <span key={i} className="text-[10px] leading-[20px] text-muted-foreground/50 font-mono">{i + 1}</span>
+                ))}
+              </div>
+              <Textarea value={query} onChange={e => setQuery(e.target.value)} placeholder={`SELECT * FROM ${tableName} LIMIT 10`}
+                className="font-mono text-sm min-h-[180px] pl-10 resize-y leading-[20px]" 
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRunQuery(); }} />
+              <span className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/40">Ctrl+Enter to run</span>
+            </div>
             <div className="flex flex-col gap-2">
               <Button onClick={handleRunQuery} disabled={isRunning || !query.trim()} className="gap-1">
                 <Play className="h-4 w-4" />{isRunning ? 'Running...' : 'Run'}

@@ -849,6 +849,7 @@ export function runFullCleaningPipeline(
     warnings,
     recommendations,
     flaggedRows: flaggedRows.slice(0, 20),
+    duplicateReport: duplicateReportData,
   };
 
   return { cleanedData: current, summary };

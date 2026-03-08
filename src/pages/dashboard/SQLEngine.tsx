@@ -317,7 +317,9 @@ function RecommendedQueriesPanel({ onSelect }: { onSelect: (sql: string) => void
 
   const catIcons: Record<string, string> = {
     'Basic': '📋', 'Aggregation': '🧮', 'Filtering': '🔍', 'Ranking': '🏆',
-    'Trend Analysis': '📈', 'Advanced': '⚡', 'CTE': '🔗',
+    'Percentage & Ratio': '📊', 'Trend Analysis': '📈', 'Window Functions': '🪟',
+    'Statistical': '📉', 'Data Quality': '🩺', 'Grouping & HAVING': '📦',
+    'CASE Statements': '🔀', 'CTE': '🔗', 'Comparison': '⚖️', 'Cross-Tab': '📐',
   };
 
   return (

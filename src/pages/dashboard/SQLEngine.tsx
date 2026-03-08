@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Database, Play, Download, AlertTriangle, Copy, Table2, BarChart3, Sparkles, ChevronDown, ChevronRight, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { useData } from '@/contexts/DataContext';
 import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { generateRecommendedQueries, RecommendedQuery } from '@/lib/copilotEngine';
 import { toast } from '@/hooks/use-toast';
+import DataSyncBanner from '@/components/DataSyncBanner';
+import VisualQueryBuilder from '@/components/sql/VisualQueryBuilder';
 
 const UNSAFE_KEYWORDS = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE', 'CREATE', 'GRANT', 'REVOKE'];
 

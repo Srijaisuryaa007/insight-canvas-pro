@@ -308,9 +308,6 @@ function handleConversation(intent: Intent, schema: DataSchema | null, question:
         answer,
         metadata: { mode: 'conversation', suggestions: dataSuggestions },
       };
-        answer,
-        metadata: { mode: 'conversation', suggestions: dataSuggestions },
-      };
     }
     default: return { answer: "I'm here to help! Ask me about data, charts, analytics, or anything else. 😊", metadata: { mode: 'conversation', suggestions: dataSuggestions } };
   }

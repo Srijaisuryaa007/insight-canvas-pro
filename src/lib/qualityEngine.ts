@@ -52,20 +52,20 @@ export function runLocalQualityScan(
       totalIssueCount += missingCount;
     }
 
-    // 2. Duplicates
+    // 2. Exact Duplicates (full-row)
     const nonNull = values.filter(v => v !== null && v !== undefined && v !== '');
     const uniqueCount = new Set(nonNull.map(String)).size;
     const dupeCount = nonNull.length - uniqueCount;
-    if (dupeCount > total * 0.5 && typeof values.find(v => v !== null && v !== undefined) !== 'boolean') {
+    if (dupeCount > 0 && typeof values.find(v => v !== null && v !== undefined) !== 'boolean') {
       issues.push({
         column: col,
         type: 'duplicate',
-        severity: 'medium',
+        severity: dupeCount > total * 0.3 ? 'high' : dupeCount > total * 0.1 ? 'medium' : 'low',
         count: dupeCount,
         percentage: Math.round((dupeCount / total) * 100),
-        suggestion: 'Verify if duplicates are valid or need deduplication.',
+        suggestion: `Found ${dupeCount} duplicates in "${col}". Will keep 1 original row each and remove ${dupeCount} extra copies (keep='first').`,
         confidence: 0.88,
-        reasoning: `${dupeCount} duplicate values found across ${total} rows.`,
+        reasoning: `🔍 Duplicates Found: ${dupeCount} rows | ✅ Will Keep: 1 original row each | ❌ Will Remove: ${dupeCount} extra copies`,
       });
     }
 

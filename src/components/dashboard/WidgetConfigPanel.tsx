@@ -173,6 +173,11 @@ export function WidgetConfigPanel() {
         {/* ═══════ FIELD WELLS ═══════ */}
         {(isChart || isTable) && (
           <Section title="Field Wells" defaultOpen={true}>
+            {noData && (
+              <div className="text-[10px] text-muted-foreground bg-muted/30 rounded-md p-2 mb-2">
+                ⚠️ Upload or select a dataset first to see available columns.
+              </div>
+            )}
             <div className="space-y-2.5">
               {/* X-Axis */}
               <SingleFieldWell

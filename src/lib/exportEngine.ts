@@ -90,92 +90,96 @@ export async function exportPDF(report: ReportData) {
     const { jsPDF } = await import('jspdf');
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pw = pdf.internal.pageSize.getWidth();
-    const margin = 20;
+    const ph = pdf.internal.pageSize.getHeight();
+    const margin = 22;
     let y = margin;
 
-    const addText = (text: string, size: number, color: [number, number, number] = [0, 0, 0], bold = false) => {
+    const BLACK: [number, number, number] = [26, 26, 26];
+    const DARK: [number, number, number] = [50, 50, 50];
+    const BODY: [number, number, number] = [60, 60, 60];
+    const MUTED: [number, number, number] = [140, 140, 140];
+
+    const ensureSpace = (needed: number) => {
+      if (y + needed > ph - 18) { pdf.addPage(); y = margin; }
+    };
+
+    const addText = (text: string, size: number, color: [number, number, number] = BODY, bold = false) => {
       pdf.setFontSize(size);
       pdf.setTextColor(...color);
-      if (bold) pdf.setFont('helvetica', 'bold');
-      else pdf.setFont('helvetica', 'normal');
+      pdf.setFont('helvetica', bold ? 'bold' : 'normal');
       const lines = pdf.splitTextToSize(text, pw - 2 * margin);
-      if (y + lines.length * size * 0.4 > pdf.internal.pageSize.getHeight() - margin) {
-        pdf.addPage();
-        y = margin;
-      }
+      ensureSpace(lines.length * size * 0.42 + 4);
       pdf.text(lines, margin, y);
       y += lines.length * size * 0.45 + 2;
     };
 
     // Title page
-    y = 80;
-    addText(report.title, 28, [50, 50, 200], true);
-    y += 10;
-    addText(`Generated: ${report.generatedDate}`, 11, [120, 120, 120]);
-    addText(`Dataset: ${report.datasetName}`, 11, [120, 120, 120]);
-    addText(`Prepared by: ${report.userName}`, 11, [120, 120, 120]);
-    addText(`${report.rowCount.toLocaleString()} rows • ${report.columnCount} columns`, 11, [120, 120, 120]);
+    y = 60;
+    addText(report.title, 24, BLACK, true);
+    y += 6;
+    pdf.setDrawColor(26, 26, 26);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, margin + 25, y);
+    y += 8;
+    addText(`Date: ${report.generatedDate}`, 10, MUTED);
+    addText(`Dataset: ${report.datasetName}`, 10, MUTED);
+    addText(`Prepared by: ${report.userName}`, 10, MUTED);
+    addText(`${report.rowCount.toLocaleString()} records | ${report.columnCount} columns`, 10, MUTED);
 
     // Executive Summary
     pdf.addPage(); y = margin;
-    addText('Executive Summary', 18, [30, 30, 30], true);
+    addText('Executive Summary', 16, BLACK, true);
     y += 3;
-    addText(report.aiSummary, 11, [60, 60, 60]);
+    addText(report.aiSummary, 10, BODY);
     y += 5;
 
     // KPIs
-    addText('Key Performance Indicators', 16, [30, 30, 30], true);
+    addText('Key Performance Indicators', 14, BLACK, true);
     y += 3;
-    report.kpis.forEach(kpi => {
-      addText(`${kpi.label}: ${kpi.value}`, 11, [40, 40, 40]);
-    });
+    report.kpis.forEach(kpi => addText(`${kpi.label}: ${kpi.value}`, 10, DARK));
     y += 5;
 
     // Trends
-    addText('Trend Analysis', 16, [30, 30, 30], true);
+    addText('Trend Analysis', 14, BLACK, true);
     y += 3;
-    report.trends.forEach(t => {
-      const color: [number, number, number] = t.change > 1 ? [34, 197, 94] : t.change < -1 ? [239, 68, 68] : [120, 120, 120];
-      addText(`${t.col}: ${t.direction} (${t.change > 0 ? '+' : ''}${t.change}%)`, 11, color);
-    });
+    report.trends.forEach(t => addText(`${t.col}: ${t.direction} (${t.change > 0 ? '+' : ''}${t.change}%)`, 10, DARK));
     y += 5;
 
-    // Positives
-    addText('Positive Findings', 16, [34, 197, 94], true);
+    // Strengths
+    addText('Strengths', 14, BLACK, true);
     y += 3;
-    (report.positives.length ? report.positives : ['All metrics stable']).forEach(p => addText(`✓ ${p}`, 11, [34, 150, 70]));
+    (report.positives.length ? report.positives : ['All metrics stable.']).forEach(p => addText(`-  ${p}`, 10, DARK));
     y += 5;
 
     // Risks
-    addText('Risks & Concerns', 16, [239, 68, 68], true);
+    addText('Risks and Issues', 14, BLACK, true);
     y += 3;
-    report.risks.forEach(r => addText(`⚠ ${r}`, 11, [200, 50, 50]));
+    report.risks.forEach(r => addText(`-  ${r}`, 10, DARK));
     y += 5;
 
     // Recommendations
-    addText('Recommendations', 16, [30, 30, 30], true);
+    addText('Recommendations', 14, BLACK, true);
     y += 3;
-    report.recommendations.forEach(r => addText(`→ ${r}`, 11, [60, 60, 60]));
+    report.recommendations.forEach(r => addText(`-  ${r}`, 10, DARK));
 
-    // Quality
     if (report.qualityScore !== undefined) {
       y += 5;
-      addText('Data Quality', 16, [30, 30, 30], true);
+      addText('Data Quality', 14, BLACK, true);
       y += 3;
-      addText(`Score: ${report.qualityScore}% • ${report.qualityIssues || 0} issues`, 11, [60, 60, 60]);
+      addText(`Score: ${report.qualityScore}% | ${report.qualityIssues || 0} issues detected`, 10, DARK);
     }
 
-    // Footer on each page
+    // Footers
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(150, 150, 150);
-      pdf.text(`DataPulse Analytics Report • Page ${i} of ${totalPages}`, margin, pdf.internal.pageSize.getHeight() - 10);
+      pdf.setFontSize(7);
+      pdf.setTextColor(170, 170, 170);
+      pdf.text(`DataVora  |  Page ${i} of ${totalPages}`, margin, ph - 10);
     }
 
     pdf.save(`${report.title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
-    toast({ title: 'PDF Exported', description: 'Report downloaded successfully.' });
+    toast({ title: 'PDF Exported', description: 'Formal report downloaded.' });
   } catch (e) {
     console.error('PDF export error:', e);
     toast({ title: 'Export Failed', variant: 'destructive' });
@@ -188,62 +192,54 @@ export async function exportPPTX(report: ReportData) {
     const pptx = new pptxgenjs.default();
     pptx.layout = 'LAYOUT_WIDE';
 
-    const addSlide = (title: string, content: string[], options?: { color?: string }) => {
+    const WHITE = 'FFFFFF';
+    const BLACK = '1A1A1A';
+    const DARK = '333333';
+    const BODY_C = '444444';
+    const MUTED_C = '888888';
+
+    const addSlide = (titleText: string, content: string[]) => {
       const slide = pptx.addSlide();
-      slide.addText(title, { x: 0.5, y: 0.3, w: '90%', fontSize: 24, bold: true, color: '363636' });
+      slide.background = { color: WHITE };
+      slide.addText(titleText, { x: 0.5, y: 0.3, w: '90%', fontSize: 22, bold: true, color: BLACK, fontFace: 'Arial' });
+      slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1, h: 0.02, fill: { color: BLACK } });
       content.forEach((line, i) => {
-        slide.addText(line, { x: 0.7, y: 1.2 + i * 0.5, w: '85%', fontSize: 14, color: options?.color || '555555' });
+        slide.addText(line, { x: 0.7, y: 1.2 + i * 0.45, w: '85%', fontSize: 12, color: BODY_C, fontFace: 'Arial' });
       });
     };
 
     // Title
     const titleSlide = pptx.addSlide();
-    titleSlide.addText('📊', { x: 4.5, y: 1, w: 2, fontSize: 60, align: 'center' });
-    titleSlide.addText(report.title, { x: 1, y: 2.5, w: '80%', fontSize: 32, bold: true, align: 'center', color: '333399' });
-    titleSlide.addText(`${report.generatedDate} • ${report.userName}`, { x: 1, y: 3.5, w: '80%', fontSize: 14, align: 'center', color: '888888' });
-    titleSlide.addText(`${report.rowCount.toLocaleString()} records analyzed`, { x: 1, y: 4, w: '80%', fontSize: 12, align: 'center', color: 'aaaaaa' });
+    titleSlide.background = { color: WHITE };
+    titleSlide.addText(report.title, { x: 0.8, y: 1.5, w: '80%', fontSize: 28, bold: true, color: BLACK, fontFace: 'Arial' });
+    titleSlide.addShape('rect' as any, { x: 0.8, y: 2.3, w: 2, h: 0.02, fill: { color: BLACK } });
+    titleSlide.addText(`${report.generatedDate}  |  ${report.userName}`, { x: 0.8, y: 2.6, w: '80%', fontSize: 11, color: MUTED_C, fontFace: 'Arial' });
+    titleSlide.addText(`${report.rowCount.toLocaleString()} records  |  ${report.columnCount} columns`, { x: 0.8, y: 3.0, w: '80%', fontSize: 10, color: MUTED_C, fontFace: 'Arial' });
 
-    // Executive Summary
     addSlide('Executive Summary', [report.aiSummary]);
 
     // KPIs
     const kpiSlide = pptx.addSlide();
-    kpiSlide.addText('Key Performance Indicators', { x: 0.5, y: 0.3, w: '90%', fontSize: 24, bold: true, color: '363636' });
+    kpiSlide.background = { color: WHITE };
+    kpiSlide.addText('Key Performance Indicators', { x: 0.5, y: 0.3, w: '90%', fontSize: 22, bold: true, color: BLACK, fontFace: 'Arial' });
+    kpiSlide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1, h: 0.02, fill: { color: BLACK } });
     report.kpis.forEach((kpi, i) => {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      kpiSlide.addShape('roundRect' as any, {
-        x: 0.5 + col * 3.5, y: 1.2 + row * 2, w: 3, h: 1.5,
-        fill: { color: 'F0F0FF' }, rectRadius: 0.1,
-      });
-      kpiSlide.addText(kpi.value, { x: 0.5 + col * 3.5, y: 1.3 + row * 2, w: 3, fontSize: 28, bold: true, align: 'center', color: '333399' });
-      kpiSlide.addText(kpi.label, { x: 0.5 + col * 3.5, y: 2.1 + row * 2, w: 3, fontSize: 11, align: 'center', color: '888888' });
+      kpiSlide.addText(`${kpi.label}:  ${kpi.value}`, { x: 0.7, y: 1.2 + i * 0.4, w: '85%', fontSize: 13, color: DARK, fontFace: 'Arial' });
     });
 
-    // Trends
     addSlide('Trend Analysis', report.trends.map(t => `${t.col}: ${t.direction} (${t.change > 0 ? '+' : ''}${t.change}%)`));
-
-    // Positives
-    addSlide('✅ Positive Findings', report.positives.length ? report.positives : ['All metrics remain stable'], { color: '22C55E' });
-
-    // Risks
-    addSlide('⚠️ Risks & Concerns', report.risks, { color: 'EF4444' });
-
-    // Opportunities
-    addSlide('🟢 Opportunities', report.opportunities, { color: '0EA5E9' });
-
-    // Recommendations
-    addSlide('💡 Recommended Strategy', report.recommendations);
-
-    // Data Quality
-    addSlide('🛡 Data Quality', [
-      report.qualityScore !== undefined ? `Score: ${report.qualityScore}%` : 'Not scanned',
-      report.qualityIssues !== undefined ? `${report.qualityIssues} issues detected` : '',
+    addSlide('Strengths', report.positives.length ? report.positives : ['All metrics remain stable.']);
+    addSlide('Risks and Issues', report.risks);
+    addSlide('Opportunities', report.opportunities);
+    addSlide('Recommendations', report.recommendations);
+    addSlide('Data Quality', [
+      report.qualityScore !== undefined ? `Score: ${report.qualityScore}%` : 'Not assessed.',
+      report.qualityIssues !== undefined ? `${report.qualityIssues} issues detected.` : '',
     ].filter(Boolean));
 
     const blob = await pptx.write({ outputType: 'blob' }) as Blob;
     saveAs(blob, `${report.title.replace(/\s+/g, '-').toLowerCase()}.pptx`);
-    toast({ title: 'PowerPoint Exported', description: 'Presentation downloaded successfully.' });
+    toast({ title: 'Presentation Exported', description: 'Formal report downloaded.' });
   } catch (e) {
     console.error('PPTX export error:', e);
     toast({ title: 'Export Failed', variant: 'destructive' });
@@ -255,11 +251,16 @@ export async function exportDOCX(report: ReportData) {
     const docxLib = await import('docx');
     const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } = docxLib;
 
-    const makeParagraph = (text: string, options?: { bold?: boolean; color?: string; size?: number; heading?: any; spacing?: number }) => {
+    const BLACK = '1A1A1A';
+    const DARK = '333333';
+    const BODY_C = '444444';
+    const MUTED_C = '999999';
+
+    const makeParagraph = (text: string, options?: { bold?: boolean; size?: number; heading?: any; spacing?: number }) => {
       return new Paragraph({
         heading: options?.heading,
         spacing: { after: options?.spacing ?? 120 },
-        children: [new TextRun({ text, bold: options?.bold, color: options?.color || '333333', size: options?.size || 22 })],
+        children: [new TextRun({ text, bold: options?.bold, color: DARK, size: options?.size || 22, font: 'Arial' })],
       });
     };
 
@@ -269,66 +270,48 @@ export async function exportDOCX(report: ReportData) {
         children: [
           // Title
           new Paragraph({
-            alignment: AlignmentType.CENTER,
             spacing: { after: 400 },
-            children: [new TextRun({ text: report.title, bold: true, size: 48, color: '333399' })],
+            children: [new TextRun({ text: report.title, bold: true, size: 44, color: BLACK, font: 'Arial' })],
           }),
           new Paragraph({
-            alignment: AlignmentType.CENTER,
             spacing: { after: 200 },
-            children: [new TextRun({ text: `Generated: ${report.generatedDate} • By: ${report.userName}`, size: 20, color: '888888' })],
+            children: [new TextRun({ text: `Date: ${report.generatedDate}  |  Prepared by: ${report.userName}`, size: 20, color: MUTED_C, font: 'Arial' })],
           }),
           new Paragraph({
-            alignment: AlignmentType.CENTER,
             spacing: { after: 600 },
-            children: [new TextRun({ text: `Dataset: ${report.datasetName} • ${report.rowCount.toLocaleString()} rows • ${report.columnCount} columns`, size: 18, color: 'AAAAAA' })],
+            children: [new TextRun({ text: `Dataset: ${report.datasetName}  |  ${report.rowCount.toLocaleString()} records  |  ${report.columnCount} columns`, size: 18, color: MUTED_C, font: 'Arial' })],
           }),
 
-          // Executive Summary
-          makeParagraph('Executive Summary', { bold: true, size: 32, heading: HeadingLevel.HEADING_1, color: '333399' }),
-          makeParagraph(report.aiSummary, { size: 22 }),
+          makeParagraph('Executive Summary', { bold: true, size: 30, heading: HeadingLevel.HEADING_1 }),
+          makeParagraph(report.aiSummary),
 
-          // KPIs
-          makeParagraph('Key Performance Indicators', { bold: true, size: 28, heading: HeadingLevel.HEADING_2, spacing: 300 }),
-          ...report.kpis.map(k => makeParagraph(`${k.label}: ${k.value}`, { size: 22 })),
+          makeParagraph('Key Performance Indicators', { bold: true, size: 26, heading: HeadingLevel.HEADING_2, spacing: 300 }),
+          ...report.kpis.map(k => makeParagraph(`${k.label}: ${k.value}`)),
 
-          // Trends
-          makeParagraph('Trend Analysis', { bold: true, size: 28, heading: HeadingLevel.HEADING_2, spacing: 300 }),
-          ...report.trends.map(t => makeParagraph(
-            `${t.col}: ${t.direction} (${t.change > 0 ? '+' : ''}${t.change}%)`,
-            { color: t.change > 1 ? '22C55E' : t.change < -1 ? 'EF4444' : '888888' }
-          )),
+          makeParagraph('Trend Analysis', { bold: true, size: 26, heading: HeadingLevel.HEADING_2, spacing: 300 }),
+          ...report.trends.map(t => makeParagraph(`${t.col}: ${t.direction} (${t.change > 0 ? '+' : ''}${t.change}%)`)),
 
-          // Positives
-          makeParagraph('Positive Findings', { bold: true, size: 28, heading: HeadingLevel.HEADING_2, spacing: 300, color: '22C55E' }),
-          ...(report.positives.length ? report.positives : ['Metrics stable']).map(p => makeParagraph(`✓ ${p}`, { color: '22C55E' })),
+          makeParagraph('Strengths', { bold: true, size: 26, heading: HeadingLevel.HEADING_2, spacing: 300 }),
+          ...(report.positives.length ? report.positives : ['Metrics stable.']).map(p => makeParagraph(`-  ${p}`)),
 
-          // Risks
-          makeParagraph('Risks & Concerns', { bold: true, size: 28, heading: HeadingLevel.HEADING_2, spacing: 300, color: 'EF4444' }),
-          ...report.risks.map(r => makeParagraph(`⚠ ${r}`, { color: 'EF4444' })),
+          makeParagraph('Risks and Issues', { bold: true, size: 26, heading: HeadingLevel.HEADING_2, spacing: 300 }),
+          ...report.risks.map(r => makeParagraph(`-  ${r}`)),
 
-          // Opportunities
-          makeParagraph('Opportunities', { bold: true, size: 28, heading: HeadingLevel.HEADING_2, spacing: 300, color: '0EA5E9' }),
-          ...report.opportunities.map(o => makeParagraph(`→ ${o}`, { color: '0EA5E9' })),
+          makeParagraph('Opportunities', { bold: true, size: 26, heading: HeadingLevel.HEADING_2, spacing: 300 }),
+          ...report.opportunities.map(o => makeParagraph(`-  ${o}`)),
 
-          // Recommendations
-          makeParagraph('Recommendations', { bold: true, size: 28, heading: HeadingLevel.HEADING_2, spacing: 300 }),
-          ...report.recommendations.map(r => makeParagraph(`→ ${r}`)),
+          makeParagraph('Recommendations', { bold: true, size: 26, heading: HeadingLevel.HEADING_2, spacing: 300 }),
+          ...report.recommendations.map(r => makeParagraph(`-  ${r}`)),
 
-          // Quality
-          makeParagraph('Data Quality', { bold: true, size: 28, heading: HeadingLevel.HEADING_2, spacing: 300 }),
-          makeParagraph(
-            report.qualityScore !== undefined
-              ? `Score: ${report.qualityScore}% • ${report.qualityIssues || 0} issues`
-              : 'Data quality scan not performed.',
-          ),
+          makeParagraph('Data Quality', { bold: true, size: 26, heading: HeadingLevel.HEADING_2, spacing: 300 }),
+          makeParagraph(report.qualityScore !== undefined ? `Score: ${report.qualityScore}%  |  ${report.qualityIssues || 0} issues detected.` : 'Not assessed.'),
         ],
       }],
     });
 
     const blob = await Packer.toBlob(doc);
     saveAs(blob, `${report.title.replace(/\s+/g, '-').toLowerCase()}.docx`);
-    toast({ title: 'Word Document Exported', description: 'Report downloaded successfully.' });
+    toast({ title: 'Document Exported', description: 'Formal report downloaded.' });
   } catch (e) {
     console.error('DOCX export error:', e);
     toast({ title: 'Export Failed', variant: 'destructive' });

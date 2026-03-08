@@ -120,10 +120,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Redo', description: 'Reapplied data change.' });
   }, [currentDataset]);
 
-  // Persist datasets to localStorage whenever they change
+  // Persist datasets to localStorage only for paid plans
   useEffect(() => {
-    if (datasets.length > 0) saveToLocalStorage(datasets);
-  }, [datasets]);
+    if (datasets.length > 0 && hasPersistentStorage) saveToLocalStorage(datasets);
+  }, [datasets, hasPersistentStorage]);
 
 
 

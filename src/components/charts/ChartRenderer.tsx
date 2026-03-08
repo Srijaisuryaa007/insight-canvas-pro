@@ -32,10 +32,16 @@ const COLOR_PALETTES: Record<string, string[]> = {
   sunset: ['#ff6b6b', '#ffa06b', '#ffd93d', '#6bff6b', '#6bc5ff'],
 };
 
+const MULTI_COLORS = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+  '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
+];
+
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--popover))',
   border: '1px solid hsl(var(--border))',
-  borderRadius: 'var(--radius)',
+  borderRadius: '8px',
+  padding: '10px 14px',
 };
 
 // Check data suitability for chart type
@@ -94,10 +100,10 @@ export function ChartRenderer({
   } : null;
 
   const chartContent = useMemo(() => {
-    const commonProps = { data, margin: { top: 10, right: 20, left: 10, bottom: showLegend ? 30 : 10 } };
+    const commonProps = { data, margin: { top: 20, right: 30, left: 60, bottom: showLegend ? 30 : 10 } };
     const gridEl = showGrid ? <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /> : null;
-    const xEl = <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />;
-    const yEl = <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} width={50} />;
+    const xEl = <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={80} interval={0} />;
+    const yEl = <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} width={55} />;
     const ttEl = <Tooltip contentStyle={tooltipStyle} />;
     const lgEl = legendProps ? <Legend {...legendProps} /> : null;
 
@@ -106,7 +112,10 @@ export function ChartRenderer({
         return (
           <BarChart {...commonProps}>
             {gridEl}{xEl}{yEl}{ttEl}{lgEl}
-            <Bar dataKey={yAxis} fill={colors[0]} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => handleClick(d)}>
+            <Bar dataKey={yAxis} radius={[4, 4, 0, 0]} cursor="pointer" onClick={(d: any) => handleClick(d)}>
+              {data.map((_, index) => (
+                <Cell key={index} fill={MULTI_COLORS[index % MULTI_COLORS.length]} />
+              ))}
               {showLabels && <LabelList dataKey={yAxis} position="top" fontSize={10} />}
             </Bar>
           </BarChart>

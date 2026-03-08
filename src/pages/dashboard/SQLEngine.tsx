@@ -185,8 +185,8 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
     // Parse GROUP BY with aggregations
     if (groupIdx > 0) {
       const groupEnd = [orderIdx, limitIdx].filter(i => i > groupIdx).sort((a, b) => a - b)[0] || query.length;
-      const groupCol = query.substring(groupIdx + 10, groupEnd).trim();
-      const actualGroupCol = cols.find(c => c.toLowerCase() === groupCol.toLowerCase());
+      const groupCol = stripBackticks(query.substring(groupIdx + 10, groupEnd).trim());
+      const actualGroupCol = resolveColumnName(groupCol, cols);
       if (actualGroupCol) {
         const aggMatch = selectPart.match(/SUM\((\w+)\)|COUNT\((\w*|\*)\)|AVG\((\w+)\)|MIN\((\w+)\)|MAX\((\w+)\)|RANK\(\)\s*OVER|DENSE_RANK\(\)\s*OVER/gi);
         const groups: Record<string, Record<string, unknown>[]> = {};

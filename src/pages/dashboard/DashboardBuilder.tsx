@@ -15,8 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import {
   LayoutDashboard, Plus, Undo2, Redo2, Save, ZoomIn, ZoomOut,
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
-  ChevronLeft, Download, FolderOpen, Lock, Image
+  ChevronLeft, Download, FolderOpen, Lock, Image, Copy, FileText, Presentation, File
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 const WIDGET_LIMITS: Record<string, number> = {
@@ -37,6 +40,7 @@ export default function DashboardBuilder() {
     zoom, setZoom, crossFilter, setCrossFilter,
   } = useDashboard();
   const { currentDataset, currentData } = useData();
+  const { user } = useAuth();
   const { plan, isChartAvailable } = useSubscription();
   const [showTemplates, setShowTemplates] = useState(!dashboard);
   const [showSaved, setShowSaved] = useState(false);
@@ -70,6 +74,43 @@ export default function DashboardBuilder() {
     }
     addWidget(type, config);
   }, [canAddWidget, plan, widgetLimit, isChartAvailable, addWidget]);
+
+  const handleCopyFromVisualization = useCallback(() => {
+    if (!currentData.length) {
+      toast({ title: 'No data available', variant: 'destructive' });
+      return;
+    }
+    const keys = Object.keys(currentData[0]);
+    const numCols = keys.filter(k => typeof currentData[0][k] === 'number');
+    const strCols = keys.filter(k => typeof currentData[0][k] === 'string');
+
+    const chartTypes = ['bar', 'line', 'pie', 'area', 'scatter'];
+    const added: string[] = [];
+    chartTypes.forEach((type, i) => {
+      if (!canAddWidget || !isChartAvailable(type)) return;
+      const xAxis = strCols[0] || keys[0];
+      const yAxis = numCols[i % numCols.length] || numCols[0] || keys[1];
+      if (xAxis && yAxis) {
+        addWidget('chart', { chartType: type, title: `${type.charAt(0).toUpperCase() + type.slice(1)}: ${yAxis}`, xAxis, yAxis, aggregation: 'sum' });
+        added.push(type);
+      }
+    });
+    toast({ title: 'Charts Imported', description: `Added ${added.length} recommended charts from your dataset.` });
+  }, [currentData, canAddWidget, isChartAvailable, addWidget]);
+
+  const handleExportDashboard = useCallback(async (format: 'pdf' | 'pptx' | 'docx') => {
+    if (!currentData.length) { toast({ title: 'No data', variant: 'destructive' }); return; }
+    try {
+      const report = buildReportData(currentData, currentDataset?.name || 'Dashboard', user?.name || 'User', dashboard?.name);
+      switch (format) {
+        case 'pdf': await exportPDF(report); break;
+        case 'pptx': await exportPPTX(report); break;
+        case 'docx': await exportDOCX(report); break;
+      }
+    } catch {
+      toast({ title: 'Export Failed', variant: 'destructive' });
+    }
+  }, [currentData, currentDataset, user, dashboard]);
 
   const handleExportHTML = useCallback(() => {
     if (!dashboard || !currentData.length) return;
@@ -213,6 +254,9 @@ render();
         <Button variant="outline" size="sm" onClick={() => handleAddWidget('text', { textContent: 'Text', title: '' })} disabled={!canAddWidget}>
           <Type className="h-4 w-4 mr-1" />Text
         </Button>
+        <Button variant="outline" size="sm" onClick={handleCopyFromVisualization} disabled={!canAddWidget || !currentData.length}>
+          <Copy className="h-4 w-4 mr-1" />Copy from Viz
+        </Button>
 
         {!canAddWidget && (
           <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30">
@@ -237,9 +281,19 @@ render();
           </Badge>
         )}
 
-        <Button variant="outline" size="sm" onClick={handleExportHTML} disabled={!currentData.length}>
-          <Download className="h-4 w-4 mr-1" />Export
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={!currentData.length}>
+              <Download className="h-4 w-4 mr-1" />Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-popover">
+            <DropdownMenuItem onClick={handleExportHTML}><File className="h-4 w-4 mr-2" />HTML (Interactive)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportDashboard('pdf')}><FileText className="h-4 w-4 mr-2" />PDF Report</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportDashboard('pptx')}><Presentation className="h-4 w-4 mr-2" />PowerPoint</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportDashboard('docx')}><FileText className="h-4 w-4 mr-2" />Word Document</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button size="sm" onClick={saveDashboard}>
           <Save className="h-4 w-4 mr-1" />Save
         </Button>

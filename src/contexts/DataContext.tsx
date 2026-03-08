@@ -188,11 +188,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('Data updated:', data.length, 'rows');
   }, [currentDataset, pushHistory]);
 
+  const updateCleanedData = useCallback((data: Record<string, unknown>[], report: Record<string, unknown>) => {
+    pushHistory(data);
+    setCurrentData(data);
+    setIsDataCleaned(true);
+    setCleaningReport(report);
+    if (currentDataset) {
+      setDatasets(prev => prev.map(d => d.id === currentDataset.id ? { ...d, data, rowCount: data.length } : d));
+    }
+    console.log('Cleaned data updated:', data.length, 'rows');
+  }, [currentDataset, pushHistory]);
+
   const deleteDataset = useCallback((id: string) => {
     setDatasets(prev => prev.filter(d => d.id !== id));
     if (currentDataset?.id === id) {
       setCurrentDataset(null);
       setCurrentData([]);
+      setIsDataCleaned(false);
+      setCleaningReport(null);
       historyRef.current = [];
       historyIndexRef.current = -1;
     }
@@ -201,8 +214,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      datasets, currentDataset, currentData, isLoading,
-      uploadData, refreshDatasets, selectDataset, getDatasetData, updateCurrentData,
+      datasets, currentDataset, currentData, isLoading, isDataCleaned, cleaningReport,
+      uploadData, refreshDatasets, selectDataset, getDatasetData, updateCurrentData, updateCleanedData,
       deleteDataset, undo, redo, canUndo, canRedo,
     }}>
       {children}

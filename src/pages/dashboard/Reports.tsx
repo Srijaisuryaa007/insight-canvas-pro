@@ -7,14 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useExport } from '@/hooks/useExport';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDashboard } from '@/contexts/DashboardContext';
 import { useDataQuality } from '@/hooks/useDataQuality';
 import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
 import { toast } from '@/hooks/use-toast';
+import ScheduledReports from '@/components/reports/ScheduledReports';
+import DashboardComments from '@/components/collaboration/DashboardComments';
+import VersionHistory from '@/components/collaboration/VersionHistory';
 
 const REPORT_SECTIONS = [
   { id: 'title', label: 'Cover Page', default: true },
@@ -36,6 +41,7 @@ export default function Reports() {
   const { exportCSV } = useExport();
   const { currentData, currentDataset } = useData();
   const { user } = useAuth();
+  const { dashboard } = useDashboard();
   const { report: qualityReport } = useDataQuality();
   const [sections, setSections] = useState<string[]>(REPORT_SECTIONS.filter(s => s.default).map(s => s.id));
   const [reportTitle, setReportTitle] = useState('');
@@ -268,6 +274,17 @@ export default function Reports() {
             </>
           )}
         </div>
+      </div>
+
+      {/* Scheduled Reports */}
+      <Separator />
+      <ScheduledReports />
+
+      {/* Team Collaboration */}
+      <Separator />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DashboardComments dashboardId={dashboard?.id || 'default'} />
+        <VersionHistory dashboardId={dashboard?.id || 'default'} />
       </div>
     </div>
   );

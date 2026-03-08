@@ -52,6 +52,7 @@ export interface CleaningSummary {
   warnings: string[];
   recommendations: string[];
   flaggedRows: { row: number; column: string; value: string; reason: string }[];
+  duplicateReport?: DuplicateReport;
 }
 
 // All values treated as empty/missing

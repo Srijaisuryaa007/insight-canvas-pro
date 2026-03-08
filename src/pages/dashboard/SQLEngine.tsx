@@ -29,6 +29,21 @@ function validateSQL(sql: string): { safe: boolean; reason?: string } {
   return { safe: true };
 }
 
+/** Splits SELECT parts by comma, respecting parentheses depth */
+function splitSelectParts(selectPart: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let depth = 0;
+  for (const ch of selectPart) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) { parts.push(current); current = ''; }
+    else current += ch;
+  }
+  if (current.trim()) parts.push(current);
+  return parts;
+}
+
 function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { result: Record<string, unknown>[]; error?: string } {
   if (!data.length) return { result: [], error: 'No data available.' };
   try {
@@ -225,6 +240,152 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
                 [`${valCol}_growth`]: i > 0 ? curr - prev : 0,
                 growth_pct: i > 0 && prev !== 0 ? Math.round((curr - prev) / prev * 10000) / 100 : 0,
               };
+            });
+          }
+        }
+      } else if (/\b(SUM|AVG|COUNT|MIN|MAX|ROUND)\s*\(/i.test(selectPart)) {
+        // Aggregate functions WITHOUT GROUP BY — produces a single row
+        const aggResult: Record<string, unknown> = {};
+        const aggParts = splitSelectParts(selectPart);
+
+        for (const part of aggParts) {
+          const trimmed = part.trim();
+          const aliasMatch = trimmed.match(/\s+AS\s+(\w+)\s*$/i);
+          const alias = aliasMatch?.[1] || trimmed;
+          const exprPart = trimmed.replace(/\s+AS\s+\w+\s*$/i, '').trim();
+
+          // COUNT(*)
+          const countStarMatch = exprPart.match(/^COUNT\s*\(\s*\*\s*\)$/i);
+          if (countStarMatch) { aggResult[alias] = filtered.length; continue; }
+
+          // SUM(col), AVG(col), COUNT(col), MIN(col), MAX(col)
+          const funcMatch = exprPart.match(/^(SUM|AVG|COUNT|MIN|MAX)\s*\(\s*(\w+)\s*\)$/i);
+          if (funcMatch) {
+            const fn = funcMatch[1].toUpperCase();
+            const colName = funcMatch[2];
+            const actualCol = cols.find(c => c.toLowerCase() === colName.toLowerCase());
+            if (actualCol) {
+              const values = filtered.map(r => Number(r[actualCol])).filter(v => !isNaN(v));
+              switch (fn) {
+                case 'SUM': aggResult[alias] = values.reduce((a, b) => a + b, 0); break;
+                case 'AVG': aggResult[alias] = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length * 100) / 100 : 0; break;
+                case 'COUNT': aggResult[alias] = values.length; break;
+                case 'MIN': aggResult[alias] = values.length ? Math.min(...values) : 0; break;
+                case 'MAX': aggResult[alias] = values.length ? Math.max(...values) : 0; break;
+              }
+            } else { aggResult[alias] = 0; }
+            continue;
+          }
+
+          // ROUND(expr, n)
+          const roundMatch = exprPart.match(/^ROUND\s*\((.+),\s*(\d+)\)$/i);
+          if (roundMatch) {
+            // Simplified: try to evaluate inner expression
+            const innerExpr = roundMatch[1].trim();
+            const decimals = parseInt(roundMatch[2]);
+            const innerFuncMatch = innerExpr.match(/^(SUM|AVG|COUNT|MIN|MAX)\s*\(\s*(\w+)\s*\)$/i);
+            if (innerFuncMatch) {
+              const fn = innerFuncMatch[1].toUpperCase();
+              const actualCol = cols.find(c => c.toLowerCase() === innerFuncMatch[2].toLowerCase());
+              if (actualCol) {
+                const values = filtered.map(r => Number(r[actualCol])).filter(v => !isNaN(v));
+                let val = 0;
+                switch (fn) {
+                  case 'SUM': val = values.reduce((a, b) => a + b, 0); break;
+                  case 'AVG': val = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0; break;
+                  case 'COUNT': val = values.length; break;
+                  case 'MIN': val = values.length ? Math.min(...values) : 0; break;
+                  case 'MAX': val = values.length ? Math.max(...values) : 0; break;
+                }
+                aggResult[alias] = Math.round(val * Math.pow(10, decimals)) / Math.pow(10, decimals);
+              }
+            }
+            continue;
+          }
+
+          // Arithmetic between aggregates: SUM(a) - SUM(b), SUM(a) * 100.0 / SUM(b) etc.
+          const multiAggMatch = exprPart.match(/(SUM|AVG|COUNT|MIN|MAX)\s*\(\s*(\w+)\s*\)/gi);
+          if (multiAggMatch && multiAggMatch.length >= 1) {
+            let evalExpr = exprPart;
+            for (const m of multiAggMatch) {
+              const fm = m.match(/(SUM|AVG|COUNT|MIN|MAX)\s*\(\s*(\w+)\s*\)/i);
+              if (fm) {
+                const fn = fm[1].toUpperCase();
+                const actualCol = cols.find(c => c.toLowerCase() === fm[2].toLowerCase());
+                if (actualCol) {
+                  const values = filtered.map(r => Number(r[actualCol])).filter(v => !isNaN(v));
+                  let val = 0;
+                  switch (fn) {
+                    case 'SUM': val = values.reduce((a, b) => a + b, 0); break;
+                    case 'AVG': val = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0; break;
+                    case 'COUNT': val = values.length; break;
+                    case 'MIN': val = values.length ? Math.min(...values) : 0; break;
+                    case 'MAX': val = values.length ? Math.max(...values) : 0; break;
+                  }
+                  evalExpr = evalExpr.replace(m, String(val));
+                }
+              }
+            }
+            // Replace NULLIF(x, 0) with a safe version
+            evalExpr = evalExpr.replace(/NULLIF\s*\(\s*([^,]+),\s*0\s*\)/gi, '($1 || 0.0001)');
+            // Try safe evaluation of arithmetic
+            try {
+              const sanitized = evalExpr.replace(/[^0-9+\-*/().]/g, '');
+              if (sanitized) {
+                aggResult[alias] = Math.round(Function(`"use strict"; return (${sanitized})`)() * 100) / 100;
+              }
+            } catch { aggResult[alias] = 0; }
+            continue;
+          }
+
+          // Plain column or literal
+          aggResult[alias] = exprPart;
+        }
+
+        filtered = [aggResult];
+      } else if (/\bCASE\b/i.test(selectPart)) {
+        // Handle CASE WHEN in SELECT without GROUP BY
+        const caseMatch = selectPart.match(/CASE\s+WHEN\s+(.+?)\s+THEN\s+'([^']+)'\s+(?:WHEN\s+.+?\s+THEN\s+'[^']+'\s+)*(?:ELSE\s+'([^']+)')?\s+END\s+AS\s+(\w+)/i);
+        if (caseMatch) {
+          const alias = caseMatch[4];
+          // Simplified: evaluate each row
+          const caseBlocks = [...selectPart.matchAll(/WHEN\s+(.+?)\s+THEN\s+'([^']+)'/gi)];
+          const elseMatch = selectPart.match(/ELSE\s+'([^']+)'/i);
+          const elseVal = elseMatch?.[1] || 'Other';
+
+          filtered = filtered.map(row => {
+            let result = elseVal;
+            for (const block of caseBlocks) {
+              const condition = block[1].trim();
+              // Handle simple comparisons: col > value, col < value, col >= value
+              const cmpMatch = condition.match(/(\w+)\s*(>|<|>=|<=|=)\s*\(?\s*SELECT\s+.+?\s*\)?\s*/i);
+              if (cmpMatch) {
+                // Subquery comparison — use average as proxy
+                const col = cols.find(c => c.toLowerCase() === cmpMatch[1].toLowerCase());
+                if (col) {
+                  const allVals = filtered.map(r => Number(r[col])).filter(v => !isNaN(v));
+                  const avg = allVals.length ? allVals.reduce((a, b) => a + b, 0) / allVals.length : 0;
+                  const rowVal = Number(row[col]) || 0;
+                  const op = cmpMatch[2];
+                  const matched = op === '>' ? rowVal > avg : op === '<' ? rowVal < avg : op === '>=' ? rowVal >= avg : rowVal <= avg;
+                  if (matched) { result = block[2]; break; }
+                }
+              }
+            }
+            return { ...row, [alias]: result };
+          });
+        }
+        // Also handle non-CASE columns in select
+        const otherCols = selectPart.split(',').filter(p => !/CASE/i.test(p)).map(p => p.trim().replace(/\s+AS\s+\w+/i, '').trim());
+        if (otherCols.length > 0) {
+          const validOtherCols = otherCols.map(f => cols.find(c => c.toLowerCase() === f.toLowerCase())).filter(Boolean) as string[];
+          if (validOtherCols.length > 0) {
+            const caseAlias = selectPart.match(/END\s+AS\s+(\w+)/i)?.[1];
+            filtered = filtered.map(row => {
+              const entry: Record<string, unknown> = {};
+              validOtherCols.forEach(c => { entry[c] = row[c]; });
+              if (caseAlias && row[caseAlias] !== undefined) entry[caseAlias] = row[caseAlias];
+              return entry;
             });
           }
         }

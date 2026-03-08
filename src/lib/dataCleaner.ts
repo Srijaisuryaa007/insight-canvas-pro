@@ -1,7 +1,8 @@
-// Full 8-Step Data Cleaning Pipeline — Expert Edition
+// Full Data Cleaning Pipeline — Expert Edition
 // Implements comprehensive cleaning with detailed reporting
 
 import { runFullDuplicateCheck, DuplicateReport } from './duplicateEngine';
+import { runFullValidation, applyValidationFixes, ValidationReport } from './validationEngine';
 
 export interface CleaningStepDetail {
   column: string;

@@ -19,8 +19,20 @@ export interface CleaningStep {
   changesMade: number;
 }
 
+export interface ColumnAnalysis {
+  column: string;
+  totalRows: number;
+  emptyCount: number;
+  emptyPct: number;
+  uniqueValues: number;
+  action: 'AUTO_DROP' | 'WARN_USER' | 'KEEP_FILL' | 'KEEP_CLEAN';
+  reason: string;
+  scenario: string;
+}
+
 export interface CleaningSummary {
   steps: CleaningStep[];
+  columnAnalysis: ColumnAnalysis[];
   rowsBefore: number;
   rowsAfter: number;
   colsBefore: number;
@@ -31,6 +43,7 @@ export interface CleaningSummary {
   typesFixed: number;
   textStandardized: number;
   columnsDropped: number;
+  columnsNeedingDecision: string[];
   featuresAdded: string[];
   healthScore: number;
   healthBreakdown: { label: string; score: number; max: number }[];

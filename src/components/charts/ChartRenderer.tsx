@@ -32,10 +32,16 @@ const COLOR_PALETTES: Record<string, string[]> = {
   sunset: ['#ff6b6b', '#ffa06b', '#ffd93d', '#6bff6b', '#6bc5ff'],
 };
 
+const MULTI_COLORS = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+  '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
+];
+
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--popover))',
   border: '1px solid hsl(var(--border))',
-  borderRadius: 'var(--radius)',
+  borderRadius: '8px',
+  padding: '10px 14px',
 };
 
 // Check data suitability for chart type

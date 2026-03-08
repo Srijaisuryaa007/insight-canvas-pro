@@ -23,10 +23,7 @@ import { exportRichDOCX } from '@/lib/exportDOCX';
 import { buildReportStats, generateNarrative } from '@/lib/reportNarrativeBuilder';
 import { getTemplate, type TemplateId } from '@/lib/reportTemplates';
 import { toast } from '@/hooks/use-toast';
-import ScheduledReports from '@/components/reports/ScheduledReports';
 import TemplateSelector from '@/components/reports/TemplateSelector';
-import DashboardComments from '@/components/collaboration/DashboardComments';
-import VersionHistory from '@/components/collaboration/VersionHistory';
 import { cn } from '@/lib/utils';
 
 // ── Helpers ──

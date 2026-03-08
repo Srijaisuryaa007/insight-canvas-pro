@@ -95,7 +95,7 @@ export default function Quality() {
         toast({ title: 'Action Required', description: `${summary.columnsNeedingDecision.length} columns are 50–70% empty and require your decision.` });
       } else {
         setActiveTab('summary');
-        toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | ${summary.steps.reduce((a, s) => a + s.changesMade, 0)} changes made` });
+        toast({ title: 'Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 — ${summary.steps.reduce((a, s) => a + s.changesMade, 0)} changes applied` });
       }
       setDataProfile(profileData(cleanedData));
       if (currentDataset) scanDataset(currentDataset.id, cleanedData);

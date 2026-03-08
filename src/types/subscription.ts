@@ -26,7 +26,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     priceLabel: '$0',
     maxDatasets: 1,
     chartTypes: 3,
-    credits: 5,
+    credits: 100,
     maxRows: 500,
     aiModels: [], // No AI for free
     features: ['1 dataset', '3 basic charts', '5 credits', 'Data quality scan', 'Basic insights', '500 row limit', 'No AI assistant']

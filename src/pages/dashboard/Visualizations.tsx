@@ -25,6 +25,7 @@ import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useExport } from '@/hooks/useExport';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import { forecast, detectAnomalies, ForecastPoint, AnomalyPoint } from '@/lib/forecasting';
 import { toast } from '@/hooks/use-toast';
 
@@ -250,6 +251,7 @@ function ChartTypeSelector({ selectedChart, onSelect, isChartAvailable, searchQu
   searchQuery: string;
 }) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>('Comparison');
+  const navigate = useNavigate();
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -336,7 +338,7 @@ function ChartTypeSelector({ selectedChart, onSelect, isChartAvailable, searchQu
                                     Unlock {ALL_CHART_LABELS[chart]} and 35+ more chart types with DataVora Pro
                                   </p>
                                   <p className="text-[10px] text-muted-foreground">₹999/month • Cancel anytime</p>
-                                  <Button size="sm" className="w-full h-6 text-[10px]" onClick={(e) => { e.stopPropagation(); }}>
+                                  <Button size="sm" className="w-full h-6 text-[10px]" onClick={(e) => { e.stopPropagation(); navigate('/dashboard/settings'); }}>
                                     Upgrade Now →
                                   </Button>
                                 </div>
@@ -567,6 +569,7 @@ export default function Visualizations() {
   const { plan, isChartAvailable, getAvailableCharts } = useSubscription();
   const { user } = useAuth();
   const { exportCSV, exportPNG } = useExport();
+  const navigate = useNavigate();
 
   const [selectedChart, setSelectedChart] = useState('bar');
   const [xAxis, setXAxis] = useState('');
@@ -960,7 +963,7 @@ export default function Visualizations() {
                     <span className="text-xs font-semibold text-amber-600">Pro Charts ({allCharts.length - availableCharts.length} types)</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground mb-2">Unlock all chart types with DataVora Pro</p>
-                  <Button size="sm" variant="outline" className="w-full h-6 text-[10px] border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
+                  <Button size="sm" variant="outline" className="w-full h-6 text-[10px] border-amber-500/30 text-amber-600 hover:bg-amber-500/10" onClick={() => navigate('/dashboard/settings')}>
                     Upgrade to unlock →
                   </Button>
                 </div>

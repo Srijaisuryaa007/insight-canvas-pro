@@ -284,35 +284,6 @@ export default function Datasets() {
                             })}
                           </TableRow>
                         ))}
-                        {/* DAX Measures Summary Row */}
-                        {daxMeasures.length > 0 && (
-                          <TableRow className="bg-chart-1/5 border-t-2 border-primary/30 font-semibold">
-                            <TableCell className="text-[10px] text-primary sticky left-0 bg-chart-1/10 z-10 text-center border-r border-border font-mono">
-                              Σ
-                            </TableCell>
-                            {dataColumns.map(col => {
-                              const measure = daxMeasures.find(m => {
-                                const colMatch = m.formula.match(/\w+\[(\w+)\]/);
-                                const simpleMatch = m.formula.match(/(?:SUM|AVERAGE|COUNT|MAX|MIN)\s*\(\s*(\w+)\s*\)/i);
-                                const matchedCol = colMatch?.[1] || simpleMatch?.[1];
-                                return matchedCol === col;
-                              });
-                              if (measure) {
-                                let val: number | null = null;
-                                try { val = executeDAXMeasure(measure.formula, viewData); } catch {}
-                                return (
-                                  <TableCell key={col} className="text-xs border-r border-border/30 p-0">
-                                    <div className="px-2 py-1.5 text-primary font-mono font-bold">
-                                      {val !== null ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                                      <span className="ml-1 text-[8px] font-normal text-muted-foreground">{measure.name}</span>
-                                    </div>
-                                  </TableCell>
-                                );
-                              }
-                              return <TableCell key={col} className="text-xs border-r border-border/30"><div className="px-2 py-1.5 text-muted-foreground">—</div></TableCell>;
-                            })}
-                          </TableRow>
-                        )}
                       </TableBody>
                     </Table>
                   </div>

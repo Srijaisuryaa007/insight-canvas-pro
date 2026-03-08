@@ -103,6 +103,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               <NavLink
                 to={item.path}
                 end={item.path === '/dashboard'}
+                {...('tour' in item && item.tour ? { 'data-tour': item.tour } : {})}
                 className={({ isActive }) => cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",

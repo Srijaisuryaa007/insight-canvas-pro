@@ -4,6 +4,9 @@ import { Sidebar } from '@/components/dashboard/Sidebar';
 import { TopBar } from '@/components/dashboard/TopBar';
 import { CommandPalette } from '@/components/dashboard/CommandPalette';
 import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
+import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
+import { ProductTour } from '@/components/onboarding/ProductTour';
+import { KeyboardShortcuts } from '@/components/dashboard/KeyboardShortcuts';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -44,6 +47,9 @@ export default function DashboardLayout() {
         onAskCopilot={() => navigate('/dashboard/copilot')}
       />
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+      <OnboardingFlow />
+      <ProductTour />
+      <KeyboardShortcuts />
     </div>
   );
 }

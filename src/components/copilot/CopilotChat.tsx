@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useData } from '@/contexts/DataContext';
 import { processQuery, CopilotMessage } from '@/lib/copilotEngine';
+import { askCopilot } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -50,8 +51,34 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
     setInput('');
     setIsLoading(true);
 
-    await new Promise(r => setTimeout(r, 300 + Math.random() * 500));
+    try {
+      // Try backend API first (Groq/Grok AI)
+      const history = messages.map(m => ({ role: m.role, content: m.content }));
+      const apiResponse = await askCopilot(text, datasetId, history);
 
+      if (apiResponse && apiResponse.answer && apiResponse.confidence > 0) {
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: apiResponse.answer,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            mode: 'conversation' as const,
+            confidence: apiResponse.confidence,
+            reasoning: apiResponse.reasoning,
+            suggestions: apiResponse.suggestions,
+            chartRecommendation: apiResponse.chartRecommendation,
+          },
+        }]);
+        setIsLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.log('[Copilot] API unavailable, using local engine:', err);
+    }
+
+    // Fallback to local engine
+    await new Promise(r => setTimeout(r, 300 + Math.random() * 500));
     const schema = getSchema();
     const { answer, metadata } = processQuery(text, schema, currentData, [...messages, userMessage]);
 

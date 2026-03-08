@@ -861,6 +861,7 @@ export function runFullCleaningPipeline(
 
   const summary: CleaningSummary = {
     steps,
+    columnAnalysis,
     rowsBefore: initialRows,
     rowsAfter: current.length,
     colsBefore: initialCols,
@@ -871,12 +872,13 @@ export function runFullCleaningPipeline(
     typesFixed,
     textStandardized,
     columnsDropped,
+    columnsNeedingDecision,
     featuresAdded,
     healthScore,
     healthBreakdown,
     warnings,
     recommendations,
-    flaggedRows: flaggedRows.slice(0, 20), // Cap at 20
+    flaggedRows: flaggedRows.slice(0, 20),
   };
 
   return { cleanedData: current, summary };

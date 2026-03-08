@@ -1474,7 +1474,7 @@ export default function Quality() {
                         {cleaningSummary.warnings.length > 0 && (
                           <Card className="bg-card border-border">
                             <CardContent className="py-4">
-                              <h4 className="font-medium text-sm mb-3">⚠️ Warnings</h4>
+                              <h4 className="font-medium text-sm mb-3">Warnings</h4>
                               <div className="space-y-2">
                                 {cleaningSummary.warnings.map((w, i) => (
                                   <p key={i} className="text-xs text-amber-500">• {w}</p>

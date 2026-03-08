@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { ConnectorPanel } from '@/components/connectors/ConnectorPanel';
+import { ConnectDataModal } from '@/components/connectors/ConnectDataModal';
 import { EmptyStateCharacter } from '@/components/dashboard/EmptyStateCharacter';
 import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { Button } from '@/components/ui/button';

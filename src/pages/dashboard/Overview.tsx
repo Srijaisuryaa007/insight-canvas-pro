@@ -209,7 +209,7 @@ export default function Overview() {
                   </TabsList>
                   <TabsContent value="dax" className="mt-4">
                     <div className="h-[28rem]">
-                      <DAXBot datasetId={currentDataset?.id} onApplyMeasure={handleApplyMeasure} />
+                      <DAXBot datasetId={currentDataset?.id} onApplyMeasure={handleApplyMeasure} columns={currentData.length > 0 ? Object.keys(currentData[0]) : []} data={currentData} />
                     </div>
                   </TabsContent>
                   <TabsContent value="excel" className="mt-4">

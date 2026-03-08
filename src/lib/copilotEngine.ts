@@ -46,10 +46,14 @@ const DATA_PATTERNS = [
   /\b(top|bottom|highest|lowest|most|least)\s+\d+/i,
   /\b(group|filter|where|aggregate)\s+by/i,
   /\b(sql|query)\b/i,
-  /\b(chart|graph|visualize|visualization|bar chart|line chart|pie chart)\b/i,
-  /\b(analyze|analysis)\s+(my|the|this)?\s*(data|dataset)/i,
-  /\b(trend|correlation|distribution)\b/i,
+  /\b(charts?|graphs?|visuali[sz](e|ation)|bar\s*charts?|line\s*charts?|pie\s*charts?|scatter|heatmap|histogram|plot)\b/i,
+  /\b(suggest|recommend)\b.*\b(charts?|visuals?|graphs?|visuali[sz]ation)\b/i,
+  /\b(analyze|analysis|analyse)\s*(my|the|this)?\s*(data|dataset)?/i,
+  /\b(trend|correlation|distribution|pattern|outlier|anomal|insight|segment|cluster)\b/i,
   /\b(by region|by category|by month|by year|by product)\b/i,
+  /\b(summarize|summary|overview|describe)\s*(my|the|this)?\s*(data|dataset)?/i,
+  /\b(find|detect|discover|check|scan)\s*(pattern|trend|outlier|anomal|insight|correlation)/i,
+  /\b(kpi|metric|dashboard|report)\b/i,
 ];
 
 // General knowledge patterns - handle with conversational response
@@ -248,7 +252,7 @@ function handleConversation(intent: Intent, schema: DataSchema | null, question:
       }
 
       // Chart recommendation question without data
-      if (/\b(recommend|suggest|best|which|what)\b.*\b(chart|visual|graph|plot)\b/i.test(q)) {
+      if (/\b(recommend|suggest|best|which|what)\b.*\b(charts?|visuals?|graphs?|plots?|visuali[sz]ation)\b/i.test(q) || /\b(charts?|visuals?)\b.*\b(recommend|suggest|should|use)\b/i.test(q)) {
         if (hasData) {
           const chart = recommendChart(question, schema);
           const numCols = schema.columns.filter(c => c.type === 'number');
@@ -273,21 +277,31 @@ function handleConversation(intent: Intent, schema: DataSchema | null, question:
           };
         }
         return {
-          answer: "### 📊 Chart Selection Guide\n\nWithout seeing your data, here's a quick decision tree:\n\n- **Comparing categories?** → Bar/Column Chart\n- **Showing trends over time?** → Line/Area Chart\n- **Showing proportions?** → Pie/Donut (≤5 slices) or Treemap\n- **Finding relationships?** → Scatter Plot\n- **Showing distributions?** → Histogram or Box Plot\n- **Displaying KPIs?** → Card/Gauge widgets\n\n> 💡 Load a dataset and I'll give you **specific recommendations** based on your actual data!",
+          answer: "### 📊 Chart Selection Guide\n\nHere's my expert recommendation framework:\n\n| Your Goal | Best Chart | Why |\n|-----------|-----------|-----|\n| **Compare categories** | Bar / Column | Clear side-by-side comparison |\n| **Show trends over time** | Line / Area | Reveals patterns & seasonality |\n| **Show proportions** | Pie / Donut (≤5 slices) | Easy part-of-whole view |\n| **Find relationships** | Scatter Plot | Reveals correlations |\n| **Show distributions** | Histogram / Box Plot | Spots outliers & skew |\n| **Display KPIs** | Card / Gauge | At-a-glance metrics |\n| **Compare many categories** | Treemap / Heatmap | Dense data display |\n\n> 💡 Load a dataset and I'll give you **specific recommendations** based on your actual data structure!",
           metadata: { mode: 'conversation', confidence: 0.85, suggestions: ['Upload a dataset', 'Dashboard design tips', 'Explain scatter plots'] },
         };
       }
 
-      // Intelligent fallback with data context
-      let answer = `Great question! Let me share my perspective as a data scientist. 🧑‍🔬\n\n`;
-      answer += `I don't have a pre-built answer for "${question.slice(0, 60)}${question.length > 60 ? '...' : ''}", but I can help with:\n\n`;
-      answer += `- 📊 **Chart selection** — "Which chart should I use?"\n`;
-      answer += `- 🔬 **Data concepts** — "Explain regression", "What is clustering?"\n`;
-      answer += `- 🎯 **Strategy** — "Dashboard design tips", "What KPIs to track?"\n`;
-      answer += `- 📈 **Analysis** — "Summarize my data", "Find patterns"\n`;
+      // Intelligent fallback - try to give a helpful answer about the topic
+      const topicKeywords = q.match(/\b(\w{4,})\b/g)?.filter(w => !['what', 'how', 'when', 'where', 'which', 'that', 'this', 'with', 'from', 'your', 'about', 'some', 'have', 'been', 'will', 'would', 'could', 'should', 'does', 'make', 'give', 'tell', 'know'].includes(w)) || [];
+      const topic = topicKeywords.slice(0, 3).join(' ');
       
+      let answer = '';
       if (hasData) {
-        answer += `\n> 💡 You have **${schema.rowCount} rows** loaded. Try: "Recommend charts for my data" or "Summarize my dataset"`;
+        answer = `### 💬 About "${topic}"\n\nThat's an interesting question! While I work best with specific data queries or analytics concepts, here's what I can do for you right now:\n\n`;
+        answer += `📊 **Your dataset "${schema.tableName}"** has ${schema.rowCount} rows and ${schema.columns.length} columns ready for analysis.\n\n`;
+        answer += `Here are some things I can help with:\n`;
+        answer += `- "Summarize my dataset" — full statistical overview\n`;
+        answer += `- "Suggest charts" — visual recommendations for your data\n`;
+        answer += `- "Find patterns" — detect correlations and outliers\n`;
+        answer += `- "Top 10 by ${schema.columns.find(c => c.type === 'number')?.name || 'value'}" — ranking analysis\n`;
+      } else {
+        answer = `### 💬 About "${topic}"\n\nI'm DataPulse AI — a data science assistant! I can help you with:\n\n`;
+        answer += `- 📊 **Chart Selection** — Ask "which chart should I use for comparing sales?"\n`;
+        answer += `- 🔬 **Data Concepts** — Ask "explain regression" or "what is K-means clustering?"\n`;
+        answer += `- 🎯 **Strategy** — Ask "dashboard design best practices"\n`;
+        answer += `- 📈 **Analysis** — Upload a dataset and I'll analyze it!\n\n`;
+        answer += `> Try asking me something specific and I'll give you a detailed answer!`;
       }
 
       return {
@@ -716,7 +730,7 @@ export function processQuery(
     }
   }
   // Chart recommendation request
-  else if (/\b(chart|graph|visualize|visualization|recommend.*chart|suggest.*chart|best.*chart)\b/i.test(q)) {
+  else if (/\b(charts?|graphs?|visuali[sz]e?|visuali[sz]ation|recommend|suggest)\b/i.test(q)) {
     const dateCols = schema.columns.filter(c => c.type === 'date');
     const recommendations: string[] = [];
     if (dateCols.length > 0 && numCols.length > 0)

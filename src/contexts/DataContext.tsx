@@ -224,8 +224,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       historyRef.current = [];
       historyIndexRef.current = -1;
     }
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('datasets').delete().eq('id', id).then();
+    }
     toast({ title: 'Dataset Deleted', description: 'Dataset removed successfully.' });
-  }, [currentDataset]);
+  }, [currentDataset, user]);
 
   return (
     <DataContext.Provider value={{

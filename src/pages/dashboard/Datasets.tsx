@@ -248,9 +248,6 @@ export default function Datasets() {
     selected.forEach(ds => handleDownload(ds));
   };
 
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-
   const handleStartRename = (ds: Dataset) => {
     setRenamingId(ds.id);
     setRenameValue(ds.name);
@@ -258,7 +255,6 @@ export default function Datasets() {
 
   const handleConfirmRename = () => {
     if (!renamingId || !renameValue.trim()) return;
-    // Update the dataset name in context
     const ds = datasets.find(d => d.id === renamingId);
     if (ds) {
       ds.name = renameValue.trim();

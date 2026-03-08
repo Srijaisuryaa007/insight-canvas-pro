@@ -25,6 +25,7 @@ import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useExport } from '@/hooks/useExport';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import { forecast, detectAnomalies, ForecastPoint, AnomalyPoint } from '@/lib/forecasting';
 import { toast } from '@/hooks/use-toast';
 

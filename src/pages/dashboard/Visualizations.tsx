@@ -34,14 +34,19 @@ const ALL_CHART_LABELS: Record<string, string> = {
   donut: 'Donut Chart', 'stacked-bar': 'Stacked Bar', 'grouped-bar': 'Grouped Bar',
   'stacked-area': 'Stacked Area', pareto: 'Pareto Chart', bullet: 'Bullet',
   progress: 'Progress', 'kpi-card': 'KPI Card',
+  // Advanced combinational
+  violin: 'Violin Plot', density: 'Density Plot', stripplot: 'Strip Plot',
+  swarmplot: 'Swarm Plot', jointplot: 'Joint Plot', rugplot: 'Rug Plot',
+  ridgeline: 'Ridgeline Plot', lollipop: 'Lollipop Chart', dumbbell: 'Dumbbell Chart',
+  slope: 'Slope Chart', marimekko: 'Marimekko Chart', combo: 'Combo Chart',
 };
 
 const CHART_CATEGORIES: Record<string, string[]> = {
-  'Comparison': ['bar', 'grouped-bar', 'stacked-bar', 'bullet', 'pareto'],
-  'Trend': ['line', 'area', 'stacked-area', 'stream'],
-  'Composition': ['pie', 'donut', 'treemap', 'sunburst', 'funnel'],
-  'Distribution': ['scatter', 'bubble', 'histogram', 'boxplot', 'heatmap'],
-  'Relationship': ['radar', 'polar', 'sankey', 'network', 'force', 'parallel'],
+  'Comparison': ['bar', 'grouped-bar', 'stacked-bar', 'bullet', 'pareto', 'lollipop', 'dumbbell'],
+  'Trend': ['line', 'area', 'stacked-area', 'stream', 'slope', 'combo'],
+  'Composition': ['pie', 'donut', 'treemap', 'sunburst', 'funnel', 'marimekko'],
+  'Distribution': ['scatter', 'bubble', 'histogram', 'boxplot', 'heatmap', 'violin', 'density', 'stripplot', 'swarmplot', 'ridgeline', 'rugplot'],
+  'Relationship': ['radar', 'polar', 'sankey', 'network', 'force', 'parallel', 'jointplot'],
   'Specialized': ['waterfall', 'candlestick', 'gauge', 'progress', 'kpi-card', 'calendar', 'timeline', 'tree', 'word-cloud', 'geo', 'choropleth', '3d-scatter', '3d-surface'],
 };
 
@@ -79,19 +84,33 @@ function recommendCharts(data: Record<string, unknown>[]): Array<{ type: string;
     recs.push({ type: 'pie', reason: `Show composition across ${uniqueCategories} ${strCols[0]} values`, score: 80 });
     recs.push({ type: 'donut', reason: `Ring chart for ${strCols[0]} distribution`, score: 78 });
   }
-  if (numCols.length >= 2) recs.push({ type: 'scatter', reason: `Correlate ${numCols[0]} vs ${numCols[1]}`, score: 82 });
+  if (numCols.length >= 2) {
+    recs.push({ type: 'scatter', reason: `Correlate ${numCols[0]} vs ${numCols[1]}`, score: 82 });
+    recs.push({ type: 'jointplot', reason: `Joint distribution of ${numCols[0]} & ${numCols[1]}`, score: 72 });
+    recs.push({ type: 'rugplot', reason: `Marginal density of ${numCols[0]} vs ${numCols[1]}`, score: 58 });
+    recs.push({ type: 'combo', reason: `Bar + Line combo: ${numCols[0]} & ${numCols[1]}`, score: 74 });
+    recs.push({ type: 'dumbbell', reason: `Compare ${numCols[0]} vs ${numCols[1]} per category`, score: 62 });
+    recs.push({ type: 'slope', reason: `Change from ${numCols[0]} to ${numCols[1]}`, score: 60 });
+  }
   if (numCols.length >= 1) {
     recs.push({ type: 'area', reason: `Visualize ${numCols[0]} volume over time`, score: 75 });
     recs.push({ type: 'histogram', reason: `Distribution of ${numCols[0]} values`, score: 70 });
+    recs.push({ type: 'violin', reason: `Distribution shape of ${numCols[0]} with quartiles`, score: 67 });
+    recs.push({ type: 'density', reason: `Smooth density curve of ${numCols[0]}`, score: 64 });
+    recs.push({ type: 'stripplot', reason: `Individual values of ${numCols[0]} by category`, score: 56 });
+    recs.push({ type: 'lollipop', reason: `Clean comparison of ${numCols[0]} values`, score: 63 });
   }
   if (data.length > 20 && numCols.length >= 1 && strCols.length >= 1) {
     recs.push({ type: 'heatmap', reason: `Density map of ${numCols[0]} by categories`, score: 65 });
     recs.push({ type: 'treemap', reason: `Hierarchical view of ${numCols[0]}`, score: 60 });
+    recs.push({ type: 'ridgeline', reason: `Distribution of ${numCols[0]} across ${strCols[0]} groups`, score: 59 });
+    recs.push({ type: 'swarmplot', reason: `Spread of ${numCols[0]} values avoiding overlap`, score: 55 });
+    recs.push({ type: 'marimekko', reason: `Proportional areas by ${strCols[0]} categories`, score: 54 });
   }
   if (uniqueCategories >= 3 && uniqueCategories <= 8 && numCols.length >= 1) {
     recs.push({ type: 'radar', reason: `Multi-axis comparison across ${uniqueCategories} categories`, score: 68 });
   }
-  return recs.sort((a, b) => b.score - a.score).slice(0, 8);
+  return recs.sort((a, b) => b.score - a.score).slice(0, 12);
 }
 
 // ─── Sub-components ───────────────────────────────────────────────

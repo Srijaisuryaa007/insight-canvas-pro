@@ -86,12 +86,15 @@ export const CREDIT_COSTS = {
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
-// ALL 38 chart types
-const ALL_38_CHARTS = [
+// ALL chart types (50 total)
+const ALL_CHARTS = [
   'bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge',
   'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar',
   'geo', 'choropleth', 'network', 'force', 'tree', 'parallel', 'word-cloud', 'timeline', '3d-scatter', '3d-surface',
   'donut', 'stacked-bar', 'grouped-bar', 'stacked-area', 'pareto', 'bullet', 'progress', 'kpi-card',
+  // Advanced combinational / statistical charts
+  'violin', 'density', 'stripplot', 'swarmplot', 'jointplot', 'rugplot', 'ridgeline',
+  'lollipop', 'dumbbell', 'slope', 'marimekko', 'combo',
 ];
 
 // Chart types available per plan (STRICT)
@@ -99,8 +102,9 @@ export const CHART_TYPES_BY_PLAN: Record<PlanType, string[]> = {
   free: ['bar', 'line', 'pie'], // Only 3 basic charts
   basic: ['bar', 'line', 'pie', 'area', 'scatter', 'donut', 'radar', 'heatmap'],
   pro: ['bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge', 
-        'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar'],
-  enterprise: ALL_38_CHARTS,
+        'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar',
+        'violin', 'density', 'lollipop', 'combo'],
+  enterprise: ALL_CHARTS,
 };
 
 // Features gated by plan (STRICT)

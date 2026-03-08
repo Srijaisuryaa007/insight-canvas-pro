@@ -1223,7 +1223,7 @@ export default function Quality() {
                                       )}>{issue.severity}</Badge>
                                     </div>
                                     <p className="text-sm text-muted-foreground mt-1">{issue.count} occurrences ({issue.percentage}%)</p>
-                                    <p className="text-sm mt-2">💡 {issue.suggestion}</p>
+                                    <p className="text-sm mt-2 text-muted-foreground italic">{issue.suggestion}</p>
 
                                     {/* Missing value strategy selector */}
                                     {issue.type === 'missing' && (

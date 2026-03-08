@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { FileText, Download, CheckSquare, FileDown, Presentation, File, Layers, Loader2, Star, ChevronLeft, ChevronRight, GripVertical, Sparkles, Clock, Trash2, FolderOpen } from 'lucide-react';
+import { FileText, Download, CheckSquare, FileDown, Presentation, File, Layers, Loader2, Star, ChevronLeft, ChevronRight, GripVertical, Sparkles, Clock, Trash2, FolderOpen, Share2, Link, Mail, Lock, MessageSquare, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';

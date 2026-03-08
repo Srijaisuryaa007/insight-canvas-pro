@@ -251,6 +251,7 @@ function ChartTypeSelector({ selectedChart, onSelect, isChartAvailable, searchQu
   searchQuery: string;
 }) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>('Comparison');
+  const navigate = useNavigate();
 
   return (
     <TooltipProvider delayDuration={300}>

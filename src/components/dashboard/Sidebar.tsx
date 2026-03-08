@@ -24,7 +24,7 @@ const navItems = [
   { path: '/dashboard/copilot', icon: Sparkles, label: 'AI Copilot', tour: 'copilot' },
   { path: '/dashboard/sql', icon: Terminal, label: 'SQL Engine' },
   { path: '/dashboard/reports', icon: FileText, label: 'Reports', tour: 'reports' },
-  { path: '/dashboard/integrations', icon: Plug, label: 'Integrations' },
+  
 ];
 
 const bottomItems = [

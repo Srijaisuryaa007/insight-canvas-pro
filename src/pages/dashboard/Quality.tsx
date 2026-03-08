@@ -399,12 +399,15 @@ export default function Quality() {
 
               {/* Tabs for Profile / Columns / Issues / Summary */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-4">
+                <TabsList className="w-full grid grid-cols-5">
                   <TabsTrigger value="profile" className="gap-1 text-xs">
                     <BarChart3 className="h-3 w-3" /> Profile
                   </TabsTrigger>
                   <TabsTrigger value="columns" className="gap-1 text-xs">
                     <Database className="h-3 w-3" /> Columns {cleaningSummary?.columnsNeedingDecision.length ? `(⚠️${cleaningSummary.columnsNeedingDecision.length})` : ''}
+                  </TabsTrigger>
+                  <TabsTrigger value="duplicates" className="gap-1 text-xs">
+                    <FileText className="h-3 w-3" /> Duplicates {cleaningSummary?.duplicateReport ? `(${cleaningSummary.duplicateReport.totalIssues})` : ''}
                   </TabsTrigger>
                   <TabsTrigger value="issues" className="gap-1 text-xs">
                     <AlertTriangle className="h-3 w-3" /> Issues {report ? `(${report.issues.length})` : ''}

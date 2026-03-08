@@ -1,8 +1,10 @@
 import { useState, useCallback, createContext, useContext, ReactNode, useEffect, useRef } from 'react';
-import { uploadDataset, listDatasets, getDataset } from '@/lib/api';
+import { listDatasets, getDataset } from '@/lib/api';
 import { useSubscription } from '@/hooks/useSubscription';
 import { detectSchema } from '@/lib/dataParser';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 export interface Dataset {
   id: string;

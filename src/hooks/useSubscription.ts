@@ -196,6 +196,7 @@ export function useSubscription() {
     canPerformAction, consumeCredits, upgradePlan, buyCredits, addVerifiedCredits,
     isChartAvailable, getAvailableCharts, isFeatureAvailable,
     canAddDataset, canIngestRows, getCreditCost, isAIAvailable,
-    getRequiredPlan, meetsPlanRequirement, getUpgradeMessage
+    getRequiredPlan, meetsPlanRequirement, getUpgradeMessage,
+    hasPersistentStorage, maxStorageMB, canUploadFile
   };
 }

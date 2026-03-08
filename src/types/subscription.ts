@@ -30,48 +30,56 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     chartTypes: 3,
     credits: 100,
     maxRows: 500,
-    aiModels: [], // No AI for free
-    features: ['1 dataset', '3 basic charts', '5 credits', 'Data quality scan', 'Basic insights', '500 row limit', 'No AI assistant']
+    maxStorageMB: 5,
+    hasPersistentStorage: false, // Free users: data in session only, not saved
+    aiModels: [],
+    features: ['1 dataset', '3 basic charts', '5 credits', 'Data quality scan', 'Basic insights', '500 row limit', 'No AI assistant', '5MB upload limit', 'No persistent storage']
   },
   basic: {
     id: 'basic',
     name: 'Basic',
     price: 5,
-    priceINR: 41500, // ~$5 in INR paise
+    priceINR: 41500,
     priceLabel: '$5/mo',
     maxDatasets: 3,
     chartTypes: 8,
     credits: 100,
     maxRows: 5000,
+    maxStorageMB: 100,
+    hasPersistentStorage: true,
     aiModels: ['grok'],
-    features: ['3 datasets', '8 chart types', '100 credits/mo', 'Grok AI assistant', 'CSV export', '5,000 row limit']
+    features: ['3 datasets', '8 chart types', '100 credits/mo', 'Grok AI assistant', 'CSV export', '5,000 row limit', '100MB storage']
   },
   pro: {
     id: 'pro',
     name: 'Pro',
     price: 15,
-    priceINR: 124500, // ~$15 in INR paise
+    priceINR: 124500,
     priceLabel: '$15/mo',
     maxDatasets: 10,
     chartTypes: 20,
     credits: 500,
     maxRows: 100000,
+    maxStorageMB: 3072, // 3GB
+    hasPersistentStorage: true,
     aiModels: ['grok', 'chatgpt'],
-    features: ['10 datasets', '20 chart types', '500 credits/mo', 'PDF export', 'Advanced Copilot', 'Forecasting', 'ChatGPT AI', '100K row limit']
+    features: ['10 datasets', '20 chart types', '500 credits/mo', 'PDF export', 'Advanced Copilot', 'Forecasting', 'ChatGPT AI', '100K row limit', '3GB storage']
   },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
     price: 25,
-    priceINR: 207500, // ~$25 in INR paise
+    priceINR: 207500,
     priceLabel: '$25/mo',
     maxDatasets: -1,
     chartTypes: 38,
     credits: -1,
     maxRows: -1,
+    maxStorageMB: -1, // Unlimited
+    hasPersistentStorage: true,
     isUnlimited: true,
     aiModels: ['grok', 'chatgpt', 'claude'],
-    features: ['Unlimited datasets', 'ALL 38 charts', 'Unlimited credits', 'All exports', 'All AI models', 'Geo maps', 'Anomaly detection', 'Team sharing', 'Unlimited rows']
+    features: ['Unlimited datasets', 'ALL 38 charts', 'Unlimited credits', 'All exports', 'All AI models', 'Geo maps', 'Anomaly detection', 'Team sharing', 'Unlimited rows', 'Unlimited storage']
   }
 };
 

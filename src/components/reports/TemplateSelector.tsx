@@ -26,12 +26,6 @@ export default function TemplateSelector({ selected, onSelect }: TemplateSelecto
               selected === tpl.id ? 'border-primary shadow-md' : 'border-border hover:border-muted-foreground/40'
             )}
           >
-            {/* Color preview bar */}
-            <div className="flex gap-0.5 mb-2 rounded overflow-hidden h-5">
-              {tpl.colors.map((color, i) => (
-                <div key={i} className="flex-1" style={{ backgroundColor: color }} />
-              ))}
-            </div>
             {/* Icon + Name */}
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-base">{tpl.icon}</span>

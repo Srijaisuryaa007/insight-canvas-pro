@@ -40,6 +40,7 @@ export default function DashboardBuilder() {
     zoom, setZoom, crossFilter, setCrossFilter,
   } = useDashboard();
   const { currentDataset, currentData } = useData();
+  const { user } = useAuth();
   const { plan, isChartAvailable } = useSubscription();
   const [showTemplates, setShowTemplates] = useState(!dashboard);
   const [showSaved, setShowSaved] = useState(false);

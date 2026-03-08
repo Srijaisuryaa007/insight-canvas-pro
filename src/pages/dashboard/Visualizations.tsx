@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart3, Lock, Palette, AlertTriangle, Wand2, ArrowUpDown, Columns, Layers,
@@ -563,6 +565,7 @@ function QuickFilterChips({ data, yAxis, onApplyFilter }: {
 export default function Visualizations() {
   const { datasets, currentDataset, currentData, selectDataset } = useData();
   const { plan, isChartAvailable, getAvailableCharts } = useSubscription();
+  const { user } = useAuth();
   const { exportCSV, exportPNG } = useExport();
 
   const [selectedChart, setSelectedChart] = useState('bar');
@@ -602,6 +605,31 @@ export default function Visualizations() {
   const [saveTitle, setSaveTitle] = useState('');
   const [saveDescription, setSaveDescription] = useState('');
   const [saveTags, setSaveTags] = useState('');
+
+  // Load saved charts from Supabase on mount
+  useEffect(() => {
+    const loadSavedCharts = async () => {
+      if (!supabase || !user?.id) return;
+      const { data, error } = await supabase
+        .from('saved_charts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setSavedCharts(data.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description || '',
+          tags: c.tags || '',
+          chartType: c.chart_type,
+          xAxis: c.x_axis,
+          yAxis: c.y_axis,
+          savedAt: new Date(c.created_at),
+        })));
+      }
+    };
+    loadSavedCharts();
+  }, [user?.id]);
 
   // Download state
   const [downloading, setDownloading] = useState(false);
@@ -759,23 +787,56 @@ export default function Visualizations() {
     };
   }, [chartData, yAxis, xAxis]);
 
-  const handleSaveChart = () => {
+  const handleSaveChart = async () => {
+    if (!supabase || !user?.id) {
+      toast({ title: 'Error', description: 'You must be logged in to save charts', variant: 'destructive' });
+      return;
+    }
+    const title = saveTitle || formatChartTitle(xAxis, yAxis);
+    const { data, error } = await supabase
+      .from('saved_charts')
+      .insert({
+        user_id: user.id,
+        title,
+        description: saveDescription,
+        tags: saveTags,
+        chart_type: selectedChart,
+        x_axis: xAxis,
+        y_axis: yAxis,
+        color_palette: colorPalette,
+        aggregation,
+        show_legend: showLegend,
+        show_grid: showGrid,
+        show_labels: showLabels,
+        sort_column: sortColumn,
+        sort_direction: sortDirection,
+        top_n: topN,
+        dataset_id: currentDataset?.id || '',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({ title: 'Save Failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+
     const newChart = {
-      id: Date.now().toString(),
-      title: saveTitle || formatChartTitle(xAxis, yAxis),
+      id: data.id,
+      title,
       description: saveDescription,
       tags: saveTags,
       chartType: selectedChart,
       xAxis,
       yAxis,
-      savedAt: new Date(),
+      savedAt: new Date(data.created_at),
     };
     setSavedCharts(prev => [newChart, ...prev]);
     setSaveModalOpen(false);
     setSaveTitle('');
     setSaveDescription('');
     setSaveTags('');
-    toast({ title: 'Chart Saved', description: `"${newChart.title}" added to your library` });
+    toast({ title: 'Chart Saved', description: `"${title}" saved to your library` });
   };
 
   const handleLoadSavedChart = (chart: typeof savedCharts[0]) => {

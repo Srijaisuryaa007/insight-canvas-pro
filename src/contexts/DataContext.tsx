@@ -55,6 +55,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isDataCleaned, setIsDataCleaned] = useState(false);
   const [cleaningReport, setCleaningReport] = useState<Record<string, unknown> | null>(null);
   const { consumeCredits, canAddDataset } = useSubscription();
+  const { user } = useAuth();
 
   // Undo/Redo history
   const historyRef = useRef<Record<string, unknown>[][]>([]);

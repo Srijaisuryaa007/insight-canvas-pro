@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, Search, Loader2, Globe, FileText, Database as DbIcon, Cloud, Upload, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -100,6 +100,7 @@ export function ConnectDataModal({ open, onOpenChange }: { open: boolean; onOpen
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[680px] p-0 gap-0 border-border bg-card rounded-3xl overflow-hidden [&>button]:hidden">
+        <DialogTitle className="sr-only">Connect Your Data</DialogTitle>
         {/* Header */}
         <div className="px-7 pt-6 pb-0">
           <div className="flex items-start justify-between">

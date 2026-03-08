@@ -46,9 +46,34 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const WORKSPACE_ID = 'default';
 const MAX_HISTORY = 20;
+const LS_KEY = 'datapulse_datasets';
+const LS_ACTIVE = 'datapulse_active_dataset';
+
+function saveToLocalStorage(datasets: Dataset[]) {
+  try {
+    // Store datasets with their data (limit rows to prevent quota issues)
+    const toStore = datasets.map(d => ({
+      ...d,
+      data: (d.data || []).slice(0, 5000), // cap at 5k rows for localStorage
+    }));
+    localStorage.setItem(LS_KEY, JSON.stringify(toStore));
+  } catch (e) {
+    console.warn('[DataContext] localStorage save failed (quota?):', e);
+  }
+}
+
+function loadFromLocalStorage(): Dataset[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('[DataContext] localStorage load failed:', e);
+  }
+  return [];
+}
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [datasets, setDatasets] = useState<Dataset[]>(() => loadFromLocalStorage());
   const [currentDataset, setCurrentDataset] = useState<Dataset | null>(null);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(false);

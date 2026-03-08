@@ -86,87 +86,216 @@ function detectIntent(input: string): Intent {
 
 const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-const GREETINGS = [
-  "Hello! 👋 How can I help you today?",
-  "Hey there! What's on your mind?",
-  "Hi! I'm here to help with anything you need. 😊",
+const GREETINGS_WITH_DATA = [
+  "Hello! 👋 I'm your senior data scientist assistant. I see you have data loaded — want me to run a quick analysis, suggest some charts, or just chat?",
+  "Hey there! 🧑‍🔬 Ready to dive into your data or just talk shop. What's on your mind?",
+  "Hi! I can help with data analysis, chart recommendations, business strategy, or general questions. What would you like? 😊",
 ];
+const GREETINGS_NO_DATA = [
+  "Hello! 👋 I'm DataPulse AI — your senior data science assistant. I can help with analytics concepts, chart selection, business strategy, or any general questions. What's on your mind?",
+  "Hey! 🧑‍🔬 I'm here to help — from choosing the right visualization to explaining statistical concepts. Ask me anything!",
+  "Hi there! Whether it's data strategy, chart types, machine learning concepts, or general chat — I've got you covered. 😊",
+];
+
 const THANKS_R = [
-  "You're welcome! Let me know if you need anything else. 😊",
-  "Happy to help! Feel free to ask more questions anytime.",
-  "Glad I could help! Anything else you'd like to know?",
+  "You're welcome! Let me know if you need more analysis or have other questions. 😊",
+  "Happy to help! Feel free to ask about charts, data patterns, or anything else.",
+  "Glad I could help! I'm here for deeper dives anytime.",
 ];
 const FAREWELL_R = [
-  "Goodbye! Come back anytime! 👋",
-  "See you later! Take care! 😊",
+  "Goodbye! Come back when you need data insights! 👋📊",
+  "See you later! Happy analyzing! 😊",
 ];
 const AFFIRM_R = [
-  "Great! What would you like to do next?",
-  "Perfect! Feel free to ask another question.",
+  "Great! Want me to suggest some charts, analyze patterns, or explore something else?",
+  "Perfect! I can dig deeper into your data or help with something new — what's next?",
 ];
 const JOKES = [
-  "Why did the data analyst cross the road? To aggregate the other side! 😄",
+  "Why did the data analyst break up with the pie chart? Because they found someone with more dimensions! 😄📊",
   "A SQL query walks into a bar, sees two tables, and asks: 'Can I JOIN you?' 🍻",
-  "What's a data analyst's favorite music? Algo-rhythm! 🎵",
-  "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
+  "What's a data scientist's favorite snack? Correlation chips — they always come in clusters! 🎵",
+  "Why do data scientists prefer dark mode? Because light attracts outliers! 🐛",
+  "How does a statistician propose? 'With 95% confidence, will you marry me?' 💍",
 ];
 
-const HELP_RESPONSE = `I'm your **AI Assistant**! Here's what I can do:
+const HELP_RESPONSE = `I'm **DataPulse AI** — your senior data science assistant! 🧑‍🔬
 
-💬 **General Chat** — Ask me anything, I'll do my best to help
-🔍 **Data Analysis** — Ask questions about your dataset (if loaded)
-📊 **Visualizations** — I can recommend charts for your data
-💡 **Business Insights** — Get ideas and suggestions
+Here's what I bring to the table:
 
-**Examples:**
-- "What is machine learning?"
-- "Explain data visualization best practices"
-- "Show all data" (when dataset loaded)
-- "Top 10 products by revenue"`;
+### 💬 General Chat
+Ask me anything — tech, business, concepts, or casual conversation.
 
-const IDENTITY_RESPONSE = `I'm **DataPulse AI** — your friendly assistant! 🤖
+### 📊 Chart Recommendations
+I analyze your data structure and suggest the **best visualization types** with reasons. Try:
+- *"What chart should I use?"*
+- *"Recommend a visualization"*
+- *"Best way to show trends"*
 
-I can help with:
-- 💬 General questions and conversation
-- 📊 Data analysis (when you have a dataset loaded)
-- 💡 Business insights and recommendations
-- 🎯 Anything else you want to chat about!`;
+### 🔬 Data Analysis
+When you have data loaded, I provide:
+- **Statistical summaries** with key metrics
+- **Pattern detection** — trends, outliers, correlations
+- **Actionable insights** with business context
 
-// General knowledge responses for common questions
-const GENERAL_RESPONSES: Record<string, string> = {
-  'machine learning': "**Machine Learning** is a type of AI that allows computers to learn from data without being explicitly programmed. It works by:\n\n1. **Training** - Feeding data to algorithms\n2. **Learning** - Finding patterns in the data\n3. **Predicting** - Making decisions on new data\n\nCommon types include supervised learning, unsupervised learning, and reinforcement learning.",
-  'data visualization': "**Data Visualization** is the graphical representation of data to help people understand patterns, trends, and insights. Best practices include:\n\n- Choose the right chart type for your data\n- Keep it simple and avoid clutter\n- Use color meaningfully\n- Label axes clearly\n- Tell a story with your data",
-  'analytics': "**Analytics** is the process of discovering, interpreting, and communicating meaningful patterns in data. Types include:\n\n1. **Descriptive** - What happened?\n2. **Diagnostic** - Why did it happen?\n3. **Predictive** - What might happen?\n4. **Prescriptive** - What should we do?",
-};
+### 🎯 Strategy & Best Practices
+- Dashboard design tips
+- KPI selection guidance
+- Stakeholder presentation advice
 
-function handleConversation(intent: Intent, schema: DataSchema | null, question: string): { answer: string; metadata: CopilotMetadata } {
-  const suggestions = schema
-    ? ['Analyze my data', 'Show summary', 'Recommend a chart']
-    : ['What can you do?', 'Tell me a joke', 'Help'];
+### 💡 Concepts & Learning
+- Explain analytics concepts (regression, clustering, A/B testing...)
+- Compare tools and approaches
+- Data modeling guidance`;
+
+const IDENTITY_RESPONSE = `I'm **DataPulse AI** — your senior data science assistant! 🧑‍🔬
+
+Think of me as a data scientist colleague who can:
+- 📊 **Recommend the perfect chart** for any dataset
+- 🔬 **Analyze patterns** and surface hidden insights
+- 💡 **Explain concepts** from basic stats to advanced ML
+- 🎯 **Guide strategy** on dashboards, KPIs, and presentations
+- 💬 **Chat about anything** — I'm a well-rounded assistant!
+
+I combine deep analytics expertise with a conversational approach. Load a dataset and I'll proactively suggest analysis paths!`;
+
+// Expanded general knowledge base
+const GENERAL_KNOWLEDGE: Array<{ patterns: RegExp[]; response: string; suggestions: string[] }> = [
+  {
+    patterns: [/\b(machine learning|ml)\b/i],
+    response: "**Machine Learning** is a subset of AI where systems learn from data to make predictions. 🧠\n\n### Types:\n1. **Supervised** — Learn from labeled data (classification, regression)\n2. **Unsupervised** — Find hidden patterns (clustering, dimensionality reduction)\n3. **Reinforcement** — Learn through trial and reward\n\n### In Analytics:\n- **Predictive models** for forecasting revenue or churn\n- **Clustering** customers into segments\n- **Anomaly detection** to flag unusual transactions\n\n> 💡 **Pro Tip:** Start with simple linear regression before jumping to deep learning — it's interpretable and often surprisingly effective.",
+    suggestions: ['Explain regression', 'What is clustering?', 'Best chart for ML results'],
+  },
+  {
+    patterns: [/\b(data visualization|best chart|chart type|which chart|visualization best practices)\b/i],
+    response: "### 📊 Data Visualization Best Practices\n\nAs a data scientist, here's my chart selection framework:\n\n| Goal | Best Chart |\n|------|------------|\n| **Compare categories** | Bar / Column |\n| **Show trends over time** | Line / Area |\n| **Show proportions** | Pie / Donut / Treemap |\n| **Show relationships** | Scatter / Bubble |\n| **Show distributions** | Histogram / Box Plot |\n| **Show geographic data** | Map / Choropleth |\n| **Show flow/process** | Sankey / Funnel |\n| **Show KPIs** | Card / Gauge |\n\n### 🎯 Golden Rules:\n- **Less is more** — remove chart junk\n- **Color with purpose** — highlight, don't decorate\n- **Label clearly** — axes, titles, legends\n- **Tell a story** — lead the viewer's eye\n- **Choose right scale** — don't truncate y-axis misleadingly",
+    suggestions: ['Recommend a chart for my data', 'Explain scatter plots', 'Dashboard design tips'],
+  },
+  {
+    patterns: [/\b(analytics|types of analytics)\b/i],
+    response: "### 📈 The Analytics Maturity Model\n\n1. **Descriptive Analytics** — *What happened?*\n   - Reports, dashboards, KPIs\n   - Charts: bar, line, pie\n\n2. **Diagnostic Analytics** — *Why did it happen?*\n   - Drill-downs, correlations, root cause analysis\n   - Charts: scatter, heatmap, treemap\n\n3. **Predictive Analytics** — *What will happen?*\n   - Forecasting, regression, ML models\n   - Charts: line with forecast bands, probability distributions\n\n4. **Prescriptive Analytics** — *What should we do?*\n   - Optimization, simulation, decision trees\n   - Charts: decision trees, scenario comparisons\n\n> 💡 Most organizations are at level 1-2. Moving to 3-4 is where the competitive advantage lies.",
+    suggestions: ['Explain predictive analytics', 'What KPIs should I track?', 'Analyze my data'],
+  },
+  {
+    patterns: [/\b(dashboard design|dashboard tips|good dashboard)\b/i],
+    response: "### 🎯 Dashboard Design — Senior DS Perspective\n\n**The 5-Second Rule:** Your dashboard should communicate its main message within 5 seconds.\n\n### Structure:\n1. **Top row** — KPI cards (3-5 key metrics)\n2. **Middle** — Primary visualization (the main story)\n3. **Bottom** — Supporting charts (drill-down context)\n\n### Do's:\n- ✅ Use consistent color coding\n- ✅ Add comparison context (vs last period, vs target)\n- ✅ Include filters for interactivity\n- ✅ Use sparklines for inline trends\n\n### Don'ts:\n- ❌ More than 7-8 visuals per dashboard\n- ❌ 3D charts (they distort perception)\n- ❌ Pie charts with >5 slices\n- ❌ Red/green only (colorblind users)\n\n> 💡 **Pro Tip:** Design for your audience — executives want KPIs, analysts want drill-downs.",
+    suggestions: ['What KPIs should I track?', 'Best chart for my data', 'Analyze my dataset'],
+  },
+  {
+    patterns: [/\b(kpi|key performance|metrics|what to track)\b/i],
+    response: "### 🎯 KPI Selection Framework\n\n**Good KPIs are SMART:**\n- **S**pecific — clearly defined\n- **M**easurable — quantifiable\n- **A**chievable — realistic targets\n- **R**elevant — tied to business goals\n- **T**ime-bound — measured over a period\n\n### Common KPIs by Function:\n\n📈 **Sales:** Revenue, Conversion Rate, Average Order Value, Customer Acquisition Cost\n\n📊 **Marketing:** CAC, ROAS, Click-Through Rate, Engagement Rate\n\n🏭 **Operations:** Efficiency Rate, Defect Rate, Cycle Time, Utilization\n\n💰 **Finance:** Profit Margin, Cash Flow, ROI, Burn Rate\n\n👥 **HR:** Turnover Rate, Time to Hire, Employee Satisfaction\n\n> 💡 **Pro Tip:** Track no more than 5-7 KPIs per dashboard. Too many = information overload.",
+    suggestions: ['Dashboard design tips', 'Analyze my data', 'Best visualization for KPIs'],
+  },
+  {
+    patterns: [/\b(regression|linear regression)\b/i],
+    response: "### 📈 Regression Analysis\n\n**Linear Regression** predicts a continuous outcome based on input variables.\n\n**Formula:** y = mx + b\n- **y** = predicted value\n- **m** = slope (relationship strength)\n- **x** = input variable\n- **b** = intercept\n\n### Key Metrics:\n- **R²** — How much variance is explained (0-1, higher = better)\n- **p-value** — Statistical significance (<0.05 is significant)\n- **RMSE** — Average prediction error\n\n### When to Use:\n- Predicting revenue from ad spend\n- Forecasting sales based on season\n- Understanding price elasticity\n\n> 💡 **Visualize with:** Scatter plot + trend line. If R² > 0.7, you have a strong model.",
+    suggestions: ['What is correlation?', 'Explain clustering', 'Analyze my data trends'],
+  },
+  {
+    patterns: [/\b(correlation|r squared|r-squared)\b/i],
+    response: "### 🔗 Correlation Analysis\n\n**Correlation** measures the strength and direction of a relationship between two variables.\n\n### Correlation Coefficient (r):\n- **+1.0** = Perfect positive correlation\n- **+0.7 to +1.0** = Strong positive\n- **+0.3 to +0.7** = Moderate positive\n- **-0.3 to +0.3** = Weak/no correlation\n- **-0.7 to -1.0** = Strong negative\n\n⚠️ **Correlation ≠ Causation!**\nIce cream sales correlate with drowning rates — both increase in summer, not because one causes the other.\n\n### Best Visualization:\n- **Scatter plot** for two variables\n- **Heatmap** for correlation matrix\n- **Bubble chart** for three variables\n\n> 💡 Always check for confounding variables before drawing conclusions.",
+    suggestions: ['What is regression?', 'Best chart for relationships', 'Analyze correlations in my data'],
+  },
+  {
+    patterns: [/\b(outlier|anomaly|anomalies)\b/i],
+    response: "### 🔍 Outlier & Anomaly Detection\n\n**Outliers** are data points that significantly differ from the rest.\n\n### Detection Methods:\n1. **Z-Score** — Points beyond ±3 standard deviations\n2. **IQR Method** — Below Q1-1.5×IQR or above Q3+1.5×IQR\n3. **Isolation Forest** — ML-based, great for multi-dimensional data\n4. **Visual** — Box plots, scatter plots\n\n### What to Do:\n- ✅ Investigate — is it a data error or genuine?\n- ✅ Document your decision\n- ❌ Don't blindly remove outliers\n- ❌ Don't ignore them either\n\n> 💡 **Visualize with:** Box plot (1D), Scatter plot (2D), or highlight outliers in any chart with conditional formatting.",
+    suggestions: ['Check my data for outliers', 'What is IQR?', 'Data quality best practices'],
+  },
+  {
+    patterns: [/\b(a\/b test|ab test|hypothesis|statistical significance)\b/i],
+    response: "### 🧪 A/B Testing & Hypothesis Testing\n\n**A/B Testing** compares two variants to determine which performs better.\n\n### Steps:\n1. **Hypothesis** — \"Variant B will increase conversions by 10%\"\n2. **Sample Size** — Calculate using desired confidence & effect size\n3. **Randomize** — Split traffic equally\n4. **Measure** — Track your primary metric\n5. **Analyze** — Check statistical significance\n\n### Key Concepts:\n- **p-value < 0.05** = statistically significant\n- **Confidence Level** — typically 95%\n- **Statistical Power** — typically 80%\n- **Effect Size** — minimum detectable difference\n\n> 💡 **Visualize with:** Bar chart with confidence intervals, or a time series showing both variants' performance over time.",
+    suggestions: ['Explain p-values', 'What sample size do I need?', 'Analyze my data'],
+  },
+  {
+    patterns: [/\b(clustering|k-means|segments|segmentation)\b/i],
+    response: "### 🎯 Clustering & Segmentation\n\n**Clustering** groups similar data points together without predefined labels.\n\n### Popular Algorithms:\n1. **K-Means** — Fast, requires specifying k clusters\n2. **Hierarchical** — Builds a tree of clusters, no need to specify k\n3. **DBSCAN** — Finds arbitrary-shaped clusters, handles noise\n\n### Business Applications:\n- **Customer segmentation** — high-value, at-risk, new\n- **Product grouping** — by sales pattern\n- **Anomaly detection** — outlier cluster\n\n### How Many Clusters?\n- **Elbow Method** — plot cost vs k, find the bend\n- **Silhouette Score** — measures cluster quality\n\n> 💡 **Visualize with:** Scatter plot with color-coded clusters, or a parallel coordinates chart for multi-dimensional segments.",
+    suggestions: ['Explain K-means', 'Best chart for segments', 'Analyze patterns in my data'],
+  },
+];
+
+function handleConversation(intent: Intent, schema: DataSchema | null, question: string, data: Record<string, unknown>[]): { answer: string; metadata: CopilotMetadata } {
+  const hasData = schema && data.length > 0;
+  const dataSuggestions = hasData
+    ? ['Recommend charts for my data', 'Summarize my dataset', 'Find patterns', 'What KPIs should I track?']
+    : ['What chart should I use?', 'Dashboard design tips', 'Explain analytics types', 'What is machine learning?'];
 
   switch (intent) {
-    case 'greeting': return { answer: pick(GREETINGS), metadata: { mode: 'conversation', suggestions } };
-    case 'thanks': return { answer: pick(THANKS_R), metadata: { mode: 'conversation' } };
-    case 'help': return { answer: HELP_RESPONSE, metadata: { mode: 'conversation', suggestions: ['Analyze data', 'Tell me a joke', 'What is analytics?'] } };
-    case 'joke': return { answer: pick(JOKES), metadata: { mode: 'conversation', suggestions: ['Another joke', 'Back to work'] } };
-    case 'identity': return { answer: IDENTITY_RESPONSE, metadata: { mode: 'conversation', suggestions } };
+    case 'greeting': {
+      const greeting = pick(hasData ? GREETINGS_WITH_DATA : GREETINGS_NO_DATA);
+      // If data is loaded, proactively suggest analysis
+      let proactiveHint = '';
+      if (hasData) {
+        const numCols = schema.columns.filter(c => c.type === 'number');
+        const strCols = schema.columns.filter(c => c.type === 'string');
+        const dateCols = schema.columns.filter(c => c.type === 'date');
+        proactiveHint = `\n\n📊 **Quick look at your data:**\n- **${schema.rowCount}** rows, **${schema.columns.length}** columns\n- ${numCols.length} numeric, ${strCols.length} categorical${dateCols.length ? `, ${dateCols.length} date` : ''} columns\n\n💡 I'd suggest starting with ${dateCols.length ? 'a **line chart** to spot time trends' : numCols.length > 1 ? 'a **scatter plot** to check correlations' : 'a **bar chart** to compare categories'}.`;
+      }
+      return { answer: greeting + proactiveHint, metadata: { mode: 'conversation', suggestions: dataSuggestions } };
+    }
+    case 'thanks': return { answer: pick(THANKS_R), metadata: { mode: 'conversation', suggestions: dataSuggestions } };
+    case 'help': return { answer: HELP_RESPONSE, metadata: { mode: 'conversation', suggestions: dataSuggestions } };
+    case 'joke': return { answer: pick(JOKES), metadata: { mode: 'conversation', suggestions: ['Another joke', ...dataSuggestions.slice(0, 2)] } };
+    case 'identity': return { answer: IDENTITY_RESPONSE, metadata: { mode: 'conversation', suggestions: dataSuggestions } };
     case 'farewell': return { answer: pick(FAREWELL_R), metadata: { mode: 'conversation' } };
-    case 'affirmation': return { answer: pick(AFFIRM_R), metadata: { mode: 'conversation', suggestions } };
+    case 'affirmation': return { answer: pick(AFFIRM_R), metadata: { mode: 'conversation', suggestions: dataSuggestions } };
     case 'general': {
-      // Try to match known topics
       const q = question.toLowerCase();
-      for (const [topic, response] of Object.entries(GENERAL_RESPONSES)) {
-        if (q.includes(topic)) {
-          return { answer: response, metadata: { mode: 'conversation', confidence: 0.9, suggestions: ['Tell me more', 'Another topic'] } };
+      
+      // Check expanded knowledge base
+      for (const topic of GENERAL_KNOWLEDGE) {
+        if (topic.patterns.some(p => p.test(q))) {
+          return { answer: topic.response, metadata: { mode: 'conversation', confidence: 0.92, suggestions: topic.suggestions } };
         }
       }
-      // Generic helpful response
+
+      // Chart recommendation question without data
+      if (/\b(recommend|suggest|best|which|what)\b.*\b(chart|visual|graph|plot)\b/i.test(q)) {
+        if (hasData) {
+          const chart = recommendChart(question, schema);
+          const numCols = schema.columns.filter(c => c.type === 'number');
+          const strCols = schema.columns.filter(c => c.type === 'string');
+          const dateCols = schema.columns.filter(c => c.type === 'date');
+          
+          const recommendations: string[] = [];
+          if (dateCols.length > 0 && numCols.length > 0)
+            recommendations.push(`📈 **Line Chart** — \`${dateCols[0].name}\` vs \`${numCols[0].name}\` to spot trends over time`);
+          if (strCols.length > 0 && numCols.length > 0)
+            recommendations.push(`📊 **Bar Chart** — Compare \`${numCols[0].name}\` across \`${strCols[0].name}\` categories`);
+          if (numCols.length >= 2)
+            recommendations.push(`🔵 **Scatter Plot** — \`${numCols[0].name}\` vs \`${numCols[1].name}\` to find correlations`);
+          if (strCols.length > 0)
+            recommendations.push(`🍩 **Pie/Donut Chart** — Distribution of \`${strCols[0].name}\` values`);
+          if (numCols.length > 0)
+            recommendations.push(`📦 **Box Plot** — Distribution & outliers in \`${numCols[0].name}\``);
+          
+          return {
+            answer: `### 📊 Chart Recommendations for Your Data\n\nBased on your dataset (${schema.rowCount} rows, ${schema.columns.length} cols), here are my top picks:\n\n${recommendations.join('\n\n')}\n\n> 🎯 **My #1 pick:** ${chart!.type.charAt(0).toUpperCase() + chart!.type.slice(1)} Chart — ${chart!.reason}`,
+            metadata: { mode: 'conversation', confidence: 0.9, chartRecommendation: chart, suggestions: ['Summarize my data', 'Top 10 analysis', 'Find patterns'] },
+          };
+        }
+        return {
+          answer: "### 📊 Chart Selection Guide\n\nWithout seeing your data, here's a quick decision tree:\n\n- **Comparing categories?** → Bar/Column Chart\n- **Showing trends over time?** → Line/Area Chart\n- **Showing proportions?** → Pie/Donut (≤5 slices) or Treemap\n- **Finding relationships?** → Scatter Plot\n- **Showing distributions?** → Histogram or Box Plot\n- **Displaying KPIs?** → Card/Gauge widgets\n\n> 💡 Load a dataset and I'll give you **specific recommendations** based on your actual data!",
+          metadata: { mode: 'conversation', confidence: 0.85, suggestions: ['Upload a dataset', 'Dashboard design tips', 'Explain scatter plots'] },
+        };
+      }
+
+      // Intelligent fallback with data context
+      let answer = `Great question! Let me share my perspective as a data scientist. 🧑‍🔬\n\n`;
+      answer += `I don't have a pre-built answer for "${question.slice(0, 60)}${question.length > 60 ? '...' : ''}", but I can help with:\n\n`;
+      answer += `- 📊 **Chart selection** — "Which chart should I use?"\n`;
+      answer += `- 🔬 **Data concepts** — "Explain regression", "What is clustering?"\n`;
+      answer += `- 🎯 **Strategy** — "Dashboard design tips", "What KPIs to track?"\n`;
+      answer += `- 📈 **Analysis** — "Summarize my data", "Find patterns"\n`;
+      
+      if (hasData) {
+        answer += `\n> 💡 You have **${schema.rowCount} rows** loaded. Try: "Recommend charts for my data" or "Summarize my dataset"`;
+      }
+
       return {
-        answer: `That's a great question! I'll do my best to help.\n\n${schema ? "Since you have data loaded, I can also analyze it for you. Try asking specific data questions like 'show top 10 by revenue' or 'total sales by region'." : "I'm a general assistant - feel free to ask me anything! If you upload a dataset, I can also help with data analysis."}\n\nWhat would you like to know more about?`,
-        metadata: { mode: 'conversation', suggestions: schema ? ['Analyze my dataset', 'Show all data'] : ['What can you do?', 'Tell me a joke'] },
+        answer,
+        metadata: { mode: 'conversation', suggestions: dataSuggestions },
       };
     }
-    default: return { answer: "I'm here to help! Ask me anything. 😊", metadata: { mode: 'conversation', suggestions } };
+    default: return { answer: "I'm here to help! Ask me about data, charts, analytics, or anything else. 😊", metadata: { mode: 'conversation', suggestions: dataSuggestions } };
   }
 }
 
@@ -444,7 +573,7 @@ export function processQuery(
   const intent = detectIntent(question);
 
   if (intent !== 'data-analysis') {
-    return handleConversation(intent, schema, question);
+    return handleConversation(intent, schema, question, data);
   }
 
   if (!schema || data.length === 0) {
@@ -465,6 +594,43 @@ export function processQuery(
   
   let analysisAnswer = '';
 
+  // Helper: generate chart recommendation section
+  const chartSection = (chart: CopilotMetadata['chartRecommendation']) => {
+    if (!chart) return '';
+    const dateCols = schema.columns.filter(c => c.type === 'date');
+    const alternatives: string[] = [];
+    if (chart.type !== 'bar' && strCols.length > 0) alternatives.push('Bar Chart');
+    if (chart.type !== 'line' && dateCols.length > 0) alternatives.push('Line Chart');
+    if (chart.type !== 'scatter' && numCols.length >= 2) alternatives.push('Scatter Plot');
+    if (chart.type !== 'pie' && strCols.length > 0) alternatives.push('Pie Chart');
+    
+    return `\n\n---\n\n### 📈 Chart Recommendation\n🎯 **Best fit: ${chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} Chart**${chart.xAxis ? ` — \`${chart.xAxis}\` ${chart.yAxis ? `vs \`${chart.yAxis}\`` : ''}` : ''}\n\n${chart.reason}${alternatives.length > 0 ? `\n\n**Alternatives:** ${alternatives.join(', ')}` : ''}`;
+  };
+
+  // Helper: generate actionable insights section
+  const insightSection = () => {
+    if (insights.length === 0) return '';
+    const actions: string[] = [];
+    const vals = numCols.length > 0 ? data.map(r => Number(r[numCols[0].name]) || 0).filter(v => !isNaN(v)) : [];
+    if (vals.length > 0) {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const stdDev = Math.sqrt(vals.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / vals.length);
+      const cv = (stdDev / avg * 100);
+      if (cv > 50) actions.push(`⚠️ High variability detected in \`${numCols[0].name}\` (CV: ${cv.toFixed(0)}%) — investigate outliers`);
+      if (cv < 10) actions.push(`✅ \`${numCols[0].name}\` is very stable (CV: ${cv.toFixed(0)}%) — consistent performance`);
+      const outliers = vals.filter(v => Math.abs(v - avg) > 2 * stdDev).length;
+      if (outliers > 0) actions.push(`🔍 Found **${outliers} potential outliers** in \`${numCols[0].name}\` (>2σ from mean)`);
+    }
+    if (strCols.length > 0 && strCols[0].uniqueValues < 5) {
+      actions.push(`💡 \`${strCols[0].name}\` has only ${strCols[0].uniqueValues} categories — perfect for a pie/donut chart`);
+    }
+    if (strCols.length > 0 && strCols[0].uniqueValues > 20) {
+      actions.push(`💡 \`${strCols[0].name}\` has ${strCols[0].uniqueValues} categories — consider grouping into top N + "Other"`);
+    }
+    
+    return `\n\n---\n\n### 💡 Insights & Recommendations\n${insights.map(i => `- ${i}`).join('\n')}${actions.length > 0 ? `\n\n### 🎯 Actionable Next Steps\n${actions.map(a => `- ${a}`).join('\n')}` : ''}`;
+  };
+
   // Summarize / show all data
   if (/\b(summarize|summary|overview|describe|show all|display all)\b/i.test(q)) {
     const colSummaries = numCols.slice(0, 5).map(col => {
@@ -474,10 +640,13 @@ export function processQuery(
       const avg = sum / vals.length;
       const max = Math.max(...vals);
       const min = Math.min(...vals);
-      return `- **${col.name}**: min ${min.toLocaleString()}, max ${max.toLocaleString()}, avg ${avg.toFixed(1)}, total ${sum.toLocaleString()}`;
+      const range = max - min;
+      return `| \`${col.name}\` | ${min.toLocaleString()} | ${max.toLocaleString()} | ${avg.toFixed(1)} | ${sum.toLocaleString()} | ${range.toLocaleString()} |`;
     }).filter(Boolean);
 
-    analysisAnswer = `### 📊 Dataset Summary: ${schema.tableName}\n\n**${schema.rowCount} rows** across **${schema.columns.length} columns**\n\n**Columns:** ${schema.columns.map(c => `\`${c.name}\` (${c.type})`).join(', ')}\n\n### Key Statistics\n${colSummaries.join('\n') || 'No numeric columns found.'}`;
+    analysisAnswer = `### 📊 Dataset Summary: ${schema.tableName}\n\n**${schema.rowCount} rows** across **${schema.columns.length} columns**\n\n**Columns:** ${schema.columns.map(c => `\`${c.name}\` (${c.type})`).join(', ')}\n\n### 📐 Key Statistics\n| Column | Min | Max | Avg | Total | Range |\n|--------|-----|-----|-----|-------|-------|\n${colSummaries.join('\n') || '| No numeric columns found | — | — | — | — | — |'}`;
+    analysisAnswer += chartSection(chart);
+    analysisAnswer += insightSection();
   }
   // Top/bottom queries
   else if (/\b(top|bottom|highest|lowest|best|worst|most|least)\b/i.test(q)) {
@@ -494,8 +663,13 @@ export function processQuery(
         return isBottom ? va - vb : vb - va;
       }).slice(0, limit);
 
+      const topVal = Number(sorted[0]?.[measureCol] || 0);
+      const bottomVal = Number(sorted[sorted.length - 1]?.[measureCol] || 0);
+      const gap = topVal - bottomVal;
+
       const rows = sorted.map((r, i) => `${i + 1}. **${dimCol ? r[dimCol] : `Row ${i + 1}`}** — ${measureCol}: **${Number(r[measureCol] || 0).toLocaleString()}**`).join('\n');
-      analysisAnswer = `### ${isBottom ? '⬇️ Bottom' : '🏆 Top'} ${limit} by ${measureCol}\n\n${rows}`;
+      analysisAnswer = `### ${isBottom ? '⬇️ Bottom' : '🏆 Top'} ${limit} by ${measureCol}\n\n${rows}\n\n> 📊 **Gap between #1 and #${limit}:** ${gap.toLocaleString()} (${topVal > 0 ? ((gap / topVal) * 100).toFixed(0) : 0}% difference)`;
+      analysisAnswer += chartSection({ type: 'bar', xAxis: dimCol, yAxis: measureCol, reason: `Bar chart clearly shows the ranking of ${isBottom ? 'bottom' : 'top'} performers.` });
     } else {
       analysisAnswer = `I found your dataset but couldn't identify a numeric column to rank by. Your columns are: ${schema.columns.map(c => `\`${c.name}\``).join(', ')}`;
     }
@@ -510,6 +684,7 @@ export function processQuery(
       const vals = data.map(r => Number(r[measureCol]) || 0);
       const sum = vals.reduce((a, b) => a + b, 0);
       const avg = sum / vals.length;
+      const stdDev = Math.sqrt(vals.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / vals.length);
 
       if (groupCol) {
         const groups: Record<string, number[]> = {};
@@ -531,16 +706,93 @@ export function processQuery(
         const label = wantsCount ? 'Count' : wantsAvg ? `Avg ${measureCol}` : `Total ${measureCol}`;
         const rows = groupResults.map((r, i) => `${i + 1}. **${r.key}** — ${label}: **${r.value.toLocaleString(undefined, { maximumFractionDigits: 1 })}**`).join('\n');
         analysisAnswer = `### 📊 ${label} by ${groupCol}\n\n${rows}`;
+        analysisAnswer += chartSection({ type: 'bar', xAxis: groupCol, yAxis: measureCol, reason: `Bar chart is ideal for comparing ${label} across ${groupCol} categories.` });
       } else {
-        analysisAnswer = `### 📊 ${measureCol} Statistics\n\n- **Total:** ${sum.toLocaleString()}\n- **Average:** ${avg.toFixed(2)}\n- **Min:** ${Math.min(...vals).toLocaleString()}\n- **Max:** ${Math.max(...vals).toLocaleString()}\n- **Records:** ${vals.length.toLocaleString()}`;
+        analysisAnswer = `### 📊 ${measureCol} Statistics\n\n- **Total:** ${sum.toLocaleString()}\n- **Average:** ${avg.toFixed(2)}\n- **Std Dev:** ${stdDev.toFixed(2)}\n- **Min:** ${Math.min(...vals).toLocaleString()}\n- **Max:** ${Math.max(...vals).toLocaleString()}\n- **Range:** ${(Math.max(...vals) - Math.min(...vals)).toLocaleString()}\n- **Records:** ${vals.length.toLocaleString()}\n\n> 🧑‍🔬 **DS Note:** ${stdDev / avg > 0.5 ? 'High variance — your data is widely spread. Consider segmenting by category.' : 'Low variance — data is fairly consistent.'}`;
+        analysisAnswer += chartSection({ type: 'histogram', reason: `Histogram shows the distribution of ${measureCol} values — useful for spotting skewness and outliers.` });
       }
     } else {
       analysisAnswer = `Your dataset has **${data.length} records**. Columns: ${schema.columns.map(c => `\`${c.name}\``).join(', ')}`;
     }
   }
+  // Chart recommendation request
+  else if (/\b(chart|graph|visualize|visualization|recommend.*chart|suggest.*chart|best.*chart)\b/i.test(q)) {
+    const dateCols = schema.columns.filter(c => c.type === 'date');
+    const recommendations: string[] = [];
+    if (dateCols.length > 0 && numCols.length > 0)
+      recommendations.push(`📈 **Line Chart** — \`${dateCols[0].name}\` vs \`${numCols[0].name}\` — spot trends and seasonality`);
+    if (strCols.length > 0 && numCols.length > 0)
+      recommendations.push(`📊 **Bar Chart** — \`${numCols[0].name}\` by \`${strCols[0].name}\` — compare categories`);
+    if (numCols.length >= 2)
+      recommendations.push(`🔵 **Scatter Plot** — \`${numCols[0].name}\` vs \`${numCols[1].name}\` — find correlations`);
+    if (strCols.length > 0 && strCols[0].uniqueValues <= 8)
+      recommendations.push(`🍩 **Pie/Donut** — Distribution of \`${strCols[0].name}\` (${strCols[0].uniqueValues} categories)`);
+    if (numCols.length > 0)
+      recommendations.push(`📦 **Box Plot** — Outlier detection in \`${numCols[0].name}\``);
+    if (data.length > 100)
+      recommendations.push(`🗺️ **Heatmap** — Density patterns across multiple dimensions`);
+    
+    analysisAnswer = `### 📊 Chart Recommendations for ${schema.tableName}\n\nBased on **${schema.rowCount} rows** with **${numCols.length} numeric**, **${strCols.length} categorical**${dateCols.length ? `, **${dateCols.length} date**` : ''} columns:\n\n${recommendations.join('\n\n')}\n\n> 🎯 **My #1 pick:** ${chart!.type.charAt(0).toUpperCase() + chart!.type.slice(1)} Chart — ${chart!.reason}`;
+  }
+  // Find patterns / analyze
+  else if (/\b(pattern|find|discover|analyze|analysis|insight|anomal|outlier|correlat|trend)\b/i.test(q)) {
+    const patternFindings: string[] = [];
+    
+    // Check for concentration
+    if (strCols.length > 0) {
+      const valueCounts: Record<string, number> = {};
+      data.forEach(r => {
+        const val = String(r[strCols[0].name] || 'Unknown');
+        valueCounts[val] = (valueCounts[val] || 0) + 1;
+      });
+      const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]);
+      const topPct = (sorted[0][1] / data.length * 100).toFixed(0);
+      patternFindings.push(`📊 **Category Concentration:** "${sorted[0][0]}" dominates \`${strCols[0].name}\` at **${topPct}%** of records`);
+    }
+    
+    // Check for numeric patterns
+    if (numCols.length > 0) {
+      const vals = data.map(r => Number(r[numCols[0].name]) || 0).filter(v => !isNaN(v));
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const stdDev = Math.sqrt(vals.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / vals.length);
+      const skewness = vals.reduce((s, v) => s + Math.pow((v - avg) / stdDev, 3), 0) / vals.length;
+      
+      if (Math.abs(skewness) > 1) {
+        patternFindings.push(`📐 **Skewed Distribution:** \`${numCols[0].name}\` is ${skewness > 0 ? 'right-skewed (long tail of high values)' : 'left-skewed (long tail of low values)'}`);
+      }
+      const outliers = vals.filter(v => Math.abs(v - avg) > 2 * stdDev);
+      if (outliers.length > 0) {
+        patternFindings.push(`🔍 **${outliers.length} Outliers Found** in \`${numCols[0].name}\` (values beyond 2σ: ${outliers.slice(0, 3).map(v => v.toLocaleString()).join(', ')}${outliers.length > 3 ? '...' : ''})`);
+      }
+    }
+    
+    // Check for correlations between numeric columns
+    if (numCols.length >= 2) {
+      const col1 = numCols[0].name;
+      const col2 = numCols[1].name;
+      const v1 = data.map(r => Number(r[col1]) || 0);
+      const v2 = data.map(r => Number(r[col2]) || 0);
+      const mean1 = v1.reduce((a, b) => a + b, 0) / v1.length;
+      const mean2 = v2.reduce((a, b) => a + b, 0) / v2.length;
+      const cov = v1.reduce((s, v, i) => s + (v - mean1) * (v2[i] - mean2), 0) / v1.length;
+      const std1 = Math.sqrt(v1.reduce((s, v) => s + Math.pow(v - mean1, 2), 0) / v1.length);
+      const std2 = Math.sqrt(v2.reduce((s, v) => s + Math.pow(v - mean2, 2), 0) / v2.length);
+      const corr = std1 * std2 > 0 ? cov / (std1 * std2) : 0;
+      
+      const strength = Math.abs(corr) > 0.7 ? 'Strong' : Math.abs(corr) > 0.4 ? 'Moderate' : 'Weak';
+      const direction = corr > 0 ? 'positive' : 'negative';
+      patternFindings.push(`🔗 **${strength} ${direction} correlation** between \`${col1}\` and \`${col2}\` (r = ${corr.toFixed(2)})`);
+    }
+    
+    analysisAnswer = `### 🔬 Pattern Analysis: ${schema.tableName}\n\n${patternFindings.join('\n\n')}`;
+    analysisAnswer += insightSection();
+    analysisAnswer += chartSection(chart);
+  }
   // Generic data analysis
   else {
-    analysisAnswer = `### 📊 Analysis of ${schema.tableName}\n\n**${schema.rowCount} rows** • **${schema.columns.length} columns**\n\n### 💡 Key Insights\n${insights.map(i => `- ${i}`).join('\n')}\n\n${chart ? `### 📈 Recommended Visualization\n**${chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} Chart** — ${chart.reason}` : ''}`;
+    analysisAnswer = `### 📊 Analysis of ${schema.tableName}\n\n**${schema.rowCount} rows** • **${schema.columns.length} columns** (${numCols.length} numeric, ${strCols.length} categorical)\n\n### 💡 Key Insights\n${insights.map(i => `- ${i}`).join('\n')}`;
+    analysisAnswer += chartSection(chart);
+    analysisAnswer += insightSection();
   }
 
   return {
@@ -548,13 +800,14 @@ export function processQuery(
     metadata: {
       mode: 'data-analysis',
       confidence: 0.88,
-      reasoning: `Analyzed data and provided natural language results.`,
+      reasoning: `Analyzed data and provided natural language results with chart recommendations.`,
       chartRecommendation: chart,
       insights,
       suggestions: [
+        'Recommend charts for my data',
         `Top 5 by ${schema.columns.find(c => c.type === 'number')?.name || 'value'}`,
+        'Find patterns & correlations',
         'Summarize my dataset',
-        'Show trend over time',
         `Average by ${schema.columns.find(c => c.type === 'string')?.name || 'category'}`,
       ],
     },

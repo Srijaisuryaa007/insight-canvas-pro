@@ -337,6 +337,24 @@ export default function Visualizations() {
   const allCharts = Object.keys(ALL_CHART_LABELS);
   const availableCharts = getAvailableCharts();
 
+  // Pick up insight context from sessionStorage (set by Insights page "Visualize" button)
+  useEffect(() => {
+    const raw = sessionStorage.getItem('datapulse_viz_context');
+    if (raw) {
+      try {
+        const ctx = JSON.parse(raw);
+        if (ctx.chartType && isChartAvailable(ctx.chartType)) {
+          setSelectedChart(ctx.chartType);
+        }
+        // Expand the right category for the chart
+        sessionStorage.removeItem('datapulse_viz_context');
+        if (ctx.title) {
+          toast({ title: 'Insight Visualization', description: ctx.title });
+        }
+      } catch { /* ignore parse errors */ }
+    }
+  }, []);
+
   useEffect(() => {
     if (currentDataset && currentData.length > 0) {
       const keys = Object.keys(currentData[0]);

@@ -31,29 +31,54 @@ function validateSQL(sql: string): { safe: boolean; reason?: string } {
   return { safe: true };
 }
 
-/** Splits SELECT parts by comma, respecting parentheses depth */
+/** Splits SELECT parts by comma, respecting parentheses depth and backticks */
 function splitSelectParts(selectPart: string): string[] {
   const parts: string[] = [];
   let current = '';
   let depth = 0;
+  let inBacktick = false;
   for (const ch of selectPart) {
-    if (ch === '(') depth++;
-    else if (ch === ')') depth--;
-    if (ch === ',' && depth === 0) { parts.push(current); current = ''; }
-    else current += ch;
+    if (ch === '`') { inBacktick = !inBacktick; current += ch; continue; }
+    if (!inBacktick) {
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { parts.push(current); current = ''; continue; }
+    }
+    current += ch;
   }
   if (current.trim()) parts.push(current);
   return parts;
 }
 
+/** Strip backticks from a column name */
+function stripBackticks(name: string): string {
+  return name.replace(/`/g, '').trim();
+}
+
 /** Case-insensitive column value getter */
 function getColumnValue(row: Record<string, unknown>, colName: string): unknown {
-  if (row[colName] !== undefined) return row[colName];
-  const normalizedTarget = colName.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const clean = stripBackticks(colName);
+  if (row[clean] !== undefined) return row[clean];
+  const normalizedTarget = clean.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
   const matchingKey = Object.keys(row).find(
-    key => key.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') === normalizedTarget
+    key => key.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') === normalizedTarget
   );
   return matchingKey ? row[matchingKey] : null;
+}
+
+/** Resolves backtick-quoted and unquoted column names to actual data keys */
+function resolveColumnName(name: string, actualColumns: string[]): string | null {
+  const clean = stripBackticks(name);
+  // Exact match
+  const exact = actualColumns.find(c => c === clean);
+  if (exact) return exact;
+  // Case-insensitive match
+  const ci = actualColumns.find(c => c.toLowerCase() === clean.toLowerCase());
+  if (ci) return ci;
+  // Normalized match (underscores ↔ spaces)
+  const norm = clean.toLowerCase().replace(/[\s_]+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const normMatch = actualColumns.find(c => c.toLowerCase().replace(/[\s_]+/g, '_').replace(/[^a-z0-9_]/g, '') === norm);
+  return normMatch || null;
 }
 
 /** Resolves column names in a query to match actual data column names */
@@ -61,7 +86,12 @@ function resolveColumns(query: string, data: Record<string, unknown>[]): string 
   if (!data.length) return query;
   const actualColumns = Object.keys(data[0]);
   let resolved = query;
-  // For each word in the query that could be a column name, try to match it
+  // First handle backtick-quoted names: replace `col name` with actual key
+  resolved = resolved.replace(/`([^`]+)`/g, (match, inner) => {
+    const actual = resolveColumnName(inner, actualColumns);
+    return actual || match;
+  });
+  // Then handle unquoted column references
   actualColumns.forEach(actualCol => {
     const regex = new RegExp(`\\b${actualCol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
     resolved = resolved.replace(regex, actualCol);

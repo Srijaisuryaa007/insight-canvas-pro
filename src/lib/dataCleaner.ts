@@ -19,8 +19,20 @@ export interface CleaningStep {
   changesMade: number;
 }
 
+export interface ColumnAnalysis {
+  column: string;
+  totalRows: number;
+  emptyCount: number;
+  emptyPct: number;
+  uniqueValues: number;
+  action: 'AUTO_DROP' | 'WARN_USER' | 'KEEP_FILL' | 'KEEP_CLEAN';
+  reason: string;
+  scenario: string;
+}
+
 export interface CleaningSummary {
   steps: CleaningStep[];
+  columnAnalysis: ColumnAnalysis[];
   rowsBefore: number;
   rowsAfter: number;
   colsBefore: number;
@@ -31,6 +43,7 @@ export interface CleaningSummary {
   typesFixed: number;
   textStandardized: number;
   columnsDropped: number;
+  columnsNeedingDecision: string[];
   featuresAdded: string[];
   healthScore: number;
   healthBreakdown: { label: string; score: number; max: number }[];
@@ -119,7 +132,8 @@ function detectColumnTypes(data: Record<string, unknown>[], keys: string[]) {
 }
 
 export function runFullCleaningPipeline(
-  data: Record<string, unknown>[]
+  data: Record<string, unknown>[],
+  userDecisions?: Record<string, 'drop' | 'fill' | 'keep'>
 ): { cleanedData: Record<string, unknown>[]; summary: CleaningSummary } {
   const steps: CleaningStep[] = [];
   let current = data.map(r => ({ ...r }));
@@ -135,57 +149,134 @@ export function runFullCleaningPipeline(
   const warnings: string[] = [];
   const recommendations: string[] = [];
   const flaggedRows: CleaningSummary['flaggedRows'] = [];
+  const columnsNeedingDecision: string[] = [];
 
   const keys = Object.keys(current[0] || {});
   let { numCols, strCols, dateCols } = detectColumnTypes(current, keys);
 
   // ══════════════════════════════════════════════
-  // STEP 1: Normalize empty values (hidden pre-step)
+  // STEP 0: Normalize all placeholders to null
   // ══════════════════════════════════════════════
   {
     const { data: normalized, normalized: normCount } = normalizeToNull(current, keys);
     current = normalized;
-    if (normCount > 0) {
-      // This feeds into step 2 reporting
-    }
+    // normCount feeds into step 1 reporting
+    void normCount;
   }
 
   // ══════════════════════════════════════════════
-  // STEP 2: Handle Missing Values
+  // STEP 1: Empty Column Analysis (ALL 6 SCENARIOS)
   // ══════════════════════════════════════════════
+  const columnAnalysis: ColumnAnalysis[] = [];
   {
     const actions: string[] = [];
     const details: CleaningStepDetail[] = [];
-    let changes = 0;
-    const before = current.length;
-
-    // Analyze each column
     const colsToDrop: string[] = [];
     const allCols = Object.keys(current[0] || {});
-    
+
     allCols.forEach(col => {
       const total = current.length;
-      const missingCount = current.filter(r => r[col] === null).length;
-      const missingPct = Math.round((missingCount / total) * 100);
+      const values = current.map(r => r[col]);
+      const emptyCount = values.filter(v => v === null).length;
+      const emptyPct = Math.round((emptyCount / total) * 100);
+      const nonNullValues = values.filter(v => v !== null);
+      const uniqueValues = new Set(nonNullValues.map(String)).size;
 
-      if (missingCount === total) {
-        // ALL values empty → DROP immediately
+      let action: ColumnAnalysis['action'] = 'KEEP_CLEAN';
+      let reason = '';
+      let scenario = '';
+
+      // SCENARIO 1 & 6: 100% empty column
+      if (emptyCount === total) {
+        action = 'AUTO_DROP';
+        reason = '100% empty — no data at all';
+        scenario = 'Completely Empty';
         colsToDrop.push(col);
-        actions.push(`🗑️ Column "${col}" is 100% empty → DROPPED`);
-        details.push({ column: col, before: `${missingCount} empty (100%)`, after: 'Column dropped', action: 'Auto-dropped (all empty)' });
-      } else if (missingPct >= 70) {
-        // 70%+ → AUTO DROP
-        colsToDrop.push(col);
-        actions.push(`🗑️ Column "${col}" has ${missingPct}% empty → AUTO DROPPED`);
-        details.push({ column: col, before: `${missingCount} empty (${missingPct}%)`, after: 'Column dropped', action: 'Auto-dropped (>70% empty)' });
-        warnings.push(`Column "${col}" was dropped (${missingPct}% empty)`);
-      } else if (missingPct >= 50) {
-        // 50-70% → fill but WARN
-        warnings.push(`Column "${col}" has ${missingPct}% empty values — filled but monitor going forward`);
+        actions.push(`🗑️ "${col}": AUTO DROP — 100% empty (Scenario 1)`);
+        details.push({ column: col, before: `${total} empty (100%)`, after: 'DROPPED', action: '100% empty → dropped' });
       }
+      // SCENARIO 4: All zeros in meaningless columns
+      else if (emptyCount === 0 && nonNullValues.every(v => v === 0) && ZERO_IS_MISSING_PATTERNS.test(col)) {
+        action = 'AUTO_DROP';
+        reason = 'All zeros — meaningless for this column type';
+        scenario = 'All Zeros (Meaningless)';
+        colsToDrop.push(col);
+        actions.push(`🗑️ "${col}": AUTO DROP — all zeros in ${col} (Scenario 4)`);
+        details.push({ column: col, before: 'All values = 0', after: 'DROPPED', action: 'All zeros → dropped' });
+      }
+      // SCENARIO 5: Single unique value (no analytical use)
+      else if (uniqueValues === 1 && emptyCount === 0) {
+        const singleVal = String(nonNullValues[0]);
+        action = 'AUTO_DROP';
+        reason = `Only 1 unique value: "${singleVal}" — no analytical use`;
+        scenario = 'Single Value';
+        colsToDrop.push(col);
+        actions.push(`🗑️ "${col}": AUTO DROP — only value is "${singleVal}" (Scenario 5)`);
+        details.push({ column: col, before: `All rows = "${singleVal}"`, after: 'DROPPED', action: 'Single value → dropped' });
+      }
+      // SCENARIO 2a: 70-99% empty → auto drop
+      else if (emptyPct >= 70) {
+        action = 'AUTO_DROP';
+        reason = `${emptyPct}% empty — too empty to use`;
+        scenario = 'Almost Empty (≥70%)';
+        // Check user decision
+        if (userDecisions && userDecisions[col] === 'fill') {
+          action = 'KEEP_FILL';
+          reason = `${emptyPct}% empty — user chose to fill`;
+          scenario = 'User Override → Fill';
+        } else if (userDecisions && userDecisions[col] === 'keep') {
+          action = 'KEEP_CLEAN';
+          reason = `${emptyPct}% empty — user chose to keep as-is`;
+          scenario = 'User Override → Keep';
+        } else {
+          colsToDrop.push(col);
+          actions.push(`🗑️ "${col}": AUTO DROP — ${emptyPct}% empty (Scenario 2)`);
+          details.push({ column: col, before: `${emptyCount} empty (${emptyPct}%)`, after: 'DROPPED', action: `${emptyPct}% empty → dropped` });
+          warnings.push(`Column "${col}" was dropped (${emptyPct}% empty)`);
+        }
+      }
+      // SCENARIO 2b: 50-70% empty → WARN user
+      else if (emptyPct >= 50) {
+        if (userDecisions && userDecisions[col] === 'drop') {
+          action = 'AUTO_DROP';
+          reason = `${emptyPct}% empty — user chose to drop`;
+          scenario = 'User Decision → Drop';
+          colsToDrop.push(col);
+          actions.push(`🗑️ "${col}": DROPPED by user decision — ${emptyPct}% empty`);
+          details.push({ column: col, before: `${emptyCount} empty (${emptyPct}%)`, after: 'DROPPED', action: 'User dropped' });
+        } else if (userDecisions && userDecisions[col] === 'keep') {
+          action = 'KEEP_CLEAN';
+          reason = `${emptyPct}% empty — user chose to keep as-is`;
+          scenario = 'User Decision → Keep';
+        } else if (userDecisions && userDecisions[col] === 'fill') {
+          action = 'KEEP_FILL';
+          reason = `${emptyPct}% empty — user chose to fill`;
+          scenario = 'User Decision → Fill';
+        } else {
+          action = 'WARN_USER';
+          reason = `${emptyPct}% empty — needs your decision`;
+          scenario = 'Needs Decision (50-70%)';
+          columnsNeedingDecision.push(col);
+          actions.push(`⚠️ "${col}": ${emptyPct}% empty — NEEDS YOUR DECISION (Scenario 2b)`);
+          warnings.push(`Column "${col}" is ${emptyPct}% empty — decide: Drop, Fill, or Keep`);
+        }
+      }
+      // SCENARIO 3: After placeholder normalization, check if all became null
+      else if (emptyPct > 0 && emptyPct < 50) {
+        action = 'KEEP_FILL';
+        reason = `${emptyPct}% empty — fillable with median/mode`;
+        scenario = 'Fillable (<50%)';
+      }
+      // Clean column
+      else {
+        reason = 'No issues detected';
+        scenario = 'Clean';
+      }
+
+      columnAnalysis.push({ column: col, totalRows: total, emptyCount, emptyPct, uniqueValues, action, reason, scenario });
     });
 
-    // Drop columns
+    // Drop identified columns
     if (colsToDrop.length > 0) {
       current = current.map(r => {
         const newRow = { ...r };
@@ -193,13 +284,37 @@ export function runFullCleaningPipeline(
         return newRow;
       });
       columnsDropped = colsToDrop.length;
-      // Rebuild column lists
-      const remainingKeys = Object.keys(current[0] || {});
-      const redetected = detectColumnTypes(current, remainingKeys);
-      numCols = redetected.numCols;
-      strCols = redetected.strCols;
-      dateCols = redetected.dateCols;
     }
+
+    // Summary counts
+    const autoDropped = columnAnalysis.filter(c => c.action === 'AUTO_DROP').length;
+    const needDecision = columnAnalysis.filter(c => c.action === 'WARN_USER').length;
+    const keptFilled = columnAnalysis.filter(c => c.action === 'KEEP_FILL').length;
+    const keptClean = columnAnalysis.filter(c => c.action === 'KEEP_CLEAN').length;
+
+    actions.push(`✅ Columns dropped: ${autoDropped}`);
+    actions.push(`⚠️ Columns needing your decision: ${needDecision}`);
+    actions.push(`📊 Columns to fill: ${keptFilled}`);
+    actions.push(`✅ Clean columns: ${keptClean}`);
+
+    steps.push({ step: 1, name: 'Empty Column Analysis', icon: '🗑️', actions, details, rowsBefore: current.length, rowsAfter: current.length, changesMade: colsToDrop.length });
+
+    // Rebuild column type lists after dropping
+    const remainingKeys = Object.keys(current[0] || {});
+    const redetected = detectColumnTypes(current, remainingKeys);
+    numCols = redetected.numCols;
+    strCols = redetected.strCols;
+    dateCols = redetected.dateCols;
+  }
+
+  // ══════════════════════════════════════════════
+  // STEP 2: Handle Missing Values (fill remaining)
+  // ══════════════════════════════════════════════
+  {
+    const actions: string[] = [];
+    const details: CleaningStepDetail[] = [];
+    let changes = 0;
+    const before = current.length;
 
     // Fill numeric with MEDIAN
     numCols.forEach(col => {
@@ -746,6 +861,7 @@ export function runFullCleaningPipeline(
 
   const summary: CleaningSummary = {
     steps,
+    columnAnalysis,
     rowsBefore: initialRows,
     rowsAfter: current.length,
     colsBefore: initialCols,
@@ -756,12 +872,13 @@ export function runFullCleaningPipeline(
     typesFixed,
     textStandardized,
     columnsDropped,
+    columnsNeedingDecision,
     featuresAdded,
     healthScore,
     healthBreakdown,
     warnings,
     recommendations,
-    flaggedRows: flaggedRows.slice(0, 20), // Cap at 20
+    flaggedRows: flaggedRows.slice(0, 20),
   };
 
   return { cleanedData: current, summary };

@@ -833,7 +833,7 @@ export default function Quality() {
 
                         {/* Completeness */}
                         <Card className="bg-card border-border">
-                          <CardHeader className="pb-3"><CardTitle className="text-base">📊 Completeness: {vr.completeness.overall}%</CardTitle></CardHeader>
+                          <CardHeader className="pb-3"><CardTitle className="text-base">Completeness — {vr.completeness.overall}%</CardTitle></CardHeader>
                           <CardContent>
                             <Progress value={vr.completeness.overall} className="h-3 mb-3" />
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">

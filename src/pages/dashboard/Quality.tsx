@@ -593,7 +593,7 @@ export default function Quality() {
                         {/* Banner */}
                         <Card className="bg-primary/5 border-primary/20">
                           <CardContent className="py-4 text-center">
-                            <p className="text-lg font-bold">╔══ DUPLICATE ANALYSIS REPORT ══╗</p>
+                            <p className="text-lg font-bold tracking-wide uppercase">Duplicate Analysis Report</p>
                           </CardContent>
                         </Card>
 

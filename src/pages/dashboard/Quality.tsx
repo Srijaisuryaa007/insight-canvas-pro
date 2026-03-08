@@ -1041,9 +1041,9 @@ export default function Quality() {
                               <p className="text-xs text-muted-foreground">~KB Memory</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50 text-center col-span-2">
-                              <p className={cn("text-2xl font-bold", dataProfile.issuesFound === 0 ? "text-emerald-500" : "text-amber-500")}>
-                                {dataProfile.issuesFound === 0 ? '✅' : '⚠️'}
-                              </p>
+                               <p className={cn("text-2xl font-bold", dataProfile.issuesFound === 0 ? "text-emerald-500" : "text-amber-500")}>
+                                 {dataProfile.issuesFound === 0 ? 'Pass' : 'Review'}
+                               </p>
                               <p className="text-xs text-muted-foreground">Status</p>
                             </div>
                           </div>

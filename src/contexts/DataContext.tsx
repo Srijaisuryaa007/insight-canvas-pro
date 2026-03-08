@@ -109,6 +109,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const activateDataset = useCallback((dataset: Dataset, data: Record<string, unknown>[]) => {
     setCurrentDataset(dataset);
     setCurrentData(data);
+    setIsDataCleaned(false);
+    setCleaningReport(null);
     // Reset history for new dataset
     historyRef.current = [data];
     historyIndexRef.current = 0;

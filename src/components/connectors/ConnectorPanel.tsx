@@ -182,42 +182,43 @@ export function ConnectorPanel() {
     }
 
     setIsTesting(true);
-    
-    // Validate connection — in production this calls actual driver
-    // For now: validate fields, encrypt, attempt schema discovery
-    await new Promise(r => setTimeout(r, 2000));
+    setTestError(null);
 
-    const connId = crypto.randomUUID();
-    
+    // Real connection test via backend
+    const result = await testConnector(selectedConnector.id, formData);
+
+    if (!result.success) {
+      setIsTesting(false);
+      setTestError(result.message);
+      toast({ title: 'Connection Failed', description: result.message, variant: 'destructive' });
+      return;
+    }
+
+    const connId = result.connectionId || crypto.randomUUID();
+
     // Encrypt credentials at rest
     encryptCredentials(connId, formData);
 
-    // Simulate schema discovery based on connector type
-    const sampleTables = selectedConnector.category === 'database' || selectedConnector.category === 'warehouse'
-      ? ['orders', 'customers', 'products', 'transactions', 'events', 'sessions']
-      : selectedConnector.id === 'salesforce' ? ['Leads', 'Contacts', 'Opportunities', 'Accounts']
-      : selectedConnector.id === 'stripe' ? ['charges', 'customers', 'subscriptions', 'invoices']
-      : selectedConnector.id === 'shopify' ? ['orders', 'products', 'customers', 'collections']
-      : selectedConnector.id === 'hubspot' ? ['contacts', 'deals', 'companies', 'tickets']
-      : selectedConnector.id === 'google-analytics' ? ['pageviews', 'sessions', 'events', 'conversions']
-      : ['data'];
+    // Real schema discovery via backend
+    const tables = await discoverSchema(connId, selectedConnector.id, formData);
 
     const conn: SavedConnection = {
       id: connId, connectorId: selectedConnector.id,
-      name: `${selectedConnector.name} — ${formData.database || formData.host || formData.storeDomain || selectedConnector.name}`,
+      name: `${selectedConnector.name} — ${formData.database || formData.host || formData.storeDomain || formData.account || selectedConnector.name}`,
       status: 'connected', createdAt: new Date().toISOString(),
-      schemaInfo: { tables: sampleTables },
+      schemaInfo: { tables },
     };
     saveConnectionStorage(conn);
     setConnections(loadConnections());
 
     // Move to schema discovery step
-    setDiscoveredSchema({ tables: sampleTables, connId });
+    setDiscoveredSchema({ tables, connId, connectorId: selectedConnector.id, credentials: { ...formData } });
     setSelectedTables([]);
     setSelectedConnector(null);
     setFormData({});
     setIsTesting(false);
-    toast({ title: 'Connected!', description: `Schema discovered: ${sampleTables.length} tables found. Select tables to import.` });
+    setTestError(null);
+    toast({ title: 'Connected!', description: `${result.message}. ${tables.length} tables discovered. Select tables to import.` });
   }, [selectedConnector, formData]);
 
   const handleImportTables = useCallback(async () => {
@@ -225,29 +226,26 @@ export function ConnectorPanel() {
     setIsImporting(true);
 
     for (const table of selectedTables) {
-      // Generate realistic sample data for the table
-      const cols = ['id', 'name', 'value', 'date', 'category', 'amount', 'status'];
-      const rows = Array.from({ length: 100 }, (_, i) => {
-        const row: Record<string, unknown> = {};
-        cols.forEach(c => {
-          if (c === 'id') row[c] = i + 1;
-          else if (c === 'name') row[c] = `${table}_item_${i + 1}`;
-          else if (c === 'value' || c === 'amount') row[c] = Math.round(Math.random() * 10000) / 100;
-          else if (c === 'date') row[c] = new Date(Date.now() - Math.random() * 365 * 86400000).toISOString().split('T')[0];
-          else if (c === 'category') row[c] = ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
-          else if (c === 'status') row[c] = ['active', 'inactive', 'pending'][Math.floor(Math.random() * 3)];
-        });
-        return row;
-      });
-      
-      await uploadData(table, `${table}.csv`, rows);
-      await new Promise(r => setTimeout(r, 300));
+      const result = await importTable(
+        discoveredSchema.connId,
+        discoveredSchema.connectorId,
+        discoveredSchema.credentials,
+        table
+      );
+
+      if (result.success) {
+        toast({ title: `Imported ${table}`, description: `${result.rowCount || 0} rows imported` });
+      } else {
+        toast({ title: `Failed to import ${table}`, description: result.error || 'Unknown error', variant: 'destructive' });
+      }
     }
 
+    // Refresh datasets from backend
+    refreshDatasets();
     setIsImporting(false);
     setDiscoveredSchema(null);
     toast({ title: 'Import Complete', description: `${selectedTables.length} table(s) imported into datasets.` });
-  }, [discoveredSchema, selectedTables, uploadData]);
+  }, [discoveredSchema, selectedTables, refreshDatasets]);
 
   const handleDisconnect = (id: string) => {
     removeConnectionStorage(id);

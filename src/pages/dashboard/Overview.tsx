@@ -76,7 +76,7 @@ export default function Overview() {
   const navigate = useNavigate();
   const [showUploader, setShowUploader] = useState(false);
   const [showConnectors, setShowConnectors] = useState(false);
-
+  const [showConnectModal, setShowConnectModal] = useState(false);
   const hasData = currentDataset !== null && currentData.length > 0;
   const measures = useMemo(() => loadMeasures(), []);
 

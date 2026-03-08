@@ -752,15 +752,37 @@ export default function SQLEngine() {
                   </Card>
                 </TabsContent>
                 <TabsContent value="chart" className="flex-1 mt-2 overflow-auto">
-                  <div className="min-h-[400px] h-[calc(100vh-34rem)]">
-                    <VisualizationEngine
-                      chartType={chartDetection.type as any}
-                      data={results.slice(0, 100)}
-                      xAxis={chartDetection.xAxis}
-                      yAxis={chartDetection.yAxis}
-                      title={`Query Results: ${chartDetection.yAxis} by ${chartDetection.xAxis}`}
-                      height={Math.max(400, window.innerHeight - 550)}
-                    />
+                  <div className="space-y-2">
+                    {/* Chart type selector */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Settings2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Chart:</span>
+                      {['bar', 'line', 'area', 'pie', 'scatter', 'radar'].map(ct => (
+                        <Badge
+                          key={ct}
+                          variant={(manualChartType || chartDetection.type) === ct ? 'default' : 'outline'}
+                          className="cursor-pointer text-xs capitalize"
+                          onClick={() => setManualChartType(ct)}
+                        >
+                          {ct}
+                        </Badge>
+                      ))}
+                      {manualChartType && (
+                        <Badge variant="secondary" className="cursor-pointer text-xs" onClick={() => setManualChartType(null)}>
+                          Reset to Auto
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="min-h-[400px] h-[calc(100vh-36rem)]">
+                      <VisualizationEngine
+                        chartType={(manualChartType || chartDetection.type) as any}
+                        data={results.slice(0, 100)}
+                        xAxis={chartDetection.xAxis}
+                        yAxis={chartDetection.yAxis}
+                        title={`Query Results: ${chartDetection.yAxis} by ${chartDetection.xAxis}`}
+                        height={Math.max(380, window.innerHeight - 580)}
+                      />
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>

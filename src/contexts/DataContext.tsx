@@ -97,16 +97,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => { refreshDatasets(); }, []);
 
   const refreshDatasets = useCallback(async () => {
+    if (!isSupabaseConfigured || !supabase || !user) return;
     setIsLoading(true);
     try {
-      const result = await listDatasets(WORKSPACE_ID);
-      if (result.length > 0) setDatasets(result);
+      const { data: ds } = await supabase.from('datasets').select('*').eq('user_id', user.id).order('created_at');
+      if (ds && ds.length > 0) {
+        const mapped = ds.map(d => ({
+          id: d.id, name: d.dataset_name, fileName: d.file_name,
+          rowCount: d.row_count, columns: d.columns || [],
+          uploadedAt: d.created_at, data: [],
+        }));
+        setDatasets(mapped as Dataset[]);
+      }
     } catch (error) {
       console.error('Failed to refresh datasets:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   const activateDataset = useCallback((dataset: Dataset, data: Record<string, unknown>[]) => {
     setCurrentDataset(dataset);

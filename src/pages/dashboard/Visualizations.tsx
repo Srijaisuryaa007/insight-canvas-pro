@@ -1,5 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { BarChart3, Lock, Palette, AlertTriangle, Wand2, ArrowUpDown, Columns, Layers, TrendingUp, AlertCircle, Calculator } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BarChart3, Lock, Palette, AlertTriangle, Wand2, ArrowUpDown, Columns, Layers,
+  TrendingUp, AlertCircle, Calculator, Sparkles, Eye, Download, Copy, ChevronDown,
+  Grid3X3, LayoutGrid, Maximize2, Minimize2, Share2, Image, FileText
+} from 'lucide-react';
 import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,10 +15,11 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
-import { forecast, detectAnomalies, detectTimeColumn, detectNumericColumns, ForecastPoint, AnomalyPoint } from '@/lib/forecasting';
+import { forecast, detectAnomalies, ForecastPoint, AnomalyPoint } from '@/lib/forecasting';
 import { toast } from '@/hooks/use-toast';
 
 const ALL_CHART_LABELS: Record<string, string> = {
@@ -28,6 +34,15 @@ const ALL_CHART_LABELS: Record<string, string> = {
   donut: 'Donut Chart', 'stacked-bar': 'Stacked Bar', 'grouped-bar': 'Grouped Bar',
   'stacked-area': 'Stacked Area', pareto: 'Pareto Chart', bullet: 'Bullet',
   progress: 'Progress', 'kpi-card': 'KPI Card',
+};
+
+const CHART_CATEGORIES: Record<string, string[]> = {
+  'Comparison': ['bar', 'grouped-bar', 'stacked-bar', 'bullet', 'pareto'],
+  'Trend': ['line', 'area', 'stacked-area', 'stream'],
+  'Composition': ['pie', 'donut', 'treemap', 'sunburst', 'funnel'],
+  'Distribution': ['scatter', 'bubble', 'histogram', 'boxplot', 'heatmap'],
+  'Relationship': ['radar', 'polar', 'sankey', 'network', 'force', 'parallel'],
+  'Specialized': ['waterfall', 'candlestick', 'gauge', 'progress', 'kpi-card', 'calendar', 'timeline', 'tree', 'word-cloud', 'geo', 'choropleth', '3d-scatter', '3d-surface'],
 };
 
 const NEEDS_NUMERIC_XY = ['scatter', 'bubble'];
@@ -76,8 +91,195 @@ function recommendCharts(data: Record<string, unknown>[]): Array<{ type: string;
   if (uniqueCategories >= 3 && uniqueCategories <= 8 && numCols.length >= 1) {
     recs.push({ type: 'radar', reason: `Multi-axis comparison across ${uniqueCategories} categories`, score: 68 });
   }
-  return recs.sort((a, b) => b.score - a.score).slice(0, 6);
+  return recs.sort((a, b) => b.score - a.score).slice(0, 8);
 }
+
+// ─── Sub-components ───────────────────────────────────────────────
+
+function ChartTypeSelector({ selectedChart, onSelect, isChartAvailable }: {
+  selectedChart: string;
+  onSelect: (chart: string) => void;
+  isChartAvailable: (chart: string) => boolean;
+}) {
+  const [expandedCategory, setExpandedCategory] = useState<string | null>('Comparison');
+
+  return (
+    <div className="space-y-1">
+      {Object.entries(CHART_CATEGORIES).map(([category, charts]) => (
+        <div key={category}>
+          <button
+            onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>{category}</span>
+            <ChevronDown className={cn("h-3 w-3 transition-transform", expandedCategory === category && "rotate-180")} />
+          </button>
+          <AnimatePresence>
+            {expandedCategory === category && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="pb-2 space-y-0.5">
+                  {charts.map(chart => {
+                    const available = isChartAvailable(chart);
+                    return (
+                      <button
+                        key={chart}
+                        onClick={() => available && onSelect(chart)}
+                        disabled={!available}
+                        className={cn(
+                          "w-full px-3 py-2 rounded-lg text-left transition-all text-sm flex items-center justify-between group",
+                          selectedChart === chart
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : available
+                              ? "hover:bg-muted/80 text-foreground"
+                              : "opacity-30 cursor-not-allowed"
+                        )}
+                      >
+                        <span className="truncate">{ALL_CHART_LABELS[chart] || chart}</span>
+                        {!available && <Lock className="h-3 w-3" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AIRecommendations({ recommendations, selectedChart, onSelect, isChartAvailable }: {
+  recommendations: Array<{ type: string; reason: string; score: number }>;
+  selectedChart: string;
+  onSelect: (chart: string) => void;
+  isChartAvailable: (chart: string) => boolean;
+}) {
+  if (!recommendations.length) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-primary/20 bg-primary/[0.03] p-4"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+          <Wand2 className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <span className="text-sm font-medium">AI Recommended</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {recommendations.map((r, i) => (
+          <motion.button
+            key={r.type}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.05 }}
+            onClick={() => isChartAvailable(r.type) && onSelect(r.type)}
+            disabled={!isChartAvailable(r.type)}
+            className={cn(
+              "relative rounded-lg px-3 py-2.5 text-left transition-all group border",
+              selectedChart === r.type
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card hover:bg-muted/50 border-border hover:border-primary/30"
+            )}
+          >
+            <div className="text-xs font-medium truncate">{ALL_CHART_LABELS[r.type]}</div>
+            <div className={cn("text-[10px] mt-0.5 truncate",
+              selectedChart === r.type ? "text-primary-foreground/70" : "text-muted-foreground"
+            )}>{r.reason}</div>
+            {!isChartAvailable(r.type) && (
+              <Lock className="absolute top-2 right-2 h-3 w-3 text-muted-foreground" />
+            )}
+          </motion.button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function VisualGallery({ recommendations, chartData, xAxis, yAxis, colorPalette, showLegend, showGrid, showLabels }: {
+  recommendations: Array<{ type: string; reason: string; score: number }>;
+  chartData: Record<string, unknown>[];
+  xAxis: string;
+  yAxis: string;
+  colorPalette: string;
+  showLegend: boolean;
+  showGrid: boolean;
+  showLabels: boolean;
+}) {
+  if (!recommendations.length || !chartData.length || !xAxis || !yAxis) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3 }}
+      className="space-y-6"
+    >
+      <Separator />
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <LayoutGrid className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Visual Gallery</h2>
+            <p className="text-sm text-muted-foreground">
+              Alternative visualizations generated from your data
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {recommendations.slice(0, 6).map((rec, i) => (
+          <motion.div
+            key={rec.type}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + i * 0.08 }}
+          >
+            <Card className="bg-card border-border overflow-hidden group hover:shadow-md transition-all hover:border-primary/30">
+              <div className="px-4 py-3 flex items-center justify-between border-b border-border/50">
+                <div>
+                  <h3 className="text-sm font-medium">{ALL_CHART_LABELS[rec.type]}</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{rec.reason}</p>
+                </div>
+                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                  {rec.score}%
+                </Badge>
+              </div>
+              <CardContent className="p-3">
+                <div className="rounded-lg overflow-hidden bg-muted/20 p-1">
+                  <VisualizationEngine
+                    chartType={rec.type}
+                    data={chartData}
+                    xAxis={xAxis}
+                    yAxis={yAxis}
+                    height={200}
+                    colorPalette={colorPalette}
+                    showLegend={false}
+                    showGrid={showGrid}
+                    showLabels={false}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────
 
 export default function Visualizations() {
   const { datasets, currentDataset, currentData, selectDataset } = useData();
@@ -95,23 +297,20 @@ export default function Visualizations() {
   const [sortDirection, setSortDirection] = useState('asc');
   const [topN, setTopN] = useState('');
   const [configTab, setConfigTab] = useState('axes');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Forecasting state
   const [forecastEnabled, setForecastEnabled] = useState(false);
   const [forecastPeriods, setForecastPeriods] = useState(6);
   const [forecastMethod, setForecastMethod] = useState<'linear' | 'moving_average'>('linear');
   const [forecastData, setForecastData] = useState<ForecastPoint[]>([]);
 
-  // Anomaly state
   const [anomalyEnabled, setAnomalyEnabled] = useState(false);
   const [anomalyMethod, setAnomalyMethod] = useState<'zscore' | 'iqr'>('zscore');
   const [anomalies, setAnomalies] = useState<AnomalyPoint[]>([]);
 
-  // Calculated field state
   const [calcFormula, setCalcFormula] = useState('');
   const [calcFieldName, setCalcFieldName] = useState('');
 
-  // Filter state
   const [filterColumn, setFilterColumn] = useState('');
   const [filterValue, setFilterValue] = useState('');
   const [filterOperator, setFilterOperator] = useState('equals');
@@ -139,7 +338,6 @@ export default function Visualizations() {
   const suitabilityWarning = useMemo(() => getSuitabilityWarning(selectedChart, currentData, xAxis, yAxis), [selectedChart, currentData, xAxis, yAxis]);
   const recommendations = useMemo(() => recommendCharts(currentData), [currentData]);
 
-  // Apply filters
   const filteredData = useMemo(() => {
     let data = currentData;
     if (filterColumn && filterValue) {
@@ -208,121 +406,126 @@ export default function Visualizations() {
 
   const handleAddCalculatedField = () => {
     if (!calcFieldName || !calcFormula || !currentData.length) return;
-    // Simple expression evaluator for basic math
     toast({ title: 'Calculated Field Added', description: `"${calcFieldName}" created from formula: ${calcFormula}` });
     setCalcFormula('');
     setCalcFieldName('');
   };
 
-  // Build chart data with forecast overlay
   const chartData = useMemo(() => {
     const base = getAggregatedData();
     if (!forecastEnabled || !forecastData.length) return base;
-    // Append forecast points with a flag
     return [
       ...base,
       ...forecastData.map(f => ({ [xAxis]: f.period, [yAxis]: f.predicted_value, _forecast: true }))
     ];
-  }, [getAggregatedData, forecastEnabled, forecastData, xAxis, yAxis]);
+  }, [filteredData, forecastEnabled, forecastData, xAxis, yAxis, aggregation, sortColumn, sortDirection, topN]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Visualizations</h1>
-          <p className="text-muted-foreground">Create stunning charts from your data</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Visualizations</h1>
+          <p className="text-muted-foreground">Generate visuals from your data — pick a chart or let AI decide.</p>
         </div>
-        <Badge variant="outline" className="capitalize">{plan} Plan • {availableCharts.length}/{allCharts.length} charts</Badge>
-      </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-normal px-3 py-1">
+            {availableCharts.length}/{allCharts.length} charts
+          </Badge>
+          <Badge variant="secondary" className="text-xs capitalize px-3 py-1">
+            {plan} Plan
+          </Badge>
+        </div>
+      </motion.div>
 
-      {recommendations.length > 0 && (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="py-3">
-            <div className="flex items-start gap-3">
-              <Wand2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium mb-2">Recommended Charts</p>
-                <div className="flex flex-wrap gap-2">
-                  {recommendations.map(r => (
-                    <Button key={r.type} variant={selectedChart === r.type ? 'default' : 'outline'} size="sm"
-                      className="text-xs h-7" onClick={() => isChartAvailable(r.type) && setSelectedChart(r.type)}
-                      disabled={!isChartAvailable(r.type)} title={r.reason}>
-                      {ALL_CHART_LABELS[r.type] || r.type}
-                      {!isChartAvailable(r.type) && <Lock className="h-3 w-3 ml-1" />}
-                    </Button>
-                  ))}
-                </div>
+      {/* AI Recommendations */}
+      <AIRecommendations
+        recommendations={recommendations}
+        selectedChart={selectedChart}
+        onSelect={setSelectedChart}
+        isChartAvailable={isChartAvailable}
+      />
+
+      {/* Main Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Panel — Chart Types */}
+        <motion.div
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="lg:col-span-3"
+        >
+          <Card className="bg-card border-border sticky top-4">
+            <CardHeader className="pb-2 px-4 pt-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Grid3X3 className="h-4 w-4 text-muted-foreground" />
+                  Chart Library
+                </CardTitle>
+                <span className="text-[11px] text-muted-foreground">{allCharts.length} types</span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Chart Types ({allCharts.length})</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[60vh] px-4 pb-4">
-              <div className="space-y-1">
-                {allCharts.map(chart => {
-                  const available = isChartAvailable(chart);
-                  return (
-                    <button key={chart} onClick={() => available && setSelectedChart(chart)}
-                      disabled={!available}
-                      className={cn("w-full p-2 rounded-lg text-left transition-colors flex items-center justify-between text-sm",
-                        selectedChart === chart ? "bg-primary/10 border border-primary/20"
-                          : available ? "hover:bg-muted" : "opacity-40 cursor-not-allowed")}>
-                      <span>{ALL_CHART_LABELS[chart] || chart}</span>
-                      {!available && <Lock className="h-3 w-3 text-muted-foreground" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        <div className="lg:col-span-3 space-y-6">
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2"><Palette className="h-5 w-5" />Chart Configuration</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[55vh] px-2 pb-3">
+                <ChartTypeSelector
+                  selectedChart={selectedChart}
+                  onSelect={setSelectedChart}
+                  isChartAvailable={isChartAvailable}
+                />
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Right Panel — Config + Chart */}
+        <motion.div
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15 }}
+          className="lg:col-span-9 space-y-5"
+        >
+          {/* Configuration Panel */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
               <Tabs value={configTab} onValueChange={setConfigTab}>
-                <TabsList className="grid grid-cols-5 w-full">
-                  <TabsTrigger value="axes" className="text-xs"><Columns className="h-3 w-3 mr-1" />Axes</TabsTrigger>
-                  <TabsTrigger value="style" className="text-xs"><Palette className="h-3 w-3 mr-1" />Style</TabsTrigger>
-                  <TabsTrigger value="sort" className="text-xs"><ArrowUpDown className="h-3 w-3 mr-1" />Sort & Filter</TabsTrigger>
-                  <TabsTrigger value="analytics" className="text-xs"><TrendingUp className="h-3 w-3 mr-1" />Analytics</TabsTrigger>
-                  <TabsTrigger value="advanced" className="text-xs"><Layers className="h-3 w-3 mr-1" />Advanced</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-5 bg-muted/50 p-0.5 rounded-lg">
+                  <TabsTrigger value="axes" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Columns className="h-3 w-3" />Axes</TabsTrigger>
+                  <TabsTrigger value="style" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Palette className="h-3 w-3" />Style</TabsTrigger>
+                  <TabsTrigger value="sort" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><ArrowUpDown className="h-3 w-3" />Sort & Filter</TabsTrigger>
+                  <TabsTrigger value="analytics" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><TrendingUp className="h-3 w-3" />Analytics</TabsTrigger>
+                  <TabsTrigger value="advanced" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Layers className="h-3 w-3" />Advanced</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="axes" className="mt-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Dataset</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Dataset</Label>
                       <Select value={currentDataset?.id || ''} onValueChange={selectDataset}>
-                        <SelectTrigger><SelectValue placeholder="Select dataset" /></SelectTrigger>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select dataset" /></SelectTrigger>
                         <SelectContent className="bg-popover">
                           {datasets.map(ds => <SelectItem key={ds.id} value={ds.id}>{ds.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>X Axis (Dimension)</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">X Axis (Dimension)</Label>
                       <Select value={xAxis} onValueChange={setXAxis}>
-                        <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select column" /></SelectTrigger>
                         <SelectContent className="bg-popover">
-                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name} ({col.type})</SelectItem>)}
+                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name} <span className="text-muted-foreground">({col.type})</span></SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Y Axis (Measure)</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Y Axis (Measure)</Label>
                       <Select value={yAxis} onValueChange={setYAxis}>
-                        <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select column" /></SelectTrigger>
                         <SelectContent className="bg-popover">
-                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name} ({col.type})</SelectItem>)}
+                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{col.name} <span className="text-muted-foreground">({col.type})</span></SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -331,8 +534,8 @@ export default function Visualizations() {
 
                 <TabsContent value="style" className="mt-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Color Theme</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Color Theme</Label>
                       <Select value={colorPalette} onValueChange={setColorPalette}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -342,8 +545,8 @@ export default function Visualizations() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Aggregation</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Aggregation</Label>
                       <Select value={aggregation} onValueChange={setAggregation}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -353,19 +556,19 @@ export default function Visualizations() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs">Legend</Label>
+                        <Label className="text-xs text-muted-foreground">Legend</Label>
                         <Switch checked={showLegend} onCheckedChange={setShowLegend} />
                       </div>
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs">Grid</Label>
+                        <Label className="text-xs text-muted-foreground">Grid Lines</Label>
                         <Switch checked={showGrid} onCheckedChange={setShowGrid} />
                       </div>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs">Data Labels</Label>
+                        <Label className="text-xs text-muted-foreground">Data Labels</Label>
                         <Switch checked={showLabels} onCheckedChange={setShowLabels} />
                       </div>
                     </div>
@@ -374,8 +577,8 @@ export default function Visualizations() {
 
                 <TabsContent value="sort" className="mt-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Sort By</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Sort By</Label>
                       <Select value={sortColumn || '__none__'} onValueChange={v => setSortColumn(v === '__none__' ? '' : v)}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -384,8 +587,8 @@ export default function Visualizations() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Direction</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Direction</Label>
                       <Select value={sortDirection} onValueChange={setSortDirection}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -394,12 +597,12 @@ export default function Visualizations() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Top N</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Top N</Label>
                       <Input value={topN} onChange={e => setTopN(e.target.value)} placeholder="All" className="h-9" type="number" min="1" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Filter Column</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Filter Column</Label>
                       <Select value={filterColumn || '__none__'} onValueChange={v => setFilterColumn(v === '__none__' ? '' : v)}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -409,8 +612,8 @@ export default function Visualizations() {
                       </Select>
                     </div>
                     {filterColumn && (
-                      <div className="space-y-2">
-                        <Label className="text-xs">Filter Value</Label>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Filter Value</Label>
                         <div className="flex gap-1">
                           <Select value={filterOperator} onValueChange={setFilterOperator}>
                             <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
@@ -428,31 +631,32 @@ export default function Visualizations() {
                     )}
                   </div>
                   {filterColumn && filterValue && (
-                    <div className="mt-2 flex items-center gap-2">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">
-                        Filter: {filterColumn} {filterOperator} "{filterValue}" → {filteredData.length} rows
+                        {filterColumn} {filterOperator} "{filterValue}" → {filteredData.length} rows
                       </Badge>
                       <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => { setFilterColumn(''); setFilterValue(''); }}>Clear</Button>
-                    </div>
+                    </motion.div>
                   )}
                 </TabsContent>
 
                 <TabsContent value="analytics" className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Forecasting */}
-                    <div className="space-y-3 p-4 rounded-lg border border-border">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/20">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4 text-primary" />
-                          <Label className="font-medium">Forecasting</Label>
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                            <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <Label className="font-medium text-sm">Forecasting</Label>
                         </div>
                         <Switch checked={forecastEnabled} onCheckedChange={setForecastEnabled} />
                       </div>
                       {forecastEnabled && (
-                        <div className="space-y-3">
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3">
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
-                              <Label className="text-xs">Periods</Label>
+                              <Label className="text-[11px] text-muted-foreground">Periods</Label>
                               <Select value={String(forecastPeriods)} onValueChange={v => setForecastPeriods(Number(v))}>
                                 <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-popover">
@@ -463,7 +667,7 @@ export default function Visualizations() {
                               </Select>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">Method</Label>
+                              <Label className="text-[11px] text-muted-foreground">Method</Label>
                               <Select value={forecastMethod} onValueChange={v => setForecastMethod(v as any)}>
                                 <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-popover">
@@ -477,33 +681,33 @@ export default function Visualizations() {
                             <TrendingUp className="h-3 w-3 mr-1" />Generate Forecast
                           </Button>
                           {forecastData.length > 0 && (
-                            <div className="space-y-1 mt-2">
-                              <p className="text-xs font-medium text-muted-foreground">Predictions:</p>
+                            <div className="space-y-1 mt-1">
                               {forecastData.map((f, i) => (
-                                <div key={i} className="flex justify-between text-xs bg-muted/30 p-1.5 rounded">
-                                  <span>{f.period}</span>
+                                <div key={i} className="flex justify-between text-xs bg-card p-2 rounded-lg border border-border/50">
+                                  <span className="text-muted-foreground">{f.period}</span>
                                   <span className="font-mono font-medium">{f.predicted_value.toLocaleString()}</span>
                                 </div>
                               ))}
                             </div>
                           )}
-                        </div>
+                        </motion.div>
                       )}
                     </div>
 
-                    {/* Anomaly Detection */}
-                    <div className="space-y-3 p-4 rounded-lg border border-border">
+                    <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/20">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-amber-500" />
-                          <Label className="font-medium">Anomaly Detection</Label>
+                          <div className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center">
+                            <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                          </div>
+                          <Label className="font-medium text-sm">Anomaly Detection</Label>
                         </div>
                         <Switch checked={anomalyEnabled} onCheckedChange={setAnomalyEnabled} />
                       </div>
                       {anomalyEnabled && (
-                        <div className="space-y-3">
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3">
                           <div className="space-y-1">
-                            <Label className="text-xs">Method</Label>
+                            <Label className="text-[11px] text-muted-foreground">Method</Label>
                             <Select value={anomalyMethod} onValueChange={v => setAnomalyMethod(v as any)}>
                               <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                               <SelectContent className="bg-popover">
@@ -516,30 +720,30 @@ export default function Visualizations() {
                             <AlertCircle className="h-3 w-3 mr-1" />Detect Anomalies
                           </Button>
                           {anomalies.length > 0 && (
-                            <div className="space-y-1 mt-2">
-                              <p className="text-xs font-medium text-muted-foreground">{anomalies.length} anomalies found:</p>
+                            <div className="space-y-1 mt-1">
                               {anomalies.slice(0, 5).map((a, i) => (
-                                <div key={i} className={cn("text-xs p-1.5 rounded flex justify-between",
-                                  a.severity === 'high' ? 'bg-destructive/10 text-destructive' : a.severity === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-muted/30')}>
+                                <div key={i} className={cn("text-xs p-2 rounded-lg flex justify-between border",
+                                  a.severity === 'high' ? 'bg-destructive/5 border-destructive/20 text-destructive' : a.severity === 'medium' ? 'bg-amber-500/5 border-amber-500/20 text-amber-600' : 'bg-muted/30 border-border')}>
                                   <span>{a.label}</span>
-                                  <span className="font-mono">{a.value} (expected {a.expected})</span>
+                                  <span className="font-mono">{a.value} (exp. {a.expected})</span>
                                 </div>
                               ))}
                             </div>
                           )}
-                        </div>
+                        </motion.div>
                       )}
                     </div>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="advanced" className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Calculated Fields */}
-                    <div className="space-y-3 p-4 rounded-lg border border-border">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/20">
                       <div className="flex items-center gap-2">
-                        <Calculator className="h-4 w-4 text-primary" />
-                        <Label className="font-medium">Calculated Fields</Label>
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Calculator className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <Label className="font-medium text-sm">Calculated Fields</Label>
                       </div>
                       <div className="space-y-2">
                         <Input value={calcFieldName} onChange={e => setCalcFieldName(e.target.value)} placeholder="Field name" className="h-8 text-xs" />
@@ -550,11 +754,15 @@ export default function Visualizations() {
                       </div>
                     </div>
 
-                    {/* Statistical Tools */}
-                    <div className="space-y-3 p-4 rounded-lg border border-border">
-                      <Label className="font-medium">Statistical Summary</Label>
-                      {yAxis && currentData.length > 0 && (
-                        <div className="space-y-1.5">
+                    <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                          <FileText className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <Label className="font-medium text-sm">Statistical Summary</Label>
+                      </div>
+                      {yAxis && currentData.length > 0 ? (
+                        <div className="space-y-1">
                           {(() => {
                             const vals = currentData.map(r => Number(r[yAxis]) || 0);
                             const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -568,13 +776,15 @@ export default function Visualizations() {
                               { label: 'Median', value: sorted[Math.floor(sorted.length / 2)]?.toFixed(2) },
                               { label: 'Count', value: vals.length.toString() },
                             ].map(s => (
-                              <div key={s.label} className="flex justify-between text-xs bg-muted/30 p-1.5 rounded">
+                              <div key={s.label} className="flex justify-between text-xs bg-card p-2 rounded-lg border border-border/50">
                                 <span className="text-muted-foreground">{s.label}</span>
                                 <span className="font-mono font-medium">{s.value}</span>
                               </div>
                             ));
                           })()}
                         </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Select a numeric Y axis to view stats</p>
                       )}
                     </div>
                   </div>
@@ -583,49 +793,99 @@ export default function Visualizations() {
             </CardContent>
           </Card>
 
-          {suitabilityWarning && (
-            <Card className="bg-amber-500/10 border-amber-500/20">
-              <CardContent className="py-3">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-600">Chart Not Suitable</p>
-                    <p className="text-xs text-muted-foreground mt-1">{suitabilityWarning}</p>
-                    {recommendations.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        💡 Try: {recommendations.slice(0, 3).map(r => ALL_CHART_LABELS[r.type]).join(', ')}
-                      </p>
-                    )}
+          {/* Suitability Warning */}
+          <AnimatePresence>
+            {suitabilityWarning && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                <Card className="bg-amber-500/5 border-amber-500/20">
+                  <CardContent className="py-3 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-600">Not suitable for this data</p>
+                      <p className="text-xs text-muted-foreground mt-1">{suitabilityWarning}</p>
+                      {recommendations.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Try: {recommendations.slice(0, 3).map(r => ALL_CHART_LABELS[r.type]).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Chart Canvas */}
+          {filteredData.length > 0 && !suitabilityWarning ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="bg-card border-border overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">
+                      {ALL_CHART_LABELS[selectedChart]}: {yAxis} by {xAxis}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setIsFullscreen(!isFullscreen)}>
+                      {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {filteredData.length > 0 && !suitabilityWarning ? (
-            <VisualizationEngine
-              chartType={selectedChart as any}
-              data={chartData}
-              xAxis={xAxis}
-              yAxis={yAxis}
-              title={`${ALL_CHART_LABELS[selectedChart] || selectedChart}: ${yAxis} by ${xAxis}`}
-              height={400}
-              colorPalette={colorPalette}
-              showLegend={showLegend}
-              showGrid={showGrid}
-              showLabels={showLabels}
-            />
+                <CardContent className={cn("p-4", isFullscreen && "p-8")}>
+                  <VisualizationEngine
+                    chartType={selectedChart as any}
+                    data={chartData}
+                    xAxis={xAxis}
+                    yAxis={yAxis}
+                    height={isFullscreen ? 600 : 400}
+                    colorPalette={colorPalette}
+                    showLegend={showLegend}
+                    showGrid={showGrid}
+                    showLabels={showLabels}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
           ) : !suitabilityWarning ? (
-            <Card className="bg-card border-border">
-              <CardContent className="py-12 text-center">
-                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-medium text-lg">No Data</h3>
-                <p className="text-muted-foreground text-sm">Upload a dataset and select it to visualize</p>
-              </CardContent>
-            </Card>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <Card className="bg-card border-border border-dashed">
+                <CardContent className="py-20 text-center">
+                  <motion.div
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200 }}
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                      <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <h3 className="font-semibold text-lg">No data to visualize</h3>
+                    <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">
+                      Upload a dataset from the Datasets page, then come back here to create stunning visuals.
+                    </p>
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
           ) : null}
-        </div>
+        </motion.div>
       </div>
+
+      {/* Visual Gallery Sub-Section */}
+      <VisualGallery
+        recommendations={recommendations}
+        chartData={chartData}
+        xAxis={xAxis}
+        yAxis={yAxis}
+        colorPalette={colorPalette}
+        showLegend={showLegend}
+        showGrid={showGrid}
+        showLabels={showLabels}
+      />
     </div>
   );
 }

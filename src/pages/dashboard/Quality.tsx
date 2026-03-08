@@ -484,9 +484,9 @@ export default function Quality() {
                                         col.action === 'WARN_USER' ? 'outline' :
                                         col.action === 'KEEP_FILL' ? 'default' : 'secondary'
                                       } className="text-xs">
-                                        {col.action === 'AUTO_DROP' ? '🗑️ DROP' :
-                                         col.action === 'WARN_USER' ? '⚠️ DECIDE' :
-                                         col.action === 'KEEP_FILL' ? '🔧 FILL' : '✅ CLEAN'}
+                                         {col.action === 'AUTO_DROP' ? 'DROP' :
+                                          col.action === 'WARN_USER' ? 'DECIDE' :
+                                          col.action === 'KEEP_FILL' ? 'FILL' : 'CLEAN'}
                                       </Badge>
                                     </td>
                                     <td className="p-2 text-muted-foreground">{col.reason}</td>

@@ -116,7 +116,7 @@ export default function Quality() {
       setIsCleaningRunning(false);
       setActiveTab('summary');
       setDataProfile(profileData(cleanedData));
-      toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | Decisions applied.` });
+      toast({ title: 'Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 — Decisions applied successfully.` });
       if (currentDataset) scanDataset(currentDataset.id, cleanedData);
     }, 500);
   };

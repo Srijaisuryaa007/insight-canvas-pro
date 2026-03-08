@@ -58,7 +58,7 @@ export function runLocalQualityScan(
     const total = values.length;
 
     // 1. Missing values
-    const missingCount = values.filter(v => v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v))).length;
+    const missingCount = values.filter(v => isEffectivelyEmpty(v, col)).length;
     if (missingCount > 0) {
       const pct = Math.round((missingCount / total) * 100);
       issues.push({

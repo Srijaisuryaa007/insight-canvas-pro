@@ -594,6 +594,43 @@ export function processQuery(
   
   let analysisAnswer = '';
 
+  // Helper: generate chart recommendation section
+  const chartSection = (chart: CopilotMetadata['chartRecommendation']) => {
+    if (!chart) return '';
+    const dateCols = schema.columns.filter(c => c.type === 'date');
+    const alternatives: string[] = [];
+    if (chart.type !== 'bar' && strCols.length > 0) alternatives.push('Bar Chart');
+    if (chart.type !== 'line' && dateCols.length > 0) alternatives.push('Line Chart');
+    if (chart.type !== 'scatter' && numCols.length >= 2) alternatives.push('Scatter Plot');
+    if (chart.type !== 'pie' && strCols.length > 0) alternatives.push('Pie Chart');
+    
+    return `\n\n---\n\n### 📈 Chart Recommendation\n🎯 **Best fit: ${chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} Chart**${chart.xAxis ? ` — \`${chart.xAxis}\` ${chart.yAxis ? `vs \`${chart.yAxis}\`` : ''}` : ''}\n\n${chart.reason}${alternatives.length > 0 ? `\n\n**Alternatives:** ${alternatives.join(', ')}` : ''}`;
+  };
+
+  // Helper: generate actionable insights section
+  const insightSection = () => {
+    if (insights.length === 0) return '';
+    const actions: string[] = [];
+    const vals = numCols.length > 0 ? data.map(r => Number(r[numCols[0].name]) || 0).filter(v => !isNaN(v)) : [];
+    if (vals.length > 0) {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const stdDev = Math.sqrt(vals.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / vals.length);
+      const cv = (stdDev / avg * 100);
+      if (cv > 50) actions.push(`⚠️ High variability detected in \`${numCols[0].name}\` (CV: ${cv.toFixed(0)}%) — investigate outliers`);
+      if (cv < 10) actions.push(`✅ \`${numCols[0].name}\` is very stable (CV: ${cv.toFixed(0)}%) — consistent performance`);
+      const outliers = vals.filter(v => Math.abs(v - avg) > 2 * stdDev).length;
+      if (outliers > 0) actions.push(`🔍 Found **${outliers} potential outliers** in \`${numCols[0].name}\` (>2σ from mean)`);
+    }
+    if (strCols.length > 0 && strCols[0].uniqueValues < 5) {
+      actions.push(`💡 \`${strCols[0].name}\` has only ${strCols[0].uniqueValues} categories — perfect for a pie/donut chart`);
+    }
+    if (strCols.length > 0 && strCols[0].uniqueValues > 20) {
+      actions.push(`💡 \`${strCols[0].name}\` has ${strCols[0].uniqueValues} categories — consider grouping into top N + "Other"`);
+    }
+    
+    return `\n\n---\n\n### 💡 Insights & Recommendations\n${insights.map(i => `- ${i}`).join('\n')}${actions.length > 0 ? `\n\n### 🎯 Actionable Next Steps\n${actions.map(a => `- ${a}`).join('\n')}` : ''}`;
+  };
+
   // Summarize / show all data
   if (/\b(summarize|summary|overview|describe|show all|display all)\b/i.test(q)) {
     const colSummaries = numCols.slice(0, 5).map(col => {
@@ -603,10 +640,13 @@ export function processQuery(
       const avg = sum / vals.length;
       const max = Math.max(...vals);
       const min = Math.min(...vals);
-      return `- **${col.name}**: min ${min.toLocaleString()}, max ${max.toLocaleString()}, avg ${avg.toFixed(1)}, total ${sum.toLocaleString()}`;
+      const range = max - min;
+      return `| \`${col.name}\` | ${min.toLocaleString()} | ${max.toLocaleString()} | ${avg.toFixed(1)} | ${sum.toLocaleString()} | ${range.toLocaleString()} |`;
     }).filter(Boolean);
 
-    analysisAnswer = `### 📊 Dataset Summary: ${schema.tableName}\n\n**${schema.rowCount} rows** across **${schema.columns.length} columns**\n\n**Columns:** ${schema.columns.map(c => `\`${c.name}\` (${c.type})`).join(', ')}\n\n### Key Statistics\n${colSummaries.join('\n') || 'No numeric columns found.'}`;
+    analysisAnswer = `### 📊 Dataset Summary: ${schema.tableName}\n\n**${schema.rowCount} rows** across **${schema.columns.length} columns**\n\n**Columns:** ${schema.columns.map(c => `\`${c.name}\` (${c.type})`).join(', ')}\n\n### 📐 Key Statistics\n| Column | Min | Max | Avg | Total | Range |\n|--------|-----|-----|-----|-------|-------|\n${colSummaries.join('\n') || '| No numeric columns found | — | — | — | — | — |'}`;
+    analysisAnswer += chartSection(chart);
+    analysisAnswer += insightSection();
   }
   // Top/bottom queries
   else if (/\b(top|bottom|highest|lowest|best|worst|most|least)\b/i.test(q)) {
@@ -623,8 +663,13 @@ export function processQuery(
         return isBottom ? va - vb : vb - va;
       }).slice(0, limit);
 
+      const topVal = Number(sorted[0]?.[measureCol] || 0);
+      const bottomVal = Number(sorted[sorted.length - 1]?.[measureCol] || 0);
+      const gap = topVal - bottomVal;
+
       const rows = sorted.map((r, i) => `${i + 1}. **${dimCol ? r[dimCol] : `Row ${i + 1}`}** — ${measureCol}: **${Number(r[measureCol] || 0).toLocaleString()}**`).join('\n');
-      analysisAnswer = `### ${isBottom ? '⬇️ Bottom' : '🏆 Top'} ${limit} by ${measureCol}\n\n${rows}`;
+      analysisAnswer = `### ${isBottom ? '⬇️ Bottom' : '🏆 Top'} ${limit} by ${measureCol}\n\n${rows}\n\n> 📊 **Gap between #1 and #${limit}:** ${gap.toLocaleString()} (${topVal > 0 ? ((gap / topVal) * 100).toFixed(0) : 0}% difference)`;
+      analysisAnswer += chartSection({ type: 'bar', xAxis: dimCol, yAxis: measureCol, reason: `Bar chart clearly shows the ranking of ${isBottom ? 'bottom' : 'top'} performers.` });
     } else {
       analysisAnswer = `I found your dataset but couldn't identify a numeric column to rank by. Your columns are: ${schema.columns.map(c => `\`${c.name}\``).join(', ')}`;
     }
@@ -639,6 +684,7 @@ export function processQuery(
       const vals = data.map(r => Number(r[measureCol]) || 0);
       const sum = vals.reduce((a, b) => a + b, 0);
       const avg = sum / vals.length;
+      const stdDev = Math.sqrt(vals.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / vals.length);
 
       if (groupCol) {
         const groups: Record<string, number[]> = {};
@@ -660,16 +706,93 @@ export function processQuery(
         const label = wantsCount ? 'Count' : wantsAvg ? `Avg ${measureCol}` : `Total ${measureCol}`;
         const rows = groupResults.map((r, i) => `${i + 1}. **${r.key}** — ${label}: **${r.value.toLocaleString(undefined, { maximumFractionDigits: 1 })}**`).join('\n');
         analysisAnswer = `### 📊 ${label} by ${groupCol}\n\n${rows}`;
+        analysisAnswer += chartSection({ type: 'bar', xAxis: groupCol, yAxis: measureCol, reason: `Bar chart is ideal for comparing ${label} across ${groupCol} categories.` });
       } else {
-        analysisAnswer = `### 📊 ${measureCol} Statistics\n\n- **Total:** ${sum.toLocaleString()}\n- **Average:** ${avg.toFixed(2)}\n- **Min:** ${Math.min(...vals).toLocaleString()}\n- **Max:** ${Math.max(...vals).toLocaleString()}\n- **Records:** ${vals.length.toLocaleString()}`;
+        analysisAnswer = `### 📊 ${measureCol} Statistics\n\n- **Total:** ${sum.toLocaleString()}\n- **Average:** ${avg.toFixed(2)}\n- **Std Dev:** ${stdDev.toFixed(2)}\n- **Min:** ${Math.min(...vals).toLocaleString()}\n- **Max:** ${Math.max(...vals).toLocaleString()}\n- **Range:** ${(Math.max(...vals) - Math.min(...vals)).toLocaleString()}\n- **Records:** ${vals.length.toLocaleString()}\n\n> 🧑‍🔬 **DS Note:** ${stdDev / avg > 0.5 ? 'High variance — your data is widely spread. Consider segmenting by category.' : 'Low variance — data is fairly consistent.'}`;
+        analysisAnswer += chartSection({ type: 'histogram', reason: `Histogram shows the distribution of ${measureCol} values — useful for spotting skewness and outliers.` });
       }
     } else {
       analysisAnswer = `Your dataset has **${data.length} records**. Columns: ${schema.columns.map(c => `\`${c.name}\``).join(', ')}`;
     }
   }
+  // Chart recommendation request
+  else if (/\b(chart|graph|visualize|visualization|recommend.*chart|suggest.*chart|best.*chart)\b/i.test(q)) {
+    const dateCols = schema.columns.filter(c => c.type === 'date');
+    const recommendations: string[] = [];
+    if (dateCols.length > 0 && numCols.length > 0)
+      recommendations.push(`📈 **Line Chart** — \`${dateCols[0].name}\` vs \`${numCols[0].name}\` — spot trends and seasonality`);
+    if (strCols.length > 0 && numCols.length > 0)
+      recommendations.push(`📊 **Bar Chart** — \`${numCols[0].name}\` by \`${strCols[0].name}\` — compare categories`);
+    if (numCols.length >= 2)
+      recommendations.push(`🔵 **Scatter Plot** — \`${numCols[0].name}\` vs \`${numCols[1].name}\` — find correlations`);
+    if (strCols.length > 0 && strCols[0].uniqueValues <= 8)
+      recommendations.push(`🍩 **Pie/Donut** — Distribution of \`${strCols[0].name}\` (${strCols[0].uniqueValues} categories)`);
+    if (numCols.length > 0)
+      recommendations.push(`📦 **Box Plot** — Outlier detection in \`${numCols[0].name}\``);
+    if (data.length > 100)
+      recommendations.push(`🗺️ **Heatmap** — Density patterns across multiple dimensions`);
+    
+    analysisAnswer = `### 📊 Chart Recommendations for ${schema.tableName}\n\nBased on **${schema.rowCount} rows** with **${numCols.length} numeric**, **${strCols.length} categorical**${dateCols.length ? `, **${dateCols.length} date**` : ''} columns:\n\n${recommendations.join('\n\n')}\n\n> 🎯 **My #1 pick:** ${chart!.type.charAt(0).toUpperCase() + chart!.type.slice(1)} Chart — ${chart!.reason}`;
+  }
+  // Find patterns / analyze
+  else if (/\b(pattern|find|discover|analyze|analysis|insight|anomal|outlier|correlat|trend)\b/i.test(q)) {
+    const patternFindings: string[] = [];
+    
+    // Check for concentration
+    if (strCols.length > 0) {
+      const valueCounts: Record<string, number> = {};
+      data.forEach(r => {
+        const val = String(r[strCols[0].name] || 'Unknown');
+        valueCounts[val] = (valueCounts[val] || 0) + 1;
+      });
+      const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]);
+      const topPct = (sorted[0][1] / data.length * 100).toFixed(0);
+      patternFindings.push(`📊 **Category Concentration:** "${sorted[0][0]}" dominates \`${strCols[0].name}\` at **${topPct}%** of records`);
+    }
+    
+    // Check for numeric patterns
+    if (numCols.length > 0) {
+      const vals = data.map(r => Number(r[numCols[0].name]) || 0).filter(v => !isNaN(v));
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const stdDev = Math.sqrt(vals.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / vals.length);
+      const skewness = vals.reduce((s, v) => s + Math.pow((v - avg) / stdDev, 3), 0) / vals.length;
+      
+      if (Math.abs(skewness) > 1) {
+        patternFindings.push(`📐 **Skewed Distribution:** \`${numCols[0].name}\` is ${skewness > 0 ? 'right-skewed (long tail of high values)' : 'left-skewed (long tail of low values)'}`);
+      }
+      const outliers = vals.filter(v => Math.abs(v - avg) > 2 * stdDev);
+      if (outliers.length > 0) {
+        patternFindings.push(`🔍 **${outliers.length} Outliers Found** in \`${numCols[0].name}\` (values beyond 2σ: ${outliers.slice(0, 3).map(v => v.toLocaleString()).join(', ')}${outliers.length > 3 ? '...' : ''})`);
+      }
+    }
+    
+    // Check for correlations between numeric columns
+    if (numCols.length >= 2) {
+      const col1 = numCols[0].name;
+      const col2 = numCols[1].name;
+      const v1 = data.map(r => Number(r[col1]) || 0);
+      const v2 = data.map(r => Number(r[col2]) || 0);
+      const mean1 = v1.reduce((a, b) => a + b, 0) / v1.length;
+      const mean2 = v2.reduce((a, b) => a + b, 0) / v2.length;
+      const cov = v1.reduce((s, v, i) => s + (v - mean1) * (v2[i] - mean2), 0) / v1.length;
+      const std1 = Math.sqrt(v1.reduce((s, v) => s + Math.pow(v - mean1, 2), 0) / v1.length);
+      const std2 = Math.sqrt(v2.reduce((s, v) => s + Math.pow(v - mean2, 2), 0) / v2.length);
+      const corr = std1 * std2 > 0 ? cov / (std1 * std2) : 0;
+      
+      const strength = Math.abs(corr) > 0.7 ? 'Strong' : Math.abs(corr) > 0.4 ? 'Moderate' : 'Weak';
+      const direction = corr > 0 ? 'positive' : 'negative';
+      patternFindings.push(`🔗 **${strength} ${direction} correlation** between \`${col1}\` and \`${col2}\` (r = ${corr.toFixed(2)})`);
+    }
+    
+    analysisAnswer = `### 🔬 Pattern Analysis: ${schema.tableName}\n\n${patternFindings.join('\n\n')}`;
+    analysisAnswer += insightSection();
+    analysisAnswer += chartSection(chart);
+  }
   // Generic data analysis
   else {
-    analysisAnswer = `### 📊 Analysis of ${schema.tableName}\n\n**${schema.rowCount} rows** • **${schema.columns.length} columns**\n\n### 💡 Key Insights\n${insights.map(i => `- ${i}`).join('\n')}\n\n${chart ? `### 📈 Recommended Visualization\n**${chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} Chart** — ${chart.reason}` : ''}`;
+    analysisAnswer = `### 📊 Analysis of ${schema.tableName}\n\n**${schema.rowCount} rows** • **${schema.columns.length} columns** (${numCols.length} numeric, ${strCols.length} categorical)\n\n### 💡 Key Insights\n${insights.map(i => `- ${i}`).join('\n')}`;
+    analysisAnswer += chartSection(chart);
+    analysisAnswer += insightSection();
   }
 
   return {
@@ -677,13 +800,14 @@ export function processQuery(
     metadata: {
       mode: 'data-analysis',
       confidence: 0.88,
-      reasoning: `Analyzed data and provided natural language results.`,
+      reasoning: `Analyzed data and provided natural language results with chart recommendations.`,
       chartRecommendation: chart,
       insights,
       suggestions: [
+        'Recommend charts for my data',
         `Top 5 by ${schema.columns.find(c => c.type === 'number')?.name || 'value'}`,
+        'Find patterns & correlations',
         'Summarize my dataset',
-        'Show trend over time',
         `Average by ${schema.columns.find(c => c.type === 'string')?.name || 'category'}`,
       ],
     },

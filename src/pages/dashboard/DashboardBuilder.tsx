@@ -391,10 +391,65 @@ render();
         </Dialog>
       </div>
 
-      {/* Canvas + Config */}
-      <div className="flex gap-3 flex-1 overflow-hidden" ref={containerRef}>
-        <DashboardCanvas width={selectedWidgetId ? containerWidth - 300 : containerWidth} />
-        {selectedWidgetId && <WidgetConfigPanel />}
+      {/* Workspace with panels */}
+      <div className="flex flex-col flex-1 overflow-hidden gap-1">
+        {/* Top panel */}
+        {panelState.activePanels.includes('top') && (
+          <WorkspacePanel
+            position="top"
+            collapsed={panelState.collapsed.top}
+            onToggle={() => toggleCollapse('top')}
+            size={panelState.sizes.top}
+            onResize={(s) => resizePanel('top', s)}
+          >
+            <PanelContent />
+          </WorkspacePanel>
+        )}
+
+        {/* Middle row: left + canvas + right */}
+        <div className="flex gap-1 flex-1 overflow-hidden" ref={containerRef}>
+          {panelState.activePanels.includes('left') && (
+            <WorkspacePanel
+              position="left"
+              collapsed={panelState.collapsed.left}
+              onToggle={() => toggleCollapse('left')}
+              size={panelState.sizes.left}
+              onResize={(s) => resizePanel('left', s)}
+            >
+              <PanelContent />
+            </WorkspacePanel>
+          )}
+
+          <div className="flex-1 flex gap-3 overflow-hidden min-w-0">
+            <DashboardCanvas width={selectedWidgetId ? containerWidth - 300 : containerWidth} />
+            {selectedWidgetId && <WidgetConfigPanel />}
+          </div>
+
+          {panelState.activePanels.includes('right') && (
+            <WorkspacePanel
+              position="right"
+              collapsed={panelState.collapsed.right}
+              onToggle={() => toggleCollapse('right')}
+              size={panelState.sizes.right}
+              onResize={(s) => resizePanel('right', s)}
+            >
+              <PanelContent />
+            </WorkspacePanel>
+          )}
+        </div>
+
+        {/* Bottom panel */}
+        {panelState.activePanels.includes('bottom') && (
+          <WorkspacePanel
+            position="bottom"
+            collapsed={panelState.collapsed.bottom}
+            onToggle={() => toggleCollapse('bottom')}
+            size={panelState.sizes.bottom}
+            onResize={(s) => resizePanel('bottom', s)}
+          >
+            <PanelContent />
+          </WorkspacePanel>
+        )}
       </div>
     </div>
   );

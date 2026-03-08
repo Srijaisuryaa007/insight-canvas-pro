@@ -8,11 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, X, ChevronDown, GripVertical, Plus } from 'lucide-react';
-import { CHART_TYPES_BY_PLAN } from '@/types/subscription';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Trash2, X, ChevronDown, GripVertical, Plus, Lock } from 'lucide-react';
+import { CHART_TYPES_BY_PLAN, PLANS } from '@/types/subscription';
+import type { PlanType } from '@/types/subscription';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const AGGREGATIONS = ['sum', 'avg', 'count', 'min', 'max'] as const;
 const PALETTES = ['default', 'pastel', 'bold', 'monochrome', 'ocean', 'sunset'];
@@ -32,7 +35,83 @@ function Section({ title, defaultOpen = true, children }: { title: string; defau
   );
 }
 
-/** A field well that accepts one column (single select) */
+// All chart types grouped by category for display
+const CHART_CATEGORIES: { label: string; charts: string[] }[] = [
+  { label: 'Basic', charts: ['bar', 'line', 'pie', 'area', 'donut'] },
+  { label: 'Comparison', charts: ['scatter', 'radar', 'grouped-bar', 'stacked-bar', 'stacked-area', 'lollipop', 'dumbbell', 'slope', 'bullet', 'pareto'] },
+  { label: 'Distribution', charts: ['histogram', 'boxplot', 'violin', 'density', 'stripplot', 'swarmplot', 'ridgeline'] },
+  { label: 'Part-of-Whole', charts: ['treemap', 'sunburst', 'funnel', 'marimekko', 'waterfall'] },
+  { label: 'Correlation', charts: ['heatmap', 'bubble', 'jointplot', 'rugplot'] },
+  { label: 'Trend', charts: ['stream', 'candlestick', 'calendar', 'combo', 'timeline'] },
+  { label: 'Advanced', charts: ['sankey', 'polar', 'gauge', 'progress', 'kpi-card', 'word-cloud', 'network', 'force', 'tree', 'parallel'] },
+  { label: 'Geo / 3D', charts: ['geo', 'choropleth', '3d-scatter', '3d-surface'] },
+];
+
+function getMinPlanForChart(chartType: string): PlanType {
+  if (CHART_TYPES_BY_PLAN.free.includes(chartType)) return 'free';
+  if (CHART_TYPES_BY_PLAN.basic.includes(chartType)) return 'basic';
+  if (CHART_TYPES_BY_PLAN.pro.includes(chartType)) return 'pro';
+  return 'enterprise';
+}
+
+function ChartTypeSelector({ currentType, plan, availableCharts, onSelect }: {
+  currentType: string; plan: string; availableCharts: string[];
+  onSelect: (v: string) => void;
+}) {
+  return (
+    <ScrollArea className="max-h-[320px]">
+      <div className="space-y-3">
+        {CHART_CATEGORIES.map(cat => (
+          <div key={cat.label}>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{cat.label}</span>
+            <div className="grid grid-cols-2 gap-1 mt-1">
+              {cat.charts.map(ct => {
+                const unlocked = availableCharts.includes(ct);
+                const isActive = ct === currentType;
+                const minPlan = getMinPlanForChart(ct);
+                const label = ct.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                return (
+                  <button
+                    key={ct}
+                    onClick={() => {
+                      if (unlocked) {
+                        onSelect(ct);
+                      } else {
+                        toast({
+                          title: '🔒 Chart Locked',
+                          description: `${label} requires ${PLANS[minPlan]?.name || 'Pro'} plan. Upgrade to unlock.`,
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] text-left transition-all border",
+                      isActive
+                        ? "bg-primary/10 border-primary text-primary font-medium"
+                        : unlocked
+                          ? "border-border hover:bg-muted/50 text-foreground hover:border-muted-foreground/30"
+                          : "border-border/50 text-muted-foreground/50 cursor-not-allowed bg-muted/20"
+                    )}
+                  >
+                    <span className="truncate flex-1">{label}</span>
+                    {!unlocked && (
+                      <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 shrink-0 border-muted-foreground/30 text-muted-foreground/60">
+                        <Lock className="h-2 w-2 mr-0.5" />
+                        {PLANS[minPlan]?.name || 'Pro'}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
+
+
 function SingleFieldWell({
   label, value, columns, onChange, onClear, icon
 }: {
@@ -153,18 +232,16 @@ export function WidgetConfigPanel() {
 
         <Separator />
 
-        {/* Chart Type */}
+        {/* Chart Type — shows ALL charts, locked ones gated */}
         {isChart && (
           <>
-            <Section title="Chart Type" defaultOpen={true}>
-              <Select value={widget.config.chartType || 'bar'} onValueChange={v => update({ chartType: v })}>
-                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {availableCharts.map(ct => (
-                    <SelectItem key={ct} value={ct}>{ct.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Section title={`Chart Type (${availableCharts.length} unlocked)`} defaultOpen={true}>
+              <ChartTypeSelector
+                currentType={widget.config.chartType || 'bar'}
+                plan={plan}
+                availableCharts={availableCharts}
+                onSelect={v => update({ chartType: v })}
+              />
             </Section>
             <Separator />
           </>

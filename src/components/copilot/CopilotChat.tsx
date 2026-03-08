@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, Loader2, Terminal, BarChart3, Copy, Trash2 } from 'lucide-react';
+import { Send, Sparkles, Loader2, BarChart3, Copy, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,6 @@ import { useData } from '@/contexts/DataContext';
 import { processQuery, CopilotMessage } from '@/lib/copilotEngine';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 interface CopilotChatProps {
   datasetId?: string;
@@ -24,7 +23,6 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { consumeCredits, getCreditCost, credits } = useSubscription();
   const { currentData, currentDataset } = useData();
-  const navigate = useNavigate();
 
   const copilotCost = getCreditCost('copilot-query');
 
@@ -71,19 +69,8 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
 
   const handleSuggestionClick = (s: string) => {
     if (isLoading) return;
-    if (s === 'Import to SQL Engine') {
-      const lastSql = [...messages].reverse().find(m => m.metadata?.sqlQuery)?.metadata?.sqlQuery;
-      if (lastSql) handleImportToSQL(lastSql);
-      return;
-    }
     setInput(s);
     inputRef.current?.focus();
-  };
-
-  const handleImportToSQL = (sql: string) => {
-    sessionStorage.setItem('datapulse_sql_query', sql);
-    navigate('/dashboard/sql');
-    toast({ title: 'Query imported to SQL Engine' });
   };
 
   const handleCopy = (text: string) => {
@@ -92,8 +79,6 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
   };
 
   const clearHistory = () => { setMessages([]); toast({ title: 'Chat cleared' }); };
-
-  // ── Render helpers ──
 
   const renderInline = (text: string) => {
     return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
@@ -133,7 +118,6 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
   const renderMessage = (msg: CopilotMessage) => {
     if (msg.role === 'user') return <p className="text-sm">{msg.content}</p>;
     const blocks = extractCodeBlocks(msg.content);
-    const sqlQuery = msg.metadata?.sqlQuery;
 
     return (
       <div className="space-y-1">
@@ -144,12 +128,7 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
               <div className="my-2 rounded-lg overflow-hidden border border-border">
                 <div className="flex items-center justify-between px-3 py-1.5 bg-muted/80">
                   <span className="text-[10px] font-mono text-muted-foreground uppercase">{b.lang}</span>
-                  <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleCopy(b.code)}><Copy className="h-3 w-3" /></Button>
-                    {b.lang === 'sql' && (
-                      <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleImportToSQL(b.code)}><Terminal className="h-3 w-3" /></Button>
-                    )}
-                  </div>
+                  <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleCopy(b.code)}><Copy className="h-3 w-3" /></Button>
                 </div>
                 <pre className="p-3 text-xs font-mono bg-muted/30 overflow-x-auto whitespace-pre-wrap">{b.code}</pre>
               </div>
@@ -157,14 +136,6 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
             {b.after && <div>{renderContent(b.after)}</div>}
           </div>
         ))}
-        {sqlQuery && (
-          <Button size="sm" variant="outline" className="mt-2 text-xs gap-1.5" onClick={() => handleImportToSQL(sqlQuery)}>
-            <Terminal className="h-3.5 w-3.5" /> Import to SQL Engine
-          </Button>
-        )}
-        {msg.metadata?.sqlLevel && (
-          <Badge variant="secondary" className="text-[9px] mt-1 ml-1">{msg.metadata.sqlLevel}</Badge>
-        )}
         {msg.metadata?.chartRecommendation && (
           <Badge variant="outline" className="text-[9px] mt-1 ml-1 gap-0.5">
             <BarChart3 className="h-2.5 w-2.5" />{msg.metadata.chartRecommendation.type} chart
@@ -178,7 +149,7 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
     'Hi, what can you do?',
     'Show all data',
     'Top 10 by value',
-    'Generate CTE query',
+    'Summarize my dataset',
   ];
 
   return (
@@ -206,7 +177,7 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">AI Analytics Assistant</h3>
-                <p className="text-sm text-muted-foreground mt-1">Chat naturally or ask about your data — I generate SQL at 7 complexity levels!</p>
+                <p className="text-sm text-muted-foreground mt-1">Chat naturally or ask about your data — I'll help you find insights!</p>
                 {currentDataset && (
                   <p className="text-xs text-primary mt-2">📊 <strong>{currentDataset.name}</strong> loaded ({currentDataset.rowCount} rows, {currentDataset.columns?.length} cols)</p>
                 )}
@@ -245,7 +216,7 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
                     )}
                     {msg.metadata?.suggestions && msg.role === 'assistant' && (
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {msg.metadata.suggestions.map((s, i) => (
+                        {msg.metadata.suggestions.filter(s => s !== 'Import to SQL Engine').map((s, i) => (
                           <Button key={i} variant="outline" size="sm" className="text-[10px] h-6 px-2" onClick={() => handleSuggestionClick(s)} disabled={isLoading}>{s}</Button>
                         ))}
                       </div>
@@ -282,7 +253,7 @@ export function CopilotChat({ datasetId }: CopilotChatProps) {
             </Button>
           </form>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            {credits === Infinity ? 'Unlimited' : credits} credits • Natural conversation + 7-level SQL generation
+            {credits === Infinity ? 'Unlimited' : credits} credits • AI-powered data analysis
           </p>
         </div>
       </CardContent>

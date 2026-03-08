@@ -119,6 +119,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('Active dataset:', dataset.name, 'Rows:', data.length);
   }, []);
 
+  const { user } = useAuth();
+
   const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[]): Promise<boolean> => {
     if (!canAddDataset(datasets.length)) {
       toast({ title: 'Dataset Limit Reached', description: 'Upgrade your plan to add more datasets.', variant: 'destructive' });
@@ -134,11 +136,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         uploadedAt: new Date().toISOString(), data,
       };
 
-      try {
-        const result = await uploadDataset(WORKSPACE_ID, name, fileName, data, columns);
-        if (result.success && result.dataset) localDataset.id = result.dataset.id;
-      } catch (apiError) {
-        console.warn('[DataContext] Backend unavailable, using local-only mode:', apiError);
+      // Save to Supabase
+      if (isSupabaseConfigured && supabase && user) {
+        const { error } = await supabase.from('datasets').insert({
+          id: localDataset.id, user_id: user.id, dataset_name: name,
+          file_name: fileName, row_count: data.length,
+          columns: columns, quality_score: null,
+        });
+        if (error) console.error('[DataContext] Supabase insert error:', error);
       }
 
       setDatasets(prev => [...prev, localDataset]);
@@ -152,7 +157,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [datasets.length, canAddDataset, consumeCredits, activateDataset]);
+  }, [datasets.length, canAddDataset, consumeCredits, activateDataset, user]);
 
   const selectDataset = useCallback(async (id: string) => {
     const dataset = datasets.find(d => d.id === id);

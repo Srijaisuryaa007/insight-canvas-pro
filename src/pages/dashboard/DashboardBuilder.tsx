@@ -32,6 +32,27 @@ const WIDGET_LIMITS: Record<string, number> = {
   enterprise: Infinity,
 };
 
+// Panel layout persistence
+const PANEL_STORAGE_KEY = 'datapulse_panel_layout';
+
+interface PanelState {
+  activePanels: PanelPosition[];
+  sizes: Record<PanelPosition, number>;
+  collapsed: Record<PanelPosition, boolean>;
+}
+
+function loadPanelState(): PanelState {
+  try {
+    const saved = localStorage.getItem(PANEL_STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { activePanels: ['left'], sizes: { left: 240, right: 240, top: 200, bottom: 200 }, collapsed: { left: false, right: false, top: false, bottom: false } };
+}
+
+function savePanelState(state: PanelState) {
+  localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify(state));
+}
+
 export default function DashboardBuilder() {
   const {
     dashboard, currentPage, currentPageId,
@@ -50,6 +71,30 @@ export default function DashboardBuilder() {
   const [newPageName, setNewPageName] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
+
+  // Panel state
+  const [panelState, setPanelState] = useState<PanelState>(loadPanelState);
+
+  useEffect(() => { savePanelState(panelState); }, [panelState]);
+
+  const togglePanel = useCallback((pos: PanelPosition) => {
+    setPanelState(prev => {
+      const isActive = prev.activePanels.includes(pos);
+      return {
+        ...prev,
+        activePanels: isActive ? prev.activePanels.filter(p => p !== pos) : [...prev.activePanels, pos],
+        collapsed: { ...prev.collapsed, [pos]: false },
+      };
+    });
+  }, []);
+
+  const toggleCollapse = useCallback((pos: PanelPosition) => {
+    setPanelState(prev => ({ ...prev, collapsed: { ...prev.collapsed, [pos]: !prev.collapsed[pos] } }));
+  }, []);
+
+  const resizePanel = useCallback((pos: PanelPosition, size: number) => {
+    setPanelState(prev => ({ ...prev, sizes: { ...prev.sizes, [pos]: size } }));
+  }, []);
 
   const widgetLimit = WIDGET_LIMITS[plan] || 6;
   const currentWidgetCount = currentPage?.widgets.length || 0;

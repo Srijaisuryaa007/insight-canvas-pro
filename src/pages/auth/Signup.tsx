@@ -42,9 +42,12 @@ export default function Signup() {
     try {
       const success = await signup(email, password, name);
       if (success) {
+        // Clear onboarding flag so new users see the welcome flow
+        localStorage.removeItem('datavora_onboarding_done');
+        localStorage.removeItem('datavora_product_tour_done');
         toast({
           title: 'Account created!',
-          description: 'Welcome to DataPulse Analytics.',
+          description: 'Welcome to DataVora.',
         });
         navigate('/dashboard');
       } else {

@@ -29,7 +29,7 @@ import DashboardBuilder from "./pages/dashboard/DashboardBuilder";
 import Settings from "./pages/dashboard/Settings";
 import Profile from "./pages/dashboard/Profile";
 import SQLEngine from "./pages/dashboard/SQLEngine";
-
+import Integrations from "./pages/dashboard/Integrations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

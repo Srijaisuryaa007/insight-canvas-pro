@@ -103,7 +103,7 @@ export default function Quality() {
   };
 
   const handleColumnDecision = (col: string, decision: 'drop' | 'fill' | 'keep') => {
-    setColumnDecisions(prev => ({ ...prev, [col]: decision }));
+    handleColumnDecisionCached(col, decision);
   };
 
   const handleRerunWithDecisions = () => {

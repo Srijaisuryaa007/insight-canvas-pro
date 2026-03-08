@@ -20,46 +20,39 @@ import { toast } from '@/hooks/use-toast';
 
 // ─── Type Config ────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<string, {
-  icon: any; label: string; emoji: string;
-  gradientFrom: string; gradientTo: string;
+  icon: any; label: string;
   accentClass: string; bgClass: string; textClass: string;
-  stripGradient: string;
+  strokeClass: string;
 }> = {
   trend: {
-    icon: TrendingUp, label: 'Trend', emoji: '📈',
-    gradientFrom: 'from-cyan-400', gradientTo: 'to-blue-500',
-    accentClass: 'bg-cyan-500', bgClass: 'bg-cyan-500/10', textClass: 'text-cyan-400',
-    stripGradient: 'from-cyan-400 to-blue-500',
+    icon: TrendingUp, label: 'Trend',
+    accentClass: 'bg-blue-500', bgClass: 'bg-blue-500/10', textClass: 'text-blue-500 dark:text-blue-400',
+    strokeClass: 'stroke-blue-500',
   },
   anomaly: {
-    icon: ShieldAlert, label: 'Anomaly', emoji: '⚠️',
-    gradientFrom: 'from-amber-400', gradientTo: 'to-red-500',
-    accentClass: 'bg-amber-500', bgClass: 'bg-amber-500/10', textClass: 'text-amber-400',
-    stripGradient: 'from-amber-400 to-red-500',
+    icon: ShieldAlert, label: 'Anomaly',
+    accentClass: 'bg-amber-500', bgClass: 'bg-amber-500/10', textClass: 'text-amber-600 dark:text-amber-400',
+    strokeClass: 'stroke-amber-500',
   },
   risk: {
-    icon: AlertTriangle, label: 'Risk', emoji: '🔴',
-    gradientFrom: 'from-red-400', gradientTo: 'to-pink-500',
-    accentClass: 'bg-red-500', bgClass: 'bg-red-500/10', textClass: 'text-red-400',
-    stripGradient: 'from-red-400 to-pink-500',
+    icon: AlertTriangle, label: 'Risk',
+    accentClass: 'bg-red-500', bgClass: 'bg-red-500/10', textClass: 'text-red-500 dark:text-red-400',
+    strokeClass: 'stroke-red-500',
   },
   opportunity: {
-    icon: Target, label: 'Opportunity', emoji: '💡',
-    gradientFrom: 'from-violet-400', gradientTo: 'to-indigo-500',
-    accentClass: 'bg-violet-500', bgClass: 'bg-violet-500/10', textClass: 'text-violet-400',
-    stripGradient: 'from-violet-400 to-indigo-500',
+    icon: Target, label: 'Opportunity',
+    accentClass: 'bg-violet-500', bgClass: 'bg-violet-500/10', textClass: 'text-violet-600 dark:text-violet-400',
+    strokeClass: 'stroke-violet-500',
   },
   correlation: {
-    icon: Activity, label: 'Correlation', emoji: '🔗',
-    gradientFrom: 'from-blue-400', gradientTo: 'to-indigo-500',
-    accentClass: 'bg-blue-500', bgClass: 'bg-blue-500/10', textClass: 'text-blue-400',
-    stripGradient: 'from-blue-400 to-indigo-500',
+    icon: Activity, label: 'Correlation',
+    accentClass: 'bg-indigo-500', bgClass: 'bg-indigo-500/10', textClass: 'text-indigo-500 dark:text-indigo-400',
+    strokeClass: 'stroke-indigo-500',
   },
   distribution: {
-    icon: BarChart3, label: 'Distribution', emoji: '📊',
-    gradientFrom: 'from-purple-400', gradientTo: 'to-pink-500',
-    accentClass: 'bg-purple-500', bgClass: 'bg-purple-500/10', textClass: 'text-purple-400',
-    stripGradient: 'from-purple-400 to-pink-500',
+    icon: BarChart3, label: 'Distribution',
+    accentClass: 'bg-purple-500', bgClass: 'bg-purple-500/10', textClass: 'text-purple-500 dark:text-purple-400',
+    strokeClass: 'stroke-purple-500',
   },
 };
 
@@ -80,7 +73,7 @@ function getBusinessImpact(insight: Insight): string[] {
 }
 
 // ─── Animated Counter ───────────────────────────────────────────────
-function AnimatedCounter({ value, duration = 1200 }: { value: number; duration?: number }) {
+function AnimatedCounter({ value, duration = 800 }: { value: number; duration?: number }) {
   const [count, setCount] = useState(0);
   const ref = useRef<number>(0);
   useEffect(() => {
@@ -99,37 +92,35 @@ function AnimatedCounter({ value, duration = 1200 }: { value: number; duration?:
 
 // ─── Confidence Ring ────────────────────────────────────────────────
 function ConfidenceRing({ value, color }: { value: number; color: string }) {
-  const radius = 28;
+  const radius = 26;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
   return (
-    <div className="relative flex items-center justify-center w-[72px] h-[72px]">
-      <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r={radius} fill="none" strokeWidth="4" className="stroke-muted/30" />
+    <div className="relative flex items-center justify-center w-16 h-16">
+      <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 60 60">
+        <circle cx="30" cy="30" r={radius} fill="none" strokeWidth="3" className="stroke-muted/20" />
         <motion.circle
-          cx="32" cy="32" r={radius} fill="none" strokeWidth="4"
+          cx="30" cy="30" r={radius} fill="none" strokeWidth="3"
           className={color}
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
           strokeLinecap="round"
         />
       </svg>
-      <div className="text-center">
-        <span className="text-lg font-bold text-foreground">{Math.round(value)}%</span>
-      </div>
+      <span className="text-sm font-semibold text-foreground">{Math.round(value)}%</span>
     </div>
   );
 }
 
 // ─── Loading Steps ──────────────────────────────────────────────────
 const LOADING_STEPS = [
-  'Analyzing dataset structure...',
-  'Detecting trend patterns...',
-  'Identifying anomalies...',
-  'Calculating risk factors...',
-  'Finding opportunities...',
+  'Analyzing dataset structure',
+  'Detecting trend patterns',
+  'Identifying anomalies',
+  'Calculating risk factors',
+  'Finding opportunities',
 ];
 
 function LoadingState() {
@@ -142,39 +133,31 @@ function LoadingState() {
   }, []);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center py-16">
-      {/* Pulsing brain */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16">
       <div className="relative mb-8">
-        <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.1, 0.3] }} transition={{ duration: 2, repeat: Infinity }}
-          className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 to-blue-500 blur-xl" style={{ width: 120, height: 120, left: -20, top: -20 }} />
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-          className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center">
-          <Brain className="w-10 h-10 text-foreground" />
-        </motion.div>
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-border flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        </div>
       </div>
 
-      {/* Steps */}
-      <div className="space-y-3 mb-8 w-full max-w-sm">
+      <div className="space-y-2.5 mb-8 w-full max-w-xs">
         {LOADING_STEPS.map((label, i) => (
-          <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.2 }}
-            className="flex items-center gap-3">
+          <div key={i} className="flex items-center gap-3">
             {i < step ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
             ) : i === step ? (
-              <Loader2 className="w-5 h-5 text-violet-400 animate-spin shrink-0" />
+              <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
             ) : (
-              <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
+              <Circle className="w-4 h-4 text-muted-foreground/30 shrink-0" />
             )}
             <span className={cn("text-sm", i < step ? "text-muted-foreground" : i === step ? "text-foreground font-medium" : "text-muted-foreground/40")}>{label}</span>
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      {/* Progress bar */}
-      <div className="w-full max-w-sm">
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-          <motion.div className="h-full bg-gradient-to-r from-violet-500 to-blue-500 rounded-full"
-            style={{ width: `${progress}%` }} transition={{ duration: 0.1 }} />
+      <div className="w-full max-w-xs">
+        <div className="h-1 bg-muted rounded-full overflow-hidden">
+          <motion.div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} transition={{ duration: 0.1 }} />
         </div>
         <p className="text-xs text-muted-foreground text-center mt-2">Estimated ~8 seconds remaining</p>
       </div>
@@ -185,50 +168,47 @@ function LoadingState() {
 // ─── Empty State ────────────────────────────────────────────────────
 function EmptyState({ onGenerate, credits, creditCost, hasDataset }: { onGenerate: () => void; credits: number; creditCost: number; hasDataset: boolean }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-12">
-      {/* Sonar animation */}
-      <div className="relative mb-8 w-24 h-24">
-        {[0, 1, 2].map(i => (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16">
+      <div className="relative mb-6 w-20 h-20">
+        {[0, 1].map(i => (
           <motion.div key={i}
-            animate={{ scale: [1, 2.5], opacity: [0.4, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.8 }}
-            className="absolute inset-0 rounded-full border-2 border-violet-500/30"
+            animate={{ scale: [1, 1.8], opacity: [0.15, 0] }}
+            transition={{ duration: 3, repeat: Infinity, delay: i * 1.2 }}
+            className="absolute inset-0 rounded-full border border-primary/20"
           />
         ))}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-violet-500/30 flex items-center justify-center">
-            <Brain className="w-8 h-8 text-violet-400" />
+          <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center">
+            <Brain className="w-7 h-7 text-muted-foreground" />
           </div>
         </div>
       </div>
 
-      <h3 className="text-xl font-bold text-foreground mb-2">No insights generated yet</h3>
-      <p className="text-sm text-muted-foreground text-center max-w-md mb-8">
-        AI will analyze your dataset and uncover hidden patterns, anomalies, risks and opportunities automatically
+      <h3 className="text-lg font-semibold text-foreground mb-1">No insights generated yet</h3>
+      <p className="text-sm text-muted-foreground text-center max-w-sm mb-8">
+        AI will analyze your dataset and uncover patterns, anomalies, risks and opportunities automatically.
       </p>
 
       {/* Preview cards (blurred) */}
-      <div className="flex gap-3 mb-8 opacity-30 blur-[2px] pointer-events-none">
+      <div className="flex gap-3 mb-8 opacity-25 blur-[2px] pointer-events-none">
         {['Trend', 'Anomaly', 'Opportunity'].map(type => (
-          <div key={type} className="w-48 h-28 rounded-2xl bg-card border border-border p-4">
-            <div className="w-8 h-8 rounded-lg bg-muted mb-2" />
-            <div className="w-24 h-3 rounded bg-muted mb-1.5" />
-            <div className="w-32 h-2 rounded bg-muted" />
+          <div key={type} className="w-44 h-24 rounded-xl bg-card border border-border p-4">
+            <div className="w-7 h-7 rounded-lg bg-muted mb-2" />
+            <div className="w-20 h-2.5 rounded bg-muted mb-1.5" />
+            <div className="w-28 h-2 rounded bg-muted" />
           </div>
         ))}
       </div>
 
-      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-        <Button
-          size="lg"
-          onClick={onGenerate}
-          disabled={!hasDataset}
-          className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-foreground font-bold text-base px-10 py-6 rounded-xl shadow-lg shadow-violet-500/20"
-        >
-          <Sparkles className="w-5 h-5 mr-2" />
-          Generate AI Insights
-        </Button>
-      </motion.div>
+      <Button
+        size="lg"
+        onClick={onGenerate}
+        disabled={!hasDataset}
+        className="font-semibold gap-2"
+      >
+        <Sparkles className="w-4 h-4" />
+        Generate AI Insights
+      </Button>
       <p className="text-xs text-muted-foreground mt-3">
         Uses {creditCost} credits · Takes ~10 seconds
       </p>
@@ -237,20 +217,18 @@ function EmptyState({ onGenerate, credits, creditCost, hasDataset }: { onGenerat
 }
 
 // ─── Stat Card ──────────────────────────────────────────────────────
-function StatCard({ label, count, subtitle, accentColor, gradientFrom, gradientTo }: {
-  label: string; count: number; subtitle: string; accentColor: string; gradientFrom: string; gradientTo: string;
+function StatCard({ label, count, subtitle, accentColor, textColor }: {
+  label: string; count: number; subtitle: string; accentColor: string; textColor: string;
 }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} whileHover={{ borderColor: 'hsl(var(--ring))' }}
-      className="relative bg-card border border-border rounded-2xl p-5 overflow-hidden transition-colors group">
-      {/* Left accent */}
-      <div className={cn("absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl", accentColor)} />
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 pl-3">{label}</p>
-      <p className={cn("text-4xl font-bold pl-3 bg-gradient-to-r bg-clip-text text-transparent", gradientFrom, gradientTo)}>
+    <div className="relative bg-card border border-border rounded-xl p-5 overflow-hidden">
+      <div className={cn("absolute left-0 top-0 bottom-0 w-0.5", accentColor)} />
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 pl-3">{label}</p>
+      <p className={cn("text-3xl font-bold pl-3", textColor)}>
         <AnimatedCounter value={count} />
       </p>
       <p className="text-xs text-muted-foreground mt-1 pl-3">{subtitle}</p>
-    </motion.div>
+    </div>
   );
 }
 
@@ -269,32 +247,27 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-2xl overflow-hidden hover:border-muted-foreground/20 hover:shadow-xl transition-all duration-200 group"
-    >
-      {/* Top color strip */}
-      <div className={cn("h-1 w-full bg-gradient-to-r", cfg.stripGradient)} />
+    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-muted-foreground/20 transition-colors">
+      {/* Top accent strip */}
+      <div className={cn("h-0.5 w-full", cfg.accentClass)} />
 
       {/* Header */}
       <div className="p-5 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            {/* Type icon */}
-            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg", cfg.bgClass, `border border-${cfg.accentClass.replace('bg-', '')}/20`)}>
-              {cfg.emoji}
+            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", cfg.bgClass)}>
+              <Icon className={cn("w-4.5 h-4.5", cfg.textClass)} />
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-foreground text-[15px] leading-snug">{insight.title}</h3>
+              <h3 className="font-semibold text-foreground text-sm leading-snug">{insight.title}</h3>
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", cfg.bgClass, cfg.textClass, `border-${cfg.accentClass.replace('bg-', '')}/30`)}>
+                <Badge variant="outline" className={cn("text-[10px] font-medium px-2 py-0 rounded-md", cfg.textClass, cfg.bgClass, "border-transparent")}>
                   {cfg.label}
-                </span>
+                </Badge>
                 {insight.chartType && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                  <Badge variant="outline" className="text-[10px] font-medium px-2 py-0 rounded-md">
                     {insight.chartType}
-                  </span>
+                  </Badge>
                 )}
               </div>
             </div>
@@ -302,7 +275,7 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
 
           {/* Confidence ring */}
           <div className="shrink-0 flex flex-col items-center">
-            <ConfidenceRing value={confidencePercent} color={`stroke-${cfg.accentClass.replace('bg-', '')}`} />
+            <ConfidenceRing value={confidencePercent} color={cfg.strokeClass} />
             <span className="text-[9px] text-muted-foreground mt-0.5">confidence</span>
           </div>
         </div>
@@ -310,38 +283,36 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
 
       {/* Body - two columns */}
       <div className="px-5 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-xl bg-muted/30 p-3.5 border border-border/50">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">📊 Data Evidence</p>
-          <p className="text-sm text-foreground leading-relaxed">{insight.description}</p>
+        <div className="rounded-lg bg-muted/40 p-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Data Evidence</p>
+          <p className="text-sm text-foreground/90 leading-relaxed">{insight.description}</p>
         </div>
         {insight.reasoning && (
-          <div className="rounded-xl bg-muted/30 p-3.5 border border-border/50">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">🔬 Statistical Reasoning</p>
+          <div className="rounded-lg bg-muted/40 p-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Statistical Reasoning</p>
             <p className="text-sm text-muted-foreground leading-relaxed">{insight.reasoning}</p>
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3.5 border-t border-border bg-muted/10 flex items-center justify-between gap-3">
-        {/* Impact bar */}
-        <div className="flex-1 max-w-[200px]">
+      <div className="px-5 py-3 border-t border-border flex items-center justify-between gap-3">
+        <div className="flex-1 max-w-[180px]">
           <p className="text-[10px] text-muted-foreground mb-1">Impact Level</p>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="h-1 bg-muted rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${confidencePercent}%` }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-              className={cn("h-full rounded-full bg-gradient-to-r", cfg.stripGradient)}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className={cn("h-full rounded-full", cfg.accentClass)}
             />
           </div>
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center gap-2">
           <Button
             variant="outline" size="sm"
-            className="text-xs gap-1.5 h-8 rounded-lg hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+            className="text-xs gap-1.5 h-8 rounded-lg"
             onClick={handleVisualize}
             disabled={vizLoading}
           >
@@ -349,8 +320,8 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
             {vizLoading ? 'Opening...' : 'Visualize'}
           </Button>
           <Button
-            size="sm"
-            className="text-xs gap-1.5 h-8 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-foreground font-medium"
+            variant="secondary" size="sm"
+            className="text-xs gap-1.5 h-8 rounded-lg font-medium"
             onClick={onToggle}
           >
             <Zap className="h-3 w-3" />
@@ -367,17 +338,17 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <div className="px-5 py-5 border-t border-border bg-muted/5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="px-5 py-5 border-t border-border grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Business Impact */}
               <div>
-                <p className="text-xs font-bold text-amber-400 mb-2.5 flex items-center gap-1.5">💼 Business Impact</p>
+                <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2.5">Business Impact</p>
                 <ul className="space-y-2">
                   {getBusinessImpact(insight).map((point, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+                      <span className="w-1 h-1 rounded-full bg-amber-500 mt-1.5 shrink-0" />
                       {point}
                     </li>
                   ))}
@@ -387,11 +358,11 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
               {/* Recommended Actions */}
               {insight.suggestedActions && insight.suggestedActions.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold text-blue-400 mb-2.5 flex items-center gap-1.5">⚡ Recommended Actions</p>
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2.5">Recommended Actions</p>
                   <ol className="space-y-2">
                     {insight.suggestedActions.map((action, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
+                        <span className="w-4 h-4 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-semibold shrink-0">{i + 1}</span>
                         {action}
                       </li>
                     ))}
@@ -401,17 +372,17 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
 
               {/* Related Metrics */}
               <div>
-                <p className="text-xs font-bold text-violet-400 mb-2.5 flex items-center gap-1.5">📊 Related Metrics</p>
+                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-2.5">Related Metrics</p>
                 <div className="flex flex-wrap gap-1.5">
                   {insight.chartType && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-[10px] text-violet-400">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-[10px] text-muted-foreground border border-border">
                       Chart: {insight.chartType}
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-[10px] text-violet-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-[10px] text-muted-foreground border border-border">
                     Confidence: {confidencePercent}%
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-[10px] text-violet-400">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-[10px] text-muted-foreground border border-border">
                     Type: {cfg.label}
                   </span>
                 </div>
@@ -420,7 +391,7 @@ function InsightCard({ insight, isExpanded, onToggle, onVisualize }: {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
@@ -456,7 +427,6 @@ export default function Insights() {
     toast({ title: 'Opened from AI Insight', description: insight.title });
   };
 
-  // Filter + search + sort
   const filteredInsights = insights
     .filter(i => activeFilter === 'all' || i.type === activeFilter)
     .filter(i => !searchQuery || i.title.toLowerCase().includes(searchQuery.toLowerCase()) || i.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -486,8 +456,8 @@ export default function Insights() {
       {/* ─── Header ────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-xl shadow-lg shadow-violet-500/20">
-            💡
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-border flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">AI Insights</h1>
@@ -502,7 +472,6 @@ export default function Insights() {
               <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border", credits < 10 ? "bg-destructive/10 border-destructive/30 text-destructive" : "bg-muted border-border text-muted-foreground")}>
                 <Gem className="h-3.5 w-3.5" />
                 {credits} credits
-                {credits < 10 && <span className="text-[10px]">⚠️ Low</span>}
               </div>
             </TooltipTrigger>
             <TooltipContent>
@@ -513,7 +482,7 @@ export default function Insights() {
           {/* Dataset selector */}
           {datasets.length > 0 && (
             <Select value={currentDataset?.id || ''} onValueChange={(id) => selectDataset(id)}>
-              <SelectTrigger className="w-[200px] bg-card border-border rounded-xl h-10">
+              <SelectTrigger className="w-[200px] bg-card border-border rounded-lg h-9">
                 <Database className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                 <SelectValue placeholder="Select dataset" />
               </SelectTrigger>
@@ -527,23 +496,20 @@ export default function Insights() {
 
           {/* Generate button */}
           {currentDataset && (
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              className={cn(insights.length === 0 && !isGenerating && "animate-pulse")}>
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-foreground font-semibold rounded-xl h-10 shadow-lg shadow-violet-500/20 gap-2"
-              >
-                {isGenerating ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" />Analyzing...</>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />Generate Insights
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1 bg-foreground/10 text-foreground/80">{creditCost} cr</Badge>
-                  </>
-                )}
-              </Button>
-            </motion.div>
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="h-9 gap-2 font-semibold"
+            >
+              {isGenerating ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Analyzing...</>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />Generate Insights
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">{creditCost} cr</Badge>
+                </>
+              )}
+            </Button>
           )}
         </div>
       </div>
@@ -560,42 +526,41 @@ export default function Insights() {
       {!isGenerating && insights.length > 0 && (
         <>
           {/* Summary Banner */}
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-card to-violet-500/5 border border-violet-500/20 rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap">
+          <div className="bg-card border border-primary/20 rounded-xl p-5 flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <p className="font-bold text-foreground flex items-center gap-2">🎯 Analysis Complete</p>
+              <p className="font-semibold text-foreground">Analysis Complete</p>
               <p className="text-sm text-muted-foreground mt-0.5">Discovered {insights.length} insights from {currentDataset?.name || 'dataset'}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {typeCounts.trend > 0 && <Badge variant="outline" className="gap-1 rounded-full text-cyan-400 border-cyan-500/30 bg-cyan-500/10">📈 {typeCounts.trend} Trend{typeCounts.trend > 1 ? 's' : ''}</Badge>}
-              {typeCounts.anomaly > 0 && <Badge variant="outline" className="gap-1 rounded-full text-amber-400 border-amber-500/30 bg-amber-500/10">⚠️ {typeCounts.anomaly} Anomal{typeCounts.anomaly > 1 ? 'ies' : 'y'}</Badge>}
-              {typeCounts.risk > 0 && <Badge variant="outline" className="gap-1 rounded-full text-red-400 border-red-500/30 bg-red-500/10">🔴 {typeCounts.risk} Risk{typeCounts.risk > 1 ? 's' : ''}</Badge>}
-              {typeCounts.opportunity > 0 && <Badge variant="outline" className="gap-1 rounded-full text-violet-400 border-violet-500/30 bg-violet-500/10">💡 {typeCounts.opportunity} Opportunit{typeCounts.opportunity > 1 ? 'ies' : 'y'}</Badge>}
+              {typeCounts.trend > 0 && <Badge variant="outline" className="gap-1 rounded-md text-blue-600 dark:text-blue-400 border-blue-500/20 bg-blue-500/5">{typeCounts.trend} Trend{typeCounts.trend > 1 ? 's' : ''}</Badge>}
+              {typeCounts.anomaly > 0 && <Badge variant="outline" className="gap-1 rounded-md text-amber-600 dark:text-amber-400 border-amber-500/20 bg-amber-500/5">{typeCounts.anomaly} Anomal{typeCounts.anomaly > 1 ? 'ies' : 'y'}</Badge>}
+              {typeCounts.risk > 0 && <Badge variant="outline" className="gap-1 rounded-md text-red-600 dark:text-red-400 border-red-500/20 bg-red-500/5">{typeCounts.risk} Risk{typeCounts.risk > 1 ? 's' : ''}</Badge>}
+              {typeCounts.opportunity > 0 && <Badge variant="outline" className="gap-1 rounded-md text-violet-600 dark:text-violet-400 border-violet-500/20 bg-violet-500/5">{typeCounts.opportunity} Opportunit{typeCounts.opportunity > 1 ? 'ies' : 'y'}</Badge>}
               <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1" onClick={handleGenerate}>
                 Re-analyze
               </Button>
             </div>
-          </motion.div>
+          </div>
 
           {/* Stat Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Trends Detected" count={typeCounts.trend} subtitle={typeCounts.trend > 0 ? "vs last scan" : "none found"} accentColor="bg-cyan-500" gradientFrom="from-cyan-400" gradientTo="to-blue-500" />
-            <StatCard label="Anomalies Found" count={typeCounts.anomaly} subtitle={typeCounts.anomaly > 0 ? "requires attention" : "all clear"} accentColor="bg-amber-500" gradientFrom="from-amber-400" gradientTo="to-red-500" />
-            <StatCard label="Risk Factors" count={typeCounts.risk} subtitle={typeCounts.risk === 0 ? "all clear" : "needs review"} accentColor="bg-emerald-500" gradientFrom="from-emerald-400" gradientTo="to-green-500" />
-            <StatCard label="Opportunities" count={typeCounts.opportunity} subtitle={typeCounts.opportunity > 0 ? "growth potential" : "run scan to discover"} accentColor="bg-violet-500" gradientFrom="from-violet-400" gradientTo="to-indigo-500" />
+            <StatCard label="Trends Detected" count={typeCounts.trend} subtitle={typeCounts.trend > 0 ? "vs last scan" : "none found"} accentColor="bg-blue-500" textColor="text-blue-600 dark:text-blue-400" />
+            <StatCard label="Anomalies Found" count={typeCounts.anomaly} subtitle={typeCounts.anomaly > 0 ? "requires attention" : "all clear"} accentColor="bg-amber-500" textColor="text-amber-600 dark:text-amber-400" />
+            <StatCard label="Risk Factors" count={typeCounts.risk} subtitle={typeCounts.risk === 0 ? "all clear" : "needs review"} accentColor="bg-emerald-500" textColor="text-emerald-600 dark:text-emerald-400" />
+            <StatCard label="Opportunities" count={typeCounts.opportunity} subtitle={typeCounts.opportunity > 0 ? "growth potential" : "run scan to discover"} accentColor="bg-violet-500" textColor="text-violet-600 dark:text-violet-400" />
           </div>
 
           {/* Filter Bar */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 flex-wrap">
               {filterTabs.map(tab => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveFilter(tab.key)}
                   className={cn(
-                    "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all",
+                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                     activeFilter === tab.key
-                      ? "bg-violet-600 text-foreground shadow-sm"
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted"
                   )}
                 >
@@ -628,16 +593,15 @@ export default function Insights() {
           </div>
 
           {/* Insight Cards */}
-          <div className="space-y-4">
-            {filteredInsights.map((insight, i) => (
-              <motion.div key={insight.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                <InsightCard
-                  insight={insight}
-                  isExpanded={expandedInsight === insight.id}
-                  onToggle={() => setExpandedInsight(expandedInsight === insight.id ? null : insight.id)}
-                  onVisualize={handleVisualize}
-                />
-              </motion.div>
+          <div className="space-y-3">
+            {filteredInsights.map((insight) => (
+              <InsightCard
+                key={insight.id}
+                insight={insight}
+                isExpanded={expandedInsight === insight.id}
+                onToggle={() => setExpandedInsight(expandedInsight === insight.id ? null : insight.id)}
+                onVisualize={handleVisualize}
+              />
             ))}
             {filteredInsights.length === 0 && (
               <div className="text-center py-12 text-muted-foreground text-sm">

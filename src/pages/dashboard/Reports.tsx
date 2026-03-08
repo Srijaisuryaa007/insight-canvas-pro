@@ -646,13 +646,23 @@ export default function Reports() {
         </>
       )}
 
+      {/* ── Share Your Report ── */}
       <Separator />
-      <ScheduledReports />
+      <ShareReportSection
+        onExport={handleExport}
+        isExporting={isExporting}
+        hasData={currentData.length > 0}
+        reportTitle={title}
+        isProUser={isFeatureAvailable('scheduled-reports')}
+      />
 
-      <Separator />
+      {/* ── Scheduled Reports Pro Card ── */}
+      <ScheduledReportsProCard isProUser={isFeatureAvailable('scheduled-reports')} />
+
+      {/* ── Activity Log + Notes ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DashboardComments dashboardId={dashboard?.id || 'default'} />
-        <VersionHistory dashboardId={dashboard?.id || 'default'} />
+        <ActivityLog history={history} onDelete={deleteHistory} formatBadge={formatBadge} />
+        <ReportNotes />
       </div>
     </div>
   );

@@ -839,6 +839,39 @@ export default function SQLEngine() {
         </Card>
       )}
 
+      {/* Quick-start query buttons */}
+      {columns.length > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Quick:</span>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { const s = `SELECT * FROM data LIMIT 10`; setQuery(s); executeQuery(s); }}>
+            📋 Preview Data
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { const s = `SELECT COUNT(*) AS total_rows FROM data`; setQuery(s); executeQuery(s); }}>
+            🔢 Count Rows
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+            const numCols = columns.filter(c => typeof currentData[0]?.[c] === 'number');
+            const s = numCols.length > 0
+              ? `SELECT\n  ${numCols.slice(0, 5).map(c => `ROUND(AVG(\`${c}\`), 2) AS avg_${c.replace(/[^a-zA-Z0-9_]/g, '_')},\n  MIN(\`${c}\`) AS min_${c.replace(/[^a-zA-Z0-9_]/g, '_')},\n  MAX(\`${c}\`) AS max_${c.replace(/[^a-zA-Z0-9_]/g, '_')}`).join(',\n  ')}\nFROM data`
+              : `SELECT COUNT(*) AS total_rows FROM data`;
+            setQuery(s); executeQuery(s);
+          }}>
+            📊 Show Stats
+          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button onClick={handleRunQuery} disabled={isRunning || !query.trim()} className="gap-1 h-8">
+              <Play className="h-4 w-4" />{isRunning ? 'Running...' : 'Run'}
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={handleExportCSV} disabled={!results.length}>
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={() => { navigator.clipboard.writeText(query); toast({ title: 'Copied' }); }}>
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Visual Query Builder */}
       {showBuilder && columns.length > 0 && (
         <VisualQueryBuilder columns={columns} onQueryChange={handleQueryFromBuilder} />
@@ -852,31 +885,17 @@ export default function SQLEngine() {
 
         {/* Main Editor + Results */}
         <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden">
-          {/* SQL Editor */}
           {/* SQL Editor with line numbers */}
-          <div className="flex gap-2 items-start">
-            <div className="flex-1 relative">
-              <div className="absolute left-0 top-0 bottom-0 w-8 bg-muted/50 rounded-l-md border-r border-border flex flex-col items-end pt-2 pr-1 pointer-events-none overflow-hidden z-10">
-                {(query || ' ').split('\n').map((_, i) => (
-                  <span key={i} className="text-[10px] leading-[20px] text-muted-foreground/50 font-mono">{i + 1}</span>
-                ))}
-              </div>
-              <Textarea value={query} onChange={e => setQuery(e.target.value)} placeholder={`SELECT * FROM ${tableName} LIMIT 10`}
-                className="font-mono text-sm min-h-[180px] pl-10 resize-y leading-[20px]" 
-                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRunQuery(); }} />
-              <span className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/40">Ctrl+Enter to run</span>
+          <div className="flex-1 relative">
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-muted/50 rounded-l-md border-r border-border flex flex-col items-end pt-2 pr-1 pointer-events-none overflow-hidden z-10">
+              {(query || ' ').split('\n').map((_, i) => (
+                <span key={i} className="text-[10px] leading-[20px] text-muted-foreground/50 font-mono">{i + 1}</span>
+              ))}
             </div>
-            <div className="flex flex-col gap-2">
-              <Button onClick={handleRunQuery} disabled={isRunning || !query.trim()} className="gap-1">
-                <Play className="h-4 w-4" />{isRunning ? 'Running...' : 'Run'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!results.length}>
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(query); toast({ title: 'Copied' }); }}>
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
+            <Textarea value={query} onChange={e => setQuery(e.target.value)} placeholder={`SELECT * FROM ${tableName} LIMIT 10`}
+              className="font-mono text-sm min-h-[120px] max-h-[200px] pl-10 resize-y leading-[20px]"
+              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleRunQuery(); }} />
+            <span className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/40">Ctrl+Enter to run</span>
           </div>
 
           {queryError && (

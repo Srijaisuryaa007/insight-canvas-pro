@@ -18,39 +18,8 @@ export default function Copilot() {
   const navigate = useNavigate();
   const [stakeholderView, setStakeholderView] = useState(false);
   const [aiMode, setAiMode] = useState<'fast' | 'precise'>('fast');
-  const [generatedSQL, setGeneratedSQL] = useState('');
-
   const planConfig = PLANS[plan];
   const availableModels = planConfig.aiModels;
-
-  const handleGenerateSQL = () => {
-    if (!currentData.length) {
-      toast({ title: 'No dataset selected', variant: 'destructive' });
-      return;
-    }
-    const cols = Object.keys(currentData[0]);
-    const numCols = cols.filter(c => typeof currentData[0][c] === 'number');
-    const strCols = cols.filter(c => typeof currentData[0][c] === 'string');
-    const tableName = currentDataset?.name?.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'dataset';
-
-    // Generate a sample SQL based on data structure
-    let sql = '';
-    if (strCols.length > 0 && numCols.length > 0) {
-      sql = `SELECT ${strCols[0]}, SUM(${numCols[0]}) as total_${numCols[0]}\nFROM ${tableName}\nGROUP BY ${strCols[0]}\nORDER BY total_${numCols[0]} DESC\nLIMIT 10`;
-    } else if (numCols.length > 0) {
-      sql = `SELECT *\nFROM ${tableName}\nORDER BY ${numCols[0]} DESC\nLIMIT 20`;
-    } else {
-      sql = `SELECT *\nFROM ${tableName}\nLIMIT 20`;
-    }
-    setGeneratedSQL(sql);
-  };
-
-  const handleImportToSQLEngine = () => {
-    if (!generatedSQL) return;
-    sessionStorage.setItem('datapulse_sql_query', generatedSQL);
-    navigate('/dashboard/sql');
-    toast({ title: 'Query imported to SQL Engine' });
-  };
 
   const features = [
     { icon: Lightbulb, title: 'Structured Insights', description: 'Key findings, evidence, risks, opportunities, and actions' },

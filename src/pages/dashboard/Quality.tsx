@@ -1051,7 +1051,9 @@ export default function Quality() {
                                   <th className="text-right p-2 font-medium text-muted-foreground">Max</th>
                                   <th className="text-right p-2 font-medium text-muted-foreground">Mean</th>
                                   <th className="text-right p-2 font-medium text-muted-foreground">Median</th>
+                                  <th className="text-right p-2 font-medium text-muted-foreground">Std Dev</th>
                                   <th className="text-right p-2 font-medium text-muted-foreground">Outliers</th>
+                                  <th className="text-left p-2 font-medium text-muted-foreground">Samples</th>
                                 </tr>
                               </thead>
                               <tbody>

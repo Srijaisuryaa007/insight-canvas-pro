@@ -1,8 +1,10 @@
 import { useState, useCallback, createContext, useContext, ReactNode, useEffect, useRef } from 'react';
-import { uploadDataset, listDatasets, getDataset } from '@/lib/api';
+import { listDatasets, getDataset } from '@/lib/api';
 import { useSubscription } from '@/hooks/useSubscription';
 import { detectSchema } from '@/lib/dataParser';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 export interface Dataset {
   id: string;
@@ -53,6 +55,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isDataCleaned, setIsDataCleaned] = useState(false);
   const [cleaningReport, setCleaningReport] = useState<Record<string, unknown> | null>(null);
   const { consumeCredits, canAddDataset } = useSubscription();
+  const { user } = useAuth();
 
   // Undo/Redo history
   const historyRef = useRef<Record<string, unknown>[][]>([]);
@@ -95,16 +98,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => { refreshDatasets(); }, []);
 
   const refreshDatasets = useCallback(async () => {
+    if (!isSupabaseConfigured || !supabase || !user) return;
     setIsLoading(true);
     try {
-      const result = await listDatasets(WORKSPACE_ID);
-      if (result.length > 0) setDatasets(result);
+      const { data: ds } = await supabase.from('datasets').select('*').eq('user_id', user.id).order('created_at');
+      if (ds && ds.length > 0) {
+        const mapped = ds.map(d => ({
+          id: d.id, name: d.dataset_name, fileName: d.file_name,
+          rowCount: d.row_count, columns: d.columns || [],
+          uploadedAt: d.created_at, data: [],
+        }));
+        setDatasets(mapped as Dataset[]);
+      }
     } catch (error) {
       console.error('Failed to refresh datasets:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   const activateDataset = useCallback((dataset: Dataset, data: Record<string, unknown>[]) => {
     setCurrentDataset(dataset);
@@ -116,6 +127,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     historyIndexRef.current = 0;
     console.log('Active dataset:', dataset.name, 'Rows:', data.length);
   }, []);
+
 
   const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[]): Promise<boolean> => {
     if (!canAddDataset(datasets.length)) {
@@ -132,11 +144,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         uploadedAt: new Date().toISOString(), data,
       };
 
-      try {
-        const result = await uploadDataset(WORKSPACE_ID, name, fileName, data, columns);
-        if (result.success && result.dataset) localDataset.id = result.dataset.id;
-      } catch (apiError) {
-        console.warn('[DataContext] Backend unavailable, using local-only mode:', apiError);
+      // Save to Supabase
+      if (isSupabaseConfigured && supabase && user) {
+        const { error } = await supabase.from('datasets').insert({
+          id: localDataset.id, user_id: user.id, dataset_name: name,
+          file_name: fileName, row_count: data.length,
+          columns: columns, quality_score: null,
+        });
+        if (error) console.error('[DataContext] Supabase insert error:', error);
       }
 
       setDatasets(prev => [...prev, localDataset]);
@@ -150,7 +165,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [datasets.length, canAddDataset, consumeCredits, activateDataset]);
+  }, [datasets.length, canAddDataset, consumeCredits, activateDataset, user]);
 
   const selectDataset = useCallback(async (id: string) => {
     const dataset = datasets.find(d => d.id === id);
@@ -209,8 +224,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       historyRef.current = [];
       historyIndexRef.current = -1;
     }
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('datasets').delete().eq('id', id).then();
+    }
     toast({ title: 'Dataset Deleted', description: 'Dataset removed successfully.' });
-  }, [currentDataset]);
+  }, [currentDataset, user]);
 
   return (
     <DataContext.Provider value={{

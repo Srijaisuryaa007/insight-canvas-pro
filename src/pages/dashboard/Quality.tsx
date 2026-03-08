@@ -1095,6 +1095,71 @@ export default function Quality() {
                           </div>
                         </CardContent>
                       </Card>
+
+                      {/* First & Last 5 Rows Preview */}
+                      {dataProfile.firstFiveRows.length > 0 && (
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">👀 First 5 Rows</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b border-border">
+                                    {Object.keys(dataProfile.firstFiveRows[0]).slice(0, 8).map(k => (
+                                      <th key={k} className="text-left p-1.5 font-medium text-muted-foreground truncate max-w-24">{k}</th>
+                                    ))}
+                                    {Object.keys(dataProfile.firstFiveRows[0]).length > 8 && <th className="p-1.5 text-muted-foreground">...</th>}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {dataProfile.firstFiveRows.map((row, i) => (
+                                    <tr key={i} className="border-b border-border/30">
+                                      {Object.values(row).slice(0, 8).map((v, j) => (
+                                        <td key={j} className="p-1.5 truncate max-w-24">{v === null ? <span className="text-destructive">null</span> : String(v)}</td>
+                                      ))}
+                                      {Object.values(row).length > 8 && <td className="p-1.5 text-muted-foreground">...</td>}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {dataProfile.lastFiveRows.length > 0 && (
+                        <Card className="bg-card border-border">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">👀 Last 5 Rows</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b border-border">
+                                    {Object.keys(dataProfile.lastFiveRows[0]).slice(0, 8).map(k => (
+                                      <th key={k} className="text-left p-1.5 font-medium text-muted-foreground truncate max-w-24">{k}</th>
+                                    ))}
+                                    {Object.keys(dataProfile.lastFiveRows[0]).length > 8 && <th className="p-1.5 text-muted-foreground">...</th>}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {dataProfile.lastFiveRows.map((row, i) => (
+                                    <tr key={i} className="border-b border-border/30">
+                                      {Object.values(row).slice(0, 8).map((v, j) => (
+                                        <td key={j} className="p-1.5 truncate max-w-24">{v === null ? <span className="text-destructive">null</span> : String(v)}</td>
+                                      ))}
+                                      {Object.values(row).length > 8 && <td className="p-1.5 text-muted-foreground">...</td>}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
                     </div>
                   )}
                 </TabsContent>

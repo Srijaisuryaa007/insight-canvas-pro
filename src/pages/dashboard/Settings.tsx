@@ -17,7 +17,7 @@ const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 export default function Settings() {
   const { user } = useAuth();
   const { plan, credits, isEnterprise, upgradePlan } = useSubscription();
-  const { isProcessing, currentPackage, creditPackages, initiatePayment } = usePayment();
+  const { isProcessing, currentPackage, currentPlanUpgrade, creditPackages, initiatePayment, initiateSubscriptionUpgrade } = usePayment();
 
   const planConfigs = planOrder.map(id => ({
     ...PLANS[id],

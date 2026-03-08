@@ -71,6 +71,12 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      const fileSizeMB = selectedFile.size / (1024 * 1024);
+      const sizeCheck = canUploadFile(fileSizeMB);
+      if (!sizeCheck.allowed) {
+        setError(sizeCheck.reason || 'File too large for your plan');
+        return;
+      }
       setFile(selectedFile);
       setDatasetName(selectedFile.name.replace('.csv', ''));
       setError(null);

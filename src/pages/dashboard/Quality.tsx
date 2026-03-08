@@ -23,6 +23,12 @@ import { DuplicateReport } from '@/lib/duplicateEngine';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
+// Module-level cache to persist across tab switches
+let cachedProfile: DataProfile | null = null;
+let cachedSummary: CleaningSummary | null = null;
+let cachedActiveTab: string = 'issues';
+let cachedColumnDecisions: Record<string, 'drop' | 'fill' | 'keep'> = {};
+
 export default function Quality() {
   const { datasets, currentDataset, currentData, selectDataset, updateCurrentData, undo, redo, canUndo, canRedo } = useData();
   const { isScanning, report, scanDataset, getFixPreview, applyFix, setReport } = useDataQuality();
@@ -31,12 +37,23 @@ export default function Quality() {
   const [confirmFix, setConfirmFix] = useState<{ column: string; type: string } | null>(null);
   const [confirmFixAll, setConfirmFixAll] = useState(false);
   const [aiCleaningPreview, setAiCleaningPreview] = useState<string | null>(null);
-  const [dataProfile, setDataProfile] = useState<DataProfile | null>(null);
-  const [cleaningSummary, setCleaningSummary] = useState<CleaningSummary | null>(null);
+  const [dataProfile, setDataProfileState] = useState<DataProfile | null>(cachedProfile);
+  const [cleaningSummary, setCleaningSummaryState] = useState<CleaningSummary | null>(cachedSummary);
   const [isProfileRunning, setIsProfileRunning] = useState(false);
   const [isCleaningRunning, setIsCleaningRunning] = useState(false);
-  const [activeTab, setActiveTab] = useState('issues');
-  const [columnDecisions, setColumnDecisions] = useState<Record<string, 'drop' | 'fill' | 'keep'>>({});
+  const [activeTab, setActiveTabState] = useState(cachedActiveTab);
+  const [columnDecisions, setColumnDecisionsState] = useState<Record<string, 'drop' | 'fill' | 'keep'>>(cachedColumnDecisions);
+
+  // Wrapped setters that also update module-level cache
+  const setDataProfile = (v: DataProfile | null) => { cachedProfile = v; setDataProfileState(v); };
+  const setCleaningSummary = (v: CleaningSummary | null) => { cachedSummary = v; setCleaningSummaryState(v); };
+  const setActiveTab = (v: string) => { cachedActiveTab = v; setActiveTabState(v); };
+  const setColumnDecisions = (v: Record<string, 'drop' | 'fill' | 'keep'>) => { cachedColumnDecisions = v; setColumnDecisionsState(v); };
+  const handleColumnDecisionCached = (col: string, decision: 'drop' | 'fill' | 'keep') => {
+    const next = { ...columnDecisions, [col]: decision };
+    cachedColumnDecisions = next;
+    setColumnDecisionsState(next);
+  };
 
   // Missing value strategy state
   const [missingStrategy, setMissingStrategy] = useState<Record<string, string>>({});
@@ -86,7 +103,7 @@ export default function Quality() {
   };
 
   const handleColumnDecision = (col: string, decision: 'drop' | 'fill' | 'keep') => {
-    setColumnDecisions(prev => ({ ...prev, [col]: decision }));
+    handleColumnDecisionCached(col, decision);
   };
 
   const handleRerunWithDecisions = () => {

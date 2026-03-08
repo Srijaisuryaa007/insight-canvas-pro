@@ -19,7 +19,7 @@ const MIN_SIZE = 180;
 const MAX_HORIZONTAL = 480;
 const MAX_VERTICAL = 360;
 
-const slideVariants: Record<PanelPosition, { hidden: object; visible: object }> = {
+const slideVariants: Record<PanelPosition, { hidden: Record<string, number>; visible: Record<string, number> }> = {
   left: { hidden: { x: '-100%', opacity: 0 }, visible: { x: 0, opacity: 1 } },
   right: { hidden: { x: '100%', opacity: 0 }, visible: { x: 0, opacity: 1 } },
   top: { hidden: { y: '-100%', opacity: 0 }, visible: { y: 0, opacity: 1 } },

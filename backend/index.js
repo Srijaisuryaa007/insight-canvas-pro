@@ -370,22 +370,29 @@ app.post('/api/copilot', async (req, res) => {
     const { question, datasetId, history } = req.body;
     const dataset = datasetId ? datastore.datasets[datasetId] : null;
 
-    // Check for GROK API key
+    // Check for GROQ API key (gsk_ prefix) or GROK API key
     const GROK_API_KEY = process.env.GROK_API_KEY;
 
     let answer, suggestions, chartRecommendation, confidence, reasoning;
 
     if (GROK_API_KEY) {
+      // Detect if it's Groq (gsk_) or Grok/X.AI (xai-)
+      const isGroq = GROK_API_KEY.startsWith('gsk_');
+      const apiUrl = isGroq 
+        ? 'https://api.groq.com/openai/v1/chat/completions'
+        : 'https://api.x.ai/v1/chat/completions';
+      const model = isGroq ? 'llama-3.3-70b-versatile' : 'grok-beta';
+
       // Use real AI API
       try {
-        const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${GROK_API_KEY}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'grok-beta',
+            model: model,
             messages: [
               {
                 role: 'system',

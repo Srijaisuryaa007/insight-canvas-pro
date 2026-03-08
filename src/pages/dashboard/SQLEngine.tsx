@@ -628,29 +628,42 @@ export default function SQLEngine() {
 
   const chartDetection = useMemo(() => autoDetectChartType(results, query), [results, query]);
 
-  const handleRunQuery = () => {
-    if (!query.trim()) return;
-    const validation = validateSQL(query);
+  const executeQuery = useCallback((sql: string) => {
+    if (!sql.trim()) return;
+    const validation = validateSQL(sql);
     if (!validation.safe) {
       setQueryError(validation.reason!);
       setResults([]);
       return;
     }
-    setIsRunning(true);
     setQueryError('');
+    const { result, error } = parseSelectQuery(sql, currentData);
+    if (error) {
+      setQueryError(error);
+      setResults([]);
+    } else {
+      setResults(result);
+      setActiveTab('results');
+    }
+  }, [currentData]);
+
+  const handleRunQuery = () => {
+    if (!query.trim()) return;
+    setIsRunning(true);
     setTimeout(() => {
-      const { result, error } = parseSelectQuery(query, currentData);
-      if (error) {
-        setQueryError(error);
-        setResults([]);
-      } else {
-        setResults(result);
-        setActiveTab('results');
-        toast({ title: 'Query Executed', description: `${result.length} rows returned.` });
-      }
+      executeQuery(query);
+      if (!queryError) toast({ title: 'Query Executed', description: `${results.length} rows returned.` });
       setIsRunning(false);
-    }, 300);
+    }, 100);
   };
+
+  const handleQueryFromBuilder = useCallback((newQuery: string) => {
+    setQuery(newQuery);
+    if (autoRunTimer.current) clearTimeout(autoRunTimer.current);
+    autoRunTimer.current = setTimeout(() => {
+      executeQuery(newQuery);
+    }, 300);
+  }, [executeQuery]);
 
   const handleExportCSV = () => {
     if (!results.length) return;

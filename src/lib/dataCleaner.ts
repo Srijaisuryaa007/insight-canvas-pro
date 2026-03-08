@@ -408,16 +408,7 @@ export function runFullCleaningPipeline(
     if (before !== dupResult.rowsAfter || colsBeforeDup !== dupResult.colsAfter) {
       actions.push(`📊 Rows: ${before} → ${dupResult.rowsAfter} | Columns: ${colsBeforeDup} → ${dupResult.colsAfter}`);
     }
-        actions.push(`🔍 Partial dupes on "${col}": ${removed} extra copies removed (subset=['${col}'], keep='first')`);
-        details.push({ column: col, before: `${beforePartial} rows`, after: `${current.length} rows`, action: `Removed ${removed} partial dupes` });
-      }
-    });
-    duplicatesRemoved += partialRemoved;
-
-    if (exactDupes === 0 && partialRemoved === 0) actions.push('✅ No duplicate rows found');
-    if (partialDupeCols.length > 0) actions.push(`Columns checked: ${partialDupeCols.join(', ')}`);
-
-    steps.push({ step: 3, name: 'Remove Duplicates (Smart)', icon: '🗑️', actions, details, rowsBefore: before, rowsAfter: current.length, changesMade: exactDupes + partialRemoved });
+    steps.push({ step: 3, name: 'Remove Duplicates (All 8 Types)', icon: '🗑️', actions, details, rowsBefore: before, rowsAfter: current.length, changesMade: before - current.length });
   }
 
   // ══════════════════════════════════════════════

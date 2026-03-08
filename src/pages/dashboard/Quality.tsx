@@ -211,7 +211,7 @@ export default function Quality() {
     setMissingStrategy({});
     // Clear all issues immediately
     setReport({ ...report, issues: [], overallScore: 100 });
-    toast({ title: '✅ All Fixes Applied', description: `Fixed ${count} issue types. All clean! 🎉` });
+    toast({ title: 'All Fixes Applied', description: `Resolved ${count} issue types successfully.` });
     await scanDataset(currentDataset.id, data);
   };
 

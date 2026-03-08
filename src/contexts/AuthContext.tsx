@@ -33,7 +33,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'datapulse_user';
-const DEFAULT_FREE_CREDITS = 500;
+const DEFAULT_FREE_CREDITS = 5000;
 
 // ── Supabase profile helper ──
 async function upsertProfile(supabaseUser: SupabaseUser): Promise<AppUser> {

@@ -267,7 +267,7 @@ export default function Overview() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                   >
-                    <Card className={cn("border-l-4 bg-card border-border overflow-hidden", color.border)}>
+                    <Card className={cn("border-l-4 bg-card border-border overflow-hidden h-full", color.border)}>
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1.5 flex-1">

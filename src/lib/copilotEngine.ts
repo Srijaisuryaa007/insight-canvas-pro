@@ -749,7 +749,7 @@ export function processQuery(
     analysisAnswer = `### 📊 Chart Recommendations for ${schema.tableName}\n\nBased on **${schema.rowCount} rows** with **${numCols.length} numeric**, **${strCols.length} categorical**${dateCols.length ? `, **${dateCols.length} date**` : ''} columns:\n\n${recommendations.join('\n\n')}\n\n> 🎯 **My #1 pick:** ${chart!.type.charAt(0).toUpperCase() + chart!.type.slice(1)} Chart — ${chart!.reason}`;
   }
   // Find patterns / analyze
-  else if (/\b(pattern|find|discover|analyze|analysis|insight|anomal|outlier|correlat|trend)\b/i.test(q)) {
+  else if (/\b(patterns?|find|discover|analy[sz]e|analysis|insights?|anomal\w*|outliers?|correlat\w*|trends?)\b/i.test(q)) {
     const patternFindings: string[] = [];
     
     // Check for concentration

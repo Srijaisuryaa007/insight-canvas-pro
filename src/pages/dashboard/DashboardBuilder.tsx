@@ -135,8 +135,10 @@ export default function DashboardBuilder() {
 
     const chartTypes = ['bar', 'line', 'pie', 'area', 'scatter'];
     const added: string[] = [];
+    const currentCount = currentPage?.widgets.length || 0;
     chartTypes.forEach((type, i) => {
-      if (!canAddWidget || !isChartAvailable(type)) return;
+      if (currentCount + added.length >= widgetLimit) return;
+      if (!isChartAvailable(type)) return;
       const xAxis = strCols[0] || keys[0];
       const yAxis = numCols[i % numCols.length] || numCols[0] || keys[1];
       if (xAxis && yAxis) {
@@ -144,8 +146,12 @@ export default function DashboardBuilder() {
         added.push(type);
       }
     });
-    toast({ title: 'Charts Imported', description: `Added ${added.length} recommended charts from your dataset.` });
-  }, [currentData, canAddWidget, isChartAvailable, addWidget]);
+    if (added.length > 0) {
+      toast({ title: 'Charts Imported', description: `Added ${added.length} recommended charts from your dataset.` });
+    } else {
+      toast({ title: 'Widget Limit Reached', description: `Upgrade your plan for more widgets.`, variant: 'destructive' });
+    }
+  }, [currentData, currentPage, widgetLimit, isChartAvailable, addWidget]);
 
   const handleExportDashboard = useCallback(async (format: 'pdf' | 'pptx' | 'docx') => {
     if (!currentData.length) { toast({ title: 'No data', variant: 'destructive' }); return; }
@@ -274,7 +280,7 @@ render();
         <Button variant="outline" size="sm" onClick={() => handleAddWidget('text', { textContent: 'Text', title: '' })} disabled={!canAddWidget}>
           <Type className="h-4 w-4 mr-1" />Text
         </Button>
-        <Button variant="outline" size="sm" onClick={handleCopyFromVisualization} disabled={!canAddWidget || !currentData.length}>
+        <Button variant="outline" size="sm" onClick={handleCopyFromVisualization} disabled={!currentData.length}>
           <Copy className="h-4 w-4 mr-1" />Copy from Viz
         </Button>
 

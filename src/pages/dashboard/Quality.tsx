@@ -892,7 +892,7 @@ export default function Quality() {
                         {/* Distribution */}
                         {vr.distribution.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">📈 Distribution Analysis</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Distribution Analysis</CardTitle></CardHeader>
                             <CardContent>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">

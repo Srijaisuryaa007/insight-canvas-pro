@@ -263,7 +263,7 @@ export default function Quality() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Data Quality</h1>
-          <p className="text-muted-foreground">Profile, scan, clean, and fix your data with an expert 8-step pipeline</p>
+          <p className="text-muted-foreground">Automated profiling, validation, and cleaning powered by an enterprise-grade pipeline</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} title="Undo">

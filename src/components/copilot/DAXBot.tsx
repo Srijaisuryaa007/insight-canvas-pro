@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Code, CheckCircle, XCircle, Copy, Play } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Send, Loader2, Code, CheckCircle, Copy, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,9 +25,11 @@ interface DAXMessage {
 interface DAXBotProps {
   datasetId?: string;
   onApplyMeasure?: (name: string, formula: string) => void;
+  columns?: string[];
+  data?: Record<string, unknown>[];
 }
 
-const DAX_KEYWORDS = ['sum', 'average', 'count', 'calculate', 'filter', 'all', 'related', 'values', 'if', 'switch', 'divide', 'totalytd', 'dateadd', 'sameperiodlastyear', 'measure', 'column', 'dax', 'formula', 'calculated', 'time intelligence', 'year over year', 'running total', 'cumulative', 'rank', 'topn', 'earlier'];
+const DAX_KEYWORDS = ['sum', 'average', 'count', 'calculate', 'filter', 'all', 'related', 'values', 'if', 'switch', 'divide', 'totalytd', 'dateadd', 'sameperiodlastyear', 'measure', 'column', 'dax', 'formula', 'calculated', 'time intelligence', 'year over year', 'running total', 'cumulative', 'rank', 'topn', 'earlier', 'total', 'max', 'min'];
 
 function isDAXQuestion(question: string): boolean {
   const lower = question.toLowerCase();
@@ -39,136 +41,203 @@ function isDAXQuestion(question: string): boolean {
     lower.includes('expression');
 }
 
-function generateDAXResponse(question: string): { formula: string; explanation: string; impactPreview: string; measureName: string } {
+function detectColumnTypes(columns: string[], data: Record<string, unknown>[]): {
+  numeric: string[];
+  date: string[];
+  categorical: string[];
+} {
+  const numeric: string[] = [];
+  const date: string[] = [];
+  const categorical: string[] = [];
+
+  columns.forEach(col => {
+    if (data.length === 0) { categorical.push(col); return; }
+    const sample = data.find(r => r[col] !== null && r[col] !== undefined)?.[col];
+    if (typeof sample === 'number') numeric.push(col);
+    else if (typeof sample === 'string' && /^\d{4}-\d{2}-\d{2}/.test(sample)) date.push(col);
+    else categorical.push(col);
+  });
+
+  return { numeric, date, categorical };
+}
+
+function generateDAXResponse(
+  question: string,
+  columns: string[],
+  data: Record<string, unknown>[],
+): { formula: string; explanation: string; impactPreview: string; measureName: string } {
   const lower = question.toLowerCase();
+  const { numeric, date, categorical } = detectColumnTypes(columns, data);
+  const tableName = 'Data';
+
+  // Pick the best numeric column based on the question
+  const pickNumeric = (hint?: string): string => {
+    if (hint) {
+      const match = numeric.find(c => c.toLowerCase().includes(hint));
+      if (match) return match;
+    }
+    return numeric[0] || columns[0] || 'Value';
+  };
+
+  const pickCategory = (): string => categorical[0] || columns[0] || 'Category';
+  const pickDate = (): string => date[0] || 'date';
 
   if (lower.includes('total') || lower.includes('sum')) {
+    const col = pickNumeric(lower.match(/(?:total|sum)\s+(?:of\s+)?(\w+)/i)?.[1]?.toLowerCase());
     return {
-      measureName: 'Total Revenue',
-      formula: 'Total Revenue = SUM(Sales[Revenue])',
-      explanation: 'This measure calculates the total sum of the Revenue column in the Sales table. It will respond to any filter context applied by slicers or cross-filtering.',
-      impactPreview: 'Adds a reusable aggregation metric available in all charts and KPI cards.',
+      measureName: `Total ${col}`,
+      formula: `Total ${col} = SUM(${tableName}[${col}])`,
+      explanation: `Calculates the total sum of the ${col} column across all rows in the current filter context.`,
+      impactPreview: `Adds a reusable "${col}" aggregation metric for charts and KPIs.`,
     };
   }
   if (lower.includes('average') || lower.includes('avg')) {
+    const col = pickNumeric(lower.match(/(?:average|avg)\s+(?:of\s+)?(\w+)/i)?.[1]?.toLowerCase());
     return {
-      measureName: 'Average Order Value',
-      formula: 'Average Order Value = AVERAGE(Sales[Revenue])',
-      explanation: 'Calculates the arithmetic mean of Revenue across all rows in the current filter context.',
-      impactPreview: 'Enables per-record average analysis across dimensions.',
-    };
-  }
-  if (lower.includes('year') || lower.includes('yoy') || lower.includes('time intelligence')) {
-    return {
-      measureName: 'Revenue YoY Growth',
-      formula: `Revenue YoY Growth = \nVAR CurrentYear = SUM(Sales[Revenue])\nVAR PriorYear = CALCULATE(SUM(Sales[Revenue]), SAMEPERIODLASTYEAR('Date'[Date]))\nRETURN DIVIDE(CurrentYear - PriorYear, PriorYear, 0)`,
-      explanation: 'Uses time intelligence to compare current period revenue against the same period last year. SAMEPERIODLASTYEAR shifts the date filter back by one year.',
-      impactPreview: 'Adds year-over-year growth percentage to trend analysis.',
-    };
-  }
-  if (lower.includes('running') || lower.includes('cumulative')) {
-    return {
-      measureName: 'Running Total',
-      formula: `Running Total = \nCALCULATE(\n  SUM(Sales[Revenue]),\n  FILTER(\n    ALL('Date'[Date]),\n    'Date'[Date] <= MAX('Date'[Date])\n  )\n)`,
-      explanation: 'Creates a running total that accumulates Revenue from the earliest date up to the current date in context.',
-      impactPreview: 'Enables cumulative trend visualization in line/area charts.',
+      measureName: `Average ${col}`,
+      formula: `Average ${col} = AVERAGE(${tableName}[${col}])`,
+      explanation: `Calculates the arithmetic mean of ${col} across all rows in the current filter context.`,
+      impactPreview: `Enables per-record average analysis for ${col}.`,
     };
   }
   if (lower.includes('count') || lower.includes('distinct')) {
+    const col = categorical.length > 0 ? pickCategory() : pickNumeric();
     return {
-      measureName: 'Unique Customers',
-      formula: 'Unique Customers = DISTINCTCOUNT(Sales[CustomerID])',
-      explanation: 'Counts the number of distinct customer IDs, providing a unique customer count metric.',
-      impactPreview: 'Tracks unique customer engagement across segments.',
+      measureName: `Unique ${col}`,
+      formula: `Unique ${col} = DISTINCTCOUNT(${tableName}[${col}])`,
+      explanation: `Counts the number of distinct values in ${col}.`,
+      impactPreview: `Tracks unique ${col} values across segments.`,
+    };
+  }
+  if (lower.includes('max')) {
+    const col = pickNumeric(lower.match(/max\s+(?:of\s+)?(\w+)/i)?.[1]?.toLowerCase());
+    return {
+      measureName: `Max ${col}`,
+      formula: `Max ${col} = MAX(${tableName}[${col}])`,
+      explanation: `Returns the maximum value of ${col}.`,
+      impactPreview: `Shows the peak ${col} value.`,
+    };
+  }
+  if (lower.includes('min')) {
+    const col = pickNumeric(lower.match(/min\s+(?:of\s+)?(\w+)/i)?.[1]?.toLowerCase());
+    return {
+      measureName: `Min ${col}`,
+      formula: `Min ${col} = MIN(${tableName}[${col}])`,
+      explanation: `Returns the minimum value of ${col}.`,
+      impactPreview: `Shows the lowest ${col} value.`,
+    };
+  }
+  if (lower.includes('year') || lower.includes('yoy') || lower.includes('time intelligence')) {
+    const col = pickNumeric();
+    const dateCol = pickDate();
+    return {
+      measureName: `${col} YoY Growth`,
+      formula: `${col} YoY Growth = \nVAR CurrentYear = SUM(${tableName}[${col}])\nVAR PriorYear = CALCULATE(SUM(${tableName}[${col}]), SAMEPERIODLASTYEAR('${tableName}'[${dateCol}]))\nRETURN DIVIDE(CurrentYear - PriorYear, PriorYear, 0)`,
+      explanation: `Compares current period ${col} against the same period last year using the ${dateCol} column.`,
+      impactPreview: `Adds year-over-year growth percentage for ${col}.`,
+    };
+  }
+  if (lower.includes('running') || lower.includes('cumulative')) {
+    const col = pickNumeric();
+    const dateCol = pickDate();
+    return {
+      measureName: `Running Total ${col}`,
+      formula: `Running Total ${col} = \nCALCULATE(\n  SUM(${tableName}[${col}]),\n  FILTER(\n    ALL('${tableName}'[${dateCol}]),\n    '${tableName}'[${dateCol}] <= MAX('${tableName}'[${dateCol}])\n  )\n)`,
+      explanation: `Creates a cumulative total of ${col} ordered by ${dateCol}.`,
+      impactPreview: `Enables cumulative trend visualization.`,
+    };
+  }
+  if (lower.includes('divide') || lower.includes('ratio') || lower.includes('margin')) {
+    const col1 = numeric[0] || 'Value1';
+    const col2 = numeric[1] || numeric[0] || 'Value2';
+    return {
+      measureName: `${col1} to ${col2} Ratio`,
+      formula: `${col1} to ${col2} Ratio = DIVIDE(SUM(${tableName}[${col1}]), SUM(${tableName}[${col2}]), 0)`,
+      explanation: `Calculates the ratio of ${col1} to ${col2} using safe division.`,
+      impactPreview: `Adds a ratio metric for comparative analysis.`,
     };
   }
 
+  // Default: SUM of first numeric column
+  const col = pickNumeric();
+  const catCol = pickCategory();
   return {
-    measureName: 'Custom Measure',
-    formula: `Custom Measure = CALCULATE(\n  SUM(Sales[Revenue]),\n  FILTER(Sales, Sales[Category] = "Target")\n)`,
-    explanation: 'A CALCULATE expression that evaluates SUM with a modified filter context. Adjust the filter predicate to match your specific requirement.',
-    impactPreview: 'Creates a filtered aggregation that can be used across all visuals.',
+    measureName: `Total ${col}`,
+    formula: `Total ${col} = CALCULATE(\n  SUM(${tableName}[${col}]),\n  FILTER(${tableName}, ${tableName}[${catCol}] = "Target")\n)`,
+    explanation: `A filtered aggregation of ${col} by ${catCol}. Adjust the filter value to match your needs.`,
+    impactPreview: `Creates a filtered ${col} metric usable in all visuals.`,
   };
 }
 
-export function DAXBot({ datasetId, onApplyMeasure }: DAXBotProps) {
+export function DAXBot({ datasetId, onApplyMeasure, columns = [], data = [] }: DAXBotProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<DAXMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { consumeCredits, credits } = useSubscription();
 
+  const { numeric } = useMemo(() => detectColumnTypes(columns, data), [columns, data]);
+
+  // Dynamic suggestions based on schema
+  const daxSuggestions = useMemo(() => {
+    if (numeric.length === 0) return [
+      'Create a SUM measure',
+      'Write a count formula',
+      'Calculate running total',
+    ];
+    const suggestions: string[] = [];
+    if (numeric[0]) suggestions.push(`Create a SUM measure for ${numeric[0]}`);
+    if (numeric[1]) suggestions.push(`Calculate average ${numeric[1]}`);
+    if (numeric.length >= 2) suggestions.push(`Calculate ${numeric[0]} to ${numeric[1]} ratio`);
+    suggestions.push('Write a running total formula');
+    return suggestions.slice(0, 4);
+  }, [numeric]);
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-
     const question = input.trim();
 
-    // Add user message
-    const userMsg: DAXMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: question,
-    };
+    const userMsg: DAXMessage = { id: crypto.randomUUID(), role: 'user', content: question };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
 
-    // Check if it's a DAX question
     if (!isDAXQuestion(question)) {
-      const refusalMsg: DAXMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: "I'm DAX Bot — I only handle DAX formulas, measures, calculated columns, and time intelligence. For general data analysis, charts, or insights, please use the **AI Copilot** tab in the sidebar.",
-        confidence: 1,
-        reasoning: 'Non-DAX query detected. Redirecting to AI Copilot.',
-      };
-      setMessages(prev => [...prev, refusalMsg]);
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(), role: 'assistant',
+        content: "I'm DAX Bot — I only handle DAX formulas, measures, calculated columns, and time intelligence. For general data analysis, use the **AI Copilot** tab.",
+        confidence: 1, reasoning: 'Non-DAX query detected.',
+      }]);
       return;
     }
 
     if (!consumeCredits('copilot-query')) return;
-
     setIsLoading(true);
 
     try {
-      // Try real API first
       const history = messages.map(m => ({ role: m.role, content: m.content }));
       const apiResponse = await askCopilot(`[DAX ONLY] ${question}`, datasetId, history);
+      const { formula, explanation, impactPreview } = generateDAXResponse(question, columns, data);
 
-      const { formula, explanation, impactPreview, measureName } = generateDAXResponse(question);
-
-      const assistantMsg: DAXMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(), role: 'assistant',
         content: apiResponse.answer || `Here's a DAX measure for your request:`,
-        daxFormula: formula,
-        explanation: explanation,
-        impactPreview: impactPreview,
-        applied: false,
-        confidence: apiResponse.confidence || 0.9,
-        reasoning: apiResponse.reasoning || 'Generated DAX expression based on semantic model analysis.',
-      };
-      setMessages(prev => [...prev, assistantMsg]);
+        daxFormula: formula, explanation, impactPreview,
+        applied: false, confidence: apiResponse.confidence || 0.9,
+        reasoning: apiResponse.reasoning || 'Generated DAX based on your dataset schema.',
+      }]);
     } catch {
-      const { formula, explanation, impactPreview } = generateDAXResponse(question);
-      const fallbackMsg: DAXMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
+      const { formula, explanation, impactPreview } = generateDAXResponse(question, columns, data);
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(), role: 'assistant',
         content: 'Here\'s a DAX measure for your request:',
-        daxFormula: formula,
-        explanation: explanation,
-        impactPreview: impactPreview,
-        applied: false,
-        confidence: 0.85,
-        reasoning: 'Generated locally based on query pattern matching.',
-      };
-      setMessages(prev => [...prev, fallbackMsg]);
+        daxFormula: formula, explanation, impactPreview,
+        applied: false, confidence: 0.85, reasoning: 'Generated locally based on dataset schema.',
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -179,10 +248,7 @@ export function DAXBot({ datasetId, onApplyMeasure }: DAXBotProps) {
       if (m.id === messageId && m.daxFormula) {
         const namePart = m.daxFormula.split('=')[0]?.trim() || 'New Measure';
         onApplyMeasure?.(namePart, m.daxFormula);
-        toast({
-          title: 'Measure Applied',
-          description: `"${namePart}" has been added to the semantic model.`,
-        });
+        toast({ title: 'Measure Applied', description: `"${namePart}" added to semantic model.` });
         return { ...m, applied: true };
       }
       return m;
@@ -194,22 +260,22 @@ export function DAXBot({ datasetId, onApplyMeasure }: DAXBotProps) {
     toast({ title: 'Copied to clipboard' });
   };
 
-  const daxSuggestions = [
-    'Create a SUM measure for revenue',
-    'Write a YoY growth formula',
-    'Calculate running total',
-    'Count distinct customers',
-  ];
+  // Schema info badge
+  const schemaInfo = columns.length > 0
+    ? `${columns.length} cols • ${data.length} rows`
+    : 'No dataset';
 
   return (
     <Card className="bg-card border-border h-full flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <Code className="h-5 w-5 text-chart-1" />
-            DAX Bot
+            <Code className="h-5 w-5 text-chart-1" />DAX Bot
           </CardTitle>
-          <Badge variant="outline" className="text-xs font-mono">DAX Only</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-[10px] font-mono">{schemaInfo}</Badge>
+            <Badge variant="outline" className="text-xs font-mono">DAX Only</Badge>
+          </div>
         </div>
       </CardHeader>
 
@@ -223,18 +289,17 @@ export function DAXBot({ datasetId, onApplyMeasure }: DAXBotProps) {
               <div>
                 <h3 className="font-semibold text-foreground">DAX Bot</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  I create DAX measures, calculated columns, and time intelligence formulas.
+                  I create DAX measures based on your dataset schema.
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  For general questions, use the AI Copilot tab.
-                </p>
+                {columns.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Detected columns: {columns.slice(0, 6).join(', ')}{columns.length > 6 ? '…' : ''}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap justify-center gap-2">
                 {daxSuggestions.map((s, i) => (
-                  <Button key={i} variant="outline" size="sm" className="text-xs"
-                    onClick={() => setInput(s)}>
-                    {s}
-                  </Button>
+                  <Button key={i} variant="outline" size="sm" className="text-xs" onClick={() => setInput(s)}>{s}</Button>
                 ))}
               </div>
             </div>
@@ -251,68 +316,38 @@ export function DAXBot({ datasetId, onApplyMeasure }: DAXBotProps) {
                     <div className={cn("rounded-lg px-4 py-2", msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
                       <p className="text-sm">{msg.content}</p>
                     </div>
-
                     {msg.daxFormula && (
                       <div className="rounded-lg border border-border bg-card p-3 space-y-3">
-                        {/* DAX Formula */}
                         <div className="relative">
-                          <pre className="text-xs font-mono bg-muted/50 p-3 rounded overflow-x-auto text-foreground">
-                            {msg.daxFormula}
-                          </pre>
-                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6"
-                            onClick={() => handleCopy(msg.daxFormula!)}>
+                          <pre className="text-xs font-mono bg-muted/50 p-3 rounded overflow-x-auto text-foreground">{msg.daxFormula}</pre>
+                          <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => handleCopy(msg.daxFormula!)}>
                             <Copy className="h-3 w-3" />
                           </Button>
                         </div>
-
-                        {/* Explanation */}
                         {msg.explanation && (
                           <div className="text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Explanation: </span>
-                            {msg.explanation}
+                            <span className="font-medium text-foreground">Explanation: </span>{msg.explanation}
                           </div>
                         )}
-
-                        {/* Impact Preview */}
                         {msg.impactPreview && (
                           <div className="text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Impact: </span>
-                            {msg.impactPreview}
+                            <span className="font-medium text-foreground">Impact: </span>{msg.impactPreview}
                           </div>
                         )}
-
-                        {/* Apply Button */}
-                        <Button
-                          size="sm"
-                          className="w-full gap-2"
-                          variant={msg.applied ? 'outline' : 'default'}
-                          disabled={msg.applied}
-                          onClick={() => handleApply(msg.id)}
-                        >
-                          {msg.applied ? (
-                            <><CheckCircle className="h-4 w-4 text-emerald-500" /> Applied to Model</>
-                          ) : (
-                            <><Play className="h-4 w-4" /> Apply to Semantic Model</>
-                          )}
+                        <Button size="sm" className="w-full gap-2" variant={msg.applied ? 'outline' : 'default'} disabled={msg.applied} onClick={() => handleApply(msg.id)}>
+                          {msg.applied ? <><CheckCircle className="h-4 w-4 text-emerald-500" /> Applied to Model</> : <><Play className="h-4 w-4" /> Apply to Semantic Model</>}
                         </Button>
                       </div>
                     )}
-
-                    {/* Explainability */}
                     {msg.role === 'assistant' && (msg.confidence !== undefined || msg.reasoning) && (
                       <div className="text-xs text-muted-foreground space-y-1">
-                        {msg.confidence !== undefined && (
-                          <span>Confidence: {Math.round(msg.confidence * 100)}%</span>
-                        )}
-                        {msg.reasoning && (
-                          <div className="italic">💡 {msg.reasoning}</div>
-                        )}
+                        {msg.confidence !== undefined && <span>Confidence: {Math.round(msg.confidence * 100)}%</span>}
+                        {msg.reasoning && <div className="italic">💡 {msg.reasoning}</div>}
                       </div>
                     )}
                   </div>
                 </div>
               ))}
-
               {isLoading && (
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-chart-1/10 flex items-center justify-center">
@@ -326,23 +361,14 @@ export function DAXBot({ datasetId, onApplyMeasure }: DAXBotProps) {
             </div>
           )}
         </ScrollArea>
-
         <div className="p-4 border-t border-border">
           <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a DAX question..."
-              disabled={isLoading}
-              className="flex-1 font-mono text-sm"
-            />
+            <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask a DAX question..." disabled={isLoading} className="flex-1 font-mono text-sm" />
             <Button type="submit" size="icon" disabled={!input.trim() || isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            {credits === Infinity ? 'Unlimited' : credits} credits • 5 per query
-          </p>
+          <p className="text-xs text-muted-foreground mt-2 text-center">{credits === Infinity ? 'Unlimited' : credits} credits • 5 per query</p>
         </div>
       </CardContent>
     </Card>

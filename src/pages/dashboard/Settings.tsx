@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2, Cpu, CheckCircle2, XCircle
+  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2, Globe, Link2, FileText, List, Image, TableIcon
 } from 'lucide-react';
 import { DataAlerts } from '@/components/dashboard/DataAlerts';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePayment } from '@/hooks/usePayment';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,63 +19,217 @@ import { toast } from '@/hooks/use-toast';
 
 const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 
+// Web Scraping Component
+function WebScrapingSection() {
+  const [url, setUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('text');
+
+  const handleScrape = async () => {
+    if (!url.trim()) {
+      toast({ title: 'URL Required', description: 'Enter a URL to scrape', variant: 'destructive' });
+      return;
+    }
+
+    setIsLoading(true);
+    setResult(null);
+    setError('');
+
+    try {
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || `HTTP ${response.status}`);
+        toast({ title: 'Scrape Failed', description: data.error || 'Could not scrape the URL', variant: 'destructive' });
+      } else {
+        setResult(data);
+        toast({ title: 'Scraped Successfully', description: `${data.textLength?.toLocaleString()} characters extracted from ${data.title || data.url}` });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to connect to backend';
+      setError(msg);
+      toast({ title: 'Connection Error', description: 'Make sure the backend server is running on port 3001', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Globe className="h-5 w-5" />Web Scraping Tool
+        </CardTitle>
+        <CardDescription>
+          Extract text, links, headings, images, and tables from any public website. Data is scraped via the backend server.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-3">
+          <Input
+            type="url"
+            placeholder="https://example.com"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="flex-1"
+            onKeyDown={(e) => e.key === 'Enter' && handleScrape()}
+          />
+          <Button onClick={handleScrape} disabled={isLoading}>
+            {isLoading ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Scraping...</>
+            ) : (
+              <><Globe className="h-4 w-4 mr-2" />Scrape</>
+            )}
+          </Button>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-3">
+            {/* Meta info */}
+            <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-1">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-sm">{result.title || 'No title'}</h4>
+                <Badge variant="secondary" className="text-[10px]">{result.textLength?.toLocaleString()} chars</Badge>
+              </div>
+              {result.description && <p className="text-xs text-muted-foreground">{result.description}</p>}
+              <p className="text-[10px] text-muted-foreground truncate">{result.url}</p>
+              <div className="flex gap-2 mt-1">
+                <Badge variant="outline" className="text-[10px]">{result.links?.length || 0} links</Badge>
+                <Badge variant="outline" className="text-[10px]">{result.headings?.length || 0} headings</Badge>
+                <Badge variant="outline" className="text-[10px]">{result.images?.length || 0} images</Badge>
+                <Badge variant="outline" className="text-[10px]">{result.tables?.length || 0} tables</Badge>
+              </div>
+            </div>
+
+            {/* Tabs for different data */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="h-8">
+                <TabsTrigger value="text" className="text-xs gap-1 h-7"><FileText className="h-3 w-3" />Text</TabsTrigger>
+                <TabsTrigger value="headings" className="text-xs gap-1 h-7"><List className="h-3 w-3" />Headings</TabsTrigger>
+                <TabsTrigger value="links" className="text-xs gap-1 h-7"><Link2 className="h-3 w-3" />Links</TabsTrigger>
+                <TabsTrigger value="images" className="text-xs gap-1 h-7"><Image className="h-3 w-3" />Images</TabsTrigger>
+                <TabsTrigger value="tables" className="text-xs gap-1 h-7"><TableIcon className="h-3 w-3" />Tables</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="text">
+                <ScrollArea className="h-[300px] rounded-lg border border-border p-3">
+                  <pre className="text-xs whitespace-pre-wrap text-foreground font-sans leading-relaxed">
+                    {result.textContent?.substring(0, 10000) || 'No text content extracted.'}
+                  </pre>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="headings">
+                <ScrollArea className="h-[300px] rounded-lg border border-border p-3">
+                  <div className="space-y-1">
+                    {result.headings?.length > 0 ? result.headings.map((h: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 text-sm" style={{ paddingLeft: `${(h.level - 1) * 16}px` }}>
+                        <Badge variant="outline" className="text-[9px] h-4 w-6 justify-center shrink-0">H{h.level}</Badge>
+                        <span className={cn("text-xs", h.level <= 2 ? "font-semibold" : "text-muted-foreground")}>{h.text}</span>
+                      </div>
+                    )) : <p className="text-xs text-muted-foreground">No headings found.</p>}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="links">
+                <ScrollArea className="h-[300px] rounded-lg border border-border p-3">
+                  <div className="space-y-1.5">
+                    {result.links?.length > 0 ? result.links.map((l: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 text-xs">
+                        <Link2 className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{l.text}</p>
+                          <a href={l.url} target="_blank" rel="noopener noreferrer" className="text-primary/70 truncate block hover:underline">{l.url}</a>
+                        </div>
+                      </div>
+                    )) : <p className="text-xs text-muted-foreground">No links found.</p>}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="images">
+                <ScrollArea className="h-[300px] rounded-lg border border-border p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {result.images?.length > 0 ? result.images.map((img: any, i: number) => (
+                      <div key={i} className="rounded-lg border border-border overflow-hidden bg-muted/30">
+                        <img src={img.src} alt={img.alt} className="w-full h-24 object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                        <p className="text-[10px] text-muted-foreground p-1.5 truncate">{img.alt || img.src}</p>
+                      </div>
+                    )) : <p className="text-xs text-muted-foreground col-span-2">No images found.</p>}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="tables">
+                <ScrollArea className="h-[300px] rounded-lg border border-border p-3">
+                  {result.tables?.length > 0 ? result.tables.map((table: string[][], ti: number) => (
+                    <div key={ti} className="mb-4">
+                      <p className="text-xs font-medium mb-1">Table {ti + 1}</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border border-border">
+                          <tbody>
+                            {table.slice(0, 20).map((row, ri) => (
+                              <tr key={ri} className={ri === 0 ? 'bg-muted font-medium' : ''}>
+                                {row.map((cell, ci) => (
+                                  <td key={ci} className="border border-border px-2 py-1">{cell}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )) : <p className="text-xs text-muted-foreground">No tables found.</p>}
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+
+            {/* Copy buttons */}
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => {
+                navigator.clipboard.writeText(result.textContent || '');
+                toast({ title: 'Copied', description: 'Text content copied to clipboard' });
+              }}>Copy Text</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+                toast({ title: 'Copied', description: 'Full JSON result copied to clipboard' });
+              }}>Copy JSON</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                const linksText = result.links?.map((l: any) => `${l.text}: ${l.url}`).join('\n') || '';
+                navigator.clipboard.writeText(linksText);
+                toast({ title: 'Copied', description: `${result.links?.length || 0} links copied` });
+              }}>Copy Links</Button>
+            </div>
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          Scraping runs through the backend server (port 3001). Only public pages can be scraped. Respects robots.txt and rate limits.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { user } = useAuth();
   const { plan, credits, isEnterprise, upgradePlan } = useSubscription();
   const { isProcessing, currentPackage, currentPlanUpgrade, creditPackages, initiatePayment, initiateSubscriptionUpgrade } = usePayment();
-  
-  // API Test state
-  const [apiKey, setApiKey] = useState('');
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
-
-  const testApiKey = async () => {
-    if (!apiKey.trim()) {
-      toast({ title: 'Enter API Key', description: 'Please enter your Groq or Grok API key', variant: 'destructive' });
-      return;
-    }
-
-    setIsTesting(true);
-    setTestResult(null);
-
-    try {
-      // Detect API type
-      const isGroq = apiKey.startsWith('gsk_');
-      const apiUrl = isGroq 
-        ? 'https://api.groq.com/openai/v1/chat/completions'
-        : 'https://api.x.ai/v1/chat/completions';
-      const model = isGroq ? 'llama-3.1-8b-instant' : 'grok-beta';
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: 'Say "API working!" in 3 words max.' }],
-          max_tokens: 20
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const reply = data.choices?.[0]?.message?.content || 'OK';
-        setTestResult('success');
-        toast({ title: '✅ API Key Valid!', description: `Response: "${reply}"` });
-      } else {
-        const error = await response.json();
-        setTestResult('error');
-        toast({ title: '❌ API Error', description: error.error?.message || 'Invalid API key', variant: 'destructive' });
-      }
-    } catch (err) {
-      setTestResult('error');
-      toast({ title: '❌ Connection Failed', description: 'Could not reach the API server', variant: 'destructive' });
-    } finally {
-      setIsTesting(false);
-    }
-  };
 
   const planConfigs = planOrder.map(id => ({
     ...PLANS[id],
@@ -108,43 +264,8 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* API Key Test */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Cpu className="h-5 w-5" />Test AI API Key
-          </CardTitle>
-          <CardDescription>
-            Test your Groq (gsk_...) or Grok/X.AI (xai-...) API key to verify it works.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <Input 
-              type="password"
-              placeholder="Paste your API key here (gsk_... or xai-...)"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={testApiKey} disabled={isTesting}>
-              {isTesting ? (
-                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Testing...</>
-              ) : testResult === 'success' ? (
-                <><CheckCircle2 className="h-4 w-4 mr-2" />Valid!</>
-              ) : testResult === 'error' ? (
-                <><XCircle className="h-4 w-4 mr-2" />Failed</>
-              ) : (
-                'Test API'
-              )}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Your key is tested directly with the AI provider. It's not stored anywhere.
-          </p>
-        </CardContent>
-      </Card>
-
+      {/* Web Scraping Tool */}
+      <WebScrapingSection />
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">

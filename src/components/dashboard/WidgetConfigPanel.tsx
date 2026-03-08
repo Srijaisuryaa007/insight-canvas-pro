@@ -121,9 +121,14 @@ export function WidgetConfigPanel() {
   const widget = currentPage?.widgets.find(w => w.id === selectedWidgetId);
   if (!widget) return null;
 
-  const columns = currentData.length > 0 ? Object.keys(currentData[0]) : currentDataset?.columns.map(c => c.name) || [];
-  const numericCols = columns.filter(c => currentData.length > 0 && typeof currentData[0][c] === 'number');
+  const columns = currentData.length > 0
+    ? Object.keys(currentData[0])
+    : currentDataset?.columns.map(c => c.name) || [];
+  const numericCols = currentData.length > 0
+    ? columns.filter(c => typeof currentData[0][c] === 'number')
+    : currentDataset?.columns.filter(c => c.type === 'number').map(c => c.name) || [];
   const availableCharts = CHART_TYPES_BY_PLAN[plan] || CHART_TYPES_BY_PLAN.free;
+  const noData = columns.length === 0;
 
   const update = (cfg: Partial<typeof widget.config>) => updateWidgetConfig(widget.id, cfg);
 
@@ -168,6 +173,11 @@ export function WidgetConfigPanel() {
         {/* ═══════ FIELD WELLS ═══════ */}
         {(isChart || isTable) && (
           <Section title="Field Wells" defaultOpen={true}>
+            {noData && (
+              <div className="text-[10px] text-muted-foreground bg-muted/30 rounded-md p-2 mb-2">
+                ⚠️ Upload or select a dataset first to see available columns.
+              </div>
+            )}
             <div className="space-y-2.5">
               {/* X-Axis */}
               <SingleFieldWell

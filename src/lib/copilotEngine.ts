@@ -444,7 +444,7 @@ export function processQuery(
   const intent = detectIntent(question);
 
   if (intent !== 'data-analysis') {
-    return handleConversation(intent, schema);
+    return handleConversation(intent, schema, question);
   }
 
   if (!schema || data.length === 0) {

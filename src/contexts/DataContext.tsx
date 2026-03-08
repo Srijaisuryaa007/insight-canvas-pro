@@ -25,11 +25,14 @@ interface DataContextType {
   currentDataset: Dataset | null;
   currentData: Record<string, unknown>[];
   isLoading: boolean;
+  isDataCleaned: boolean;
+  cleaningReport: Record<string, unknown> | null;
   uploadData: (name: string, fileName: string, data: Record<string, unknown>[]) => Promise<boolean>;
   refreshDatasets: () => Promise<void>;
   selectDataset: (id: string) => Promise<void>;
   getDatasetData: (id: string) => Promise<Record<string, unknown>[]>;
   updateCurrentData: (data: Record<string, unknown>[]) => void;
+  updateCleanedData: (data: Record<string, unknown>[], report: Record<string, unknown>) => void;
   deleteDataset: (id: string) => void;
   undo: () => void;
   redo: () => void;
@@ -47,6 +50,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [currentDataset, setCurrentDataset] = useState<Dataset | null>(null);
   const [currentData, setCurrentData] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataCleaned, setIsDataCleaned] = useState(false);
+  const [cleaningReport, setCleaningReport] = useState<Record<string, unknown> | null>(null);
   const { consumeCredits, canAddDataset } = useSubscription();
 
   // Undo/Redo history
@@ -104,6 +109,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const activateDataset = useCallback((dataset: Dataset, data: Record<string, unknown>[]) => {
     setCurrentDataset(dataset);
     setCurrentData(data);
+    setIsDataCleaned(false);
+    setCleaningReport(null);
     // Reset history for new dataset
     historyRef.current = [data];
     historyIndexRef.current = 0;
@@ -181,11 +188,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('Data updated:', data.length, 'rows');
   }, [currentDataset, pushHistory]);
 
+  const updateCleanedData = useCallback((data: Record<string, unknown>[], report: Record<string, unknown>) => {
+    pushHistory(data);
+    setCurrentData(data);
+    setIsDataCleaned(true);
+    setCleaningReport(report);
+    if (currentDataset) {
+      setDatasets(prev => prev.map(d => d.id === currentDataset.id ? { ...d, data, rowCount: data.length } : d));
+    }
+    console.log('Cleaned data updated:', data.length, 'rows');
+  }, [currentDataset, pushHistory]);
+
   const deleteDataset = useCallback((id: string) => {
     setDatasets(prev => prev.filter(d => d.id !== id));
     if (currentDataset?.id === id) {
       setCurrentDataset(null);
       setCurrentData([]);
+      setIsDataCleaned(false);
+      setCleaningReport(null);
       historyRef.current = [];
       historyIndexRef.current = -1;
     }
@@ -194,8 +214,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      datasets, currentDataset, currentData, isLoading,
-      uploadData, refreshDatasets, selectDataset, getDatasetData, updateCurrentData,
+      datasets, currentDataset, currentData, isLoading, isDataCleaned, cleaningReport,
+      uploadData, refreshDatasets, selectDataset, getDatasetData, updateCurrentData, updateCleanedData,
       deleteDataset, undo, redo, canUndo, canRedo,
     }}>
       {children}

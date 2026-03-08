@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Database, Play, Download, AlertTriangle, Copy, Table2, BarChart3, Sparkles, ChevronDown, ChevronRight, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { useData } from '@/contexts/DataContext';
 import { VisualizationEngine } from '@/components/charts/VisualizationEngine';
 import { generateRecommendedQueries, RecommendedQuery } from '@/lib/copilotEngine';
 import { toast } from '@/hooks/use-toast';
+import DataSyncBanner from '@/components/DataSyncBanner';
+import VisualQueryBuilder from '@/components/sql/VisualQueryBuilder';
 
 const UNSAFE_KEYWORDS = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE', 'CREATE', 'GRANT', 'REVOKE'];
 
@@ -44,10 +46,33 @@ function splitSelectParts(selectPart: string): string[] {
   return parts;
 }
 
+/** Case-insensitive column value getter */
+function getColumnValue(row: Record<string, unknown>, colName: string): unknown {
+  if (row[colName] !== undefined) return row[colName];
+  const normalizedTarget = colName.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const matchingKey = Object.keys(row).find(
+    key => key.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') === normalizedTarget
+  );
+  return matchingKey ? row[matchingKey] : null;
+}
+
+/** Resolves column names in a query to match actual data column names */
+function resolveColumns(query: string, data: Record<string, unknown>[]): string {
+  if (!data.length) return query;
+  const actualColumns = Object.keys(data[0]);
+  let resolved = query;
+  // For each word in the query that could be a column name, try to match it
+  actualColumns.forEach(actualCol => {
+    const regex = new RegExp(`\\b${actualCol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    resolved = resolved.replace(regex, actualCol);
+  });
+  return resolved;
+}
+
 function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { result: Record<string, unknown>[]; error?: string } {
   if (!data.length) return { result: [], error: 'No data available.' };
   try {
-    let query = sql.trim();
+    let query = resolveColumns(sql.trim(), data);
     const cols = Object.keys(data[0]);
 
     // Handle CTE: extract the final SELECT
@@ -582,13 +607,15 @@ function RecommendedQueriesPanel({ onSelect }: { onSelect: (sql: string) => void
 // ── Main SQL Engine ──
 
 export default function SQLEngine() {
-  const { currentDataset, currentData, datasets, selectDataset } = useData();
+  const { currentDataset, currentData, datasets, selectDataset, isDataCleaned } = useData();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Record<string, unknown>[]>([]);
   const [queryError, setQueryError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('results');
   const [manualChartType, setManualChartType] = useState<string | null>(null);
+  const [showBuilder, setShowBuilder] = useState(true);
+  const autoRunTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pick up query from AI Copilot
   useEffect(() => {
@@ -601,29 +628,42 @@ export default function SQLEngine() {
 
   const chartDetection = useMemo(() => autoDetectChartType(results, query), [results, query]);
 
-  const handleRunQuery = () => {
-    if (!query.trim()) return;
-    const validation = validateSQL(query);
+  const executeQuery = useCallback((sql: string) => {
+    if (!sql.trim()) return;
+    const validation = validateSQL(sql);
     if (!validation.safe) {
       setQueryError(validation.reason!);
       setResults([]);
       return;
     }
-    setIsRunning(true);
     setQueryError('');
+    const { result, error } = parseSelectQuery(sql, currentData);
+    if (error) {
+      setQueryError(error);
+      setResults([]);
+    } else {
+      setResults(result);
+      setActiveTab('results');
+    }
+  }, [currentData]);
+
+  const handleRunQuery = () => {
+    if (!query.trim()) return;
+    setIsRunning(true);
     setTimeout(() => {
-      const { result, error } = parseSelectQuery(query, currentData);
-      if (error) {
-        setQueryError(error);
-        setResults([]);
-      } else {
-        setResults(result);
-        setActiveTab('results');
-        toast({ title: 'Query Executed', description: `${result.length} rows returned.` });
-      }
+      executeQuery(query);
+      if (!queryError) toast({ title: 'Query Executed', description: `${results.length} rows returned.` });
       setIsRunning(false);
-    }, 300);
+    }, 100);
   };
+
+  const handleQueryFromBuilder = useCallback((newQuery: string) => {
+    setQuery(newQuery);
+    if (autoRunTimer.current) clearTimeout(autoRunTimer.current);
+    autoRunTimer.current = setTimeout(() => {
+      executeQuery(newQuery);
+    }, 300);
+  }, [executeQuery]);
 
   const handleExportCSV = () => {
     if (!results.length) return;
@@ -653,7 +693,7 @@ export default function SQLEngine() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Database className="h-7 w-7 text-primary" />SQL Engine</h1>
           <p className="text-muted-foreground text-sm">Query your data with SQL — supports CTEs, window functions, and more</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {datasets.length > 0 && (
             <select className="h-9 rounded-md border border-input bg-background px-3 text-sm"
               value={currentDataset?.id || ''} onChange={e => selectDataset(e.target.value)}>
@@ -662,8 +702,16 @@ export default function SQLEngine() {
             </select>
           )}
           <Badge variant="outline">{currentData.length} rows</Badge>
+          {columns.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setShowBuilder(prev => !prev)} className="text-xs">
+              {showBuilder ? 'Hide' : 'Show'} Builder
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Data Sync Banner */}
+      <DataSyncBanner />
 
       {/* Schema reference */}
       {columns.length > 0 && (
@@ -683,6 +731,11 @@ export default function SQLEngine() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Visual Query Builder */}
+      {showBuilder && columns.length > 0 && (
+        <VisualQueryBuilder columns={columns} onQueryChange={handleQueryFromBuilder} />
       )}
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">

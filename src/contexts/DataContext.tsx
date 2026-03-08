@@ -25,11 +25,14 @@ interface DataContextType {
   currentDataset: Dataset | null;
   currentData: Record<string, unknown>[];
   isLoading: boolean;
+  isDataCleaned: boolean;
+  cleaningReport: Record<string, unknown> | null;
   uploadData: (name: string, fileName: string, data: Record<string, unknown>[]) => Promise<boolean>;
   refreshDatasets: () => Promise<void>;
   selectDataset: (id: string) => Promise<void>;
   getDatasetData: (id: string) => Promise<Record<string, unknown>[]>;
   updateCurrentData: (data: Record<string, unknown>[]) => void;
+  updateCleanedData: (data: Record<string, unknown>[], report: Record<string, unknown>) => void;
   deleteDataset: (id: string) => void;
   undo: () => void;
   redo: () => void;

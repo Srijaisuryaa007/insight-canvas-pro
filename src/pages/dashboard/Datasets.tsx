@@ -106,6 +106,8 @@ export default function Datasets() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inspectorColumn, setInspectorColumn] = useState<string | undefined>(undefined);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const rowLimit = ROW_LIMITS[plan] || 1000;
 

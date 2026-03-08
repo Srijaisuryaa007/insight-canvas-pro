@@ -50,9 +50,10 @@ export default function VisualQueryBuilder({ columns, onQueryChange }: VisualQue
   const buildQuery = useCallback(() => {
     const selectParts = selectedColumns.map(sc => {
       if (!sc.column) return null;
-      let expr = sc.column;
-      if (sc.aggregation === 'COUNT DISTINCT') expr = `COUNT(DISTINCT ${sc.column})`;
-      else if (sc.aggregation !== 'NONE') expr = `${sc.aggregation}(${sc.column})`;
+      const qc = quoteCol(sc.column);
+      let expr = qc;
+      if (sc.aggregation === 'COUNT DISTINCT') expr = `COUNT(DISTINCT ${qc})`;
+      else if (sc.aggregation !== 'NONE') expr = `${sc.aggregation}(${qc})`;
       if (sc.alias) expr += ` AS ${sc.alias}`;
       return expr;
     }).filter(Boolean);

@@ -101,6 +101,63 @@ function resolveColumns(query: string, data: Record<string, unknown>[]): string 
 
 function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { result: Record<string, unknown>[]; error?: string } {
   if (!data.length) return { result: [], error: 'No data available.' };
+
+  // Normalize column names to safe identifiers (no spaces/special chars) for robust regex parsing
+  const actualCols = Object.keys(data[0]);
+  const safeMap: Record<string, string> = {};
+  const reverseMap: Record<string, string> = {};
+
+  actualCols.forEach(col => {
+    let safe = col.replace(/[^a-zA-Z0-9_]/g, '_');
+    if (/^\d/.test(safe)) safe = '_' + safe;
+    // Deduplicate
+    let key = safe;
+    let i = 2;
+    while (reverseMap[key] && reverseMap[key] !== col) { key = `${safe}${i++}`; }
+    safeMap[col] = key;
+    reverseMap[key] = col;
+  });
+
+  // Create data with safe keys
+  const safeData = data.map(row => {
+    const safe: Record<string, unknown> = {};
+    actualCols.forEach(col => { safe[safeMap[col]] = row[col]; });
+    return safe;
+  });
+
+  // Normalize SQL: resolve backtick-quoted and unquoted column names to safe keys
+  let safeSql = sql.trim();
+  // Handle backtick-quoted names first
+  safeSql = safeSql.replace(/`([^`]+)`/g, (_m, inner) => {
+    const actual = resolveColumnName(inner, actualCols);
+    return actual ? safeMap[actual] : inner.replace(/[^a-zA-Z0-9_]/g, '_');
+  });
+  // Replace unquoted actual column names (longest first to avoid partial matches)
+  const sortedCols = [...actualCols].sort((a, b) => b.length - a.length);
+  sortedCols.forEach(col => {
+    if (safeMap[col] === col) return; // already safe
+    const escaped = col.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    safeSql = safeSql.replace(new RegExp(escaped, 'gi'), safeMap[col]);
+  });
+
+  const result = parseSelectQueryCore(safeSql, safeData);
+
+  // Map result keys back to original column names
+  if (result.result.length > 0) {
+    result.result = result.result.map(row => {
+      const mapped: Record<string, unknown> = {};
+      Object.entries(row).forEach(([k, v]) => {
+        mapped[reverseMap[k] || k] = v;
+      });
+      return mapped;
+    });
+  }
+
+  return result;
+}
+
+function parseSelectQueryCore(sql: string, data: Record<string, unknown>[]): { result: Record<string, unknown>[]; error?: string } {
+  if (!data.length) return { result: [], error: 'No data available.' };
   try {
     let query = resolveColumns(sql.trim(), data);
     const cols = Object.keys(data[0]);

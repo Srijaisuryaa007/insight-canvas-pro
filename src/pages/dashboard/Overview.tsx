@@ -237,7 +237,7 @@ export default function Overview() {
           <p className="text-sm text-muted-foreground">Here's your DataVora workspace overview</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowConnectors(!showConnectors)}>
+          <Button variant="outline" size="sm" onClick={() => setShowConnectModal(true)}>
             <Link2 className="h-4 w-4 mr-2" />Connect Data
           </Button>
           <Button size="sm" onClick={() => setShowUploader(!showUploader)}>

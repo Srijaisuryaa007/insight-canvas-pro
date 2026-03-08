@@ -1381,7 +1381,7 @@ export default function Quality() {
                       {/* Step-by-step Details with tables */}
                       <Card className="bg-card border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">🔧 Step-by-Step Details</CardTitle>
+                          <CardTitle className="text-base">Step-by-Step Details</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">

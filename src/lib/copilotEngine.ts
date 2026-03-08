@@ -1,4 +1,4 @@
-// DataPulse AI Copilot Engine — Conversational + Multi-level SQL Analytics
+// DataPulse AI Copilot Engine — General Chat + Data Analytics
 // Standalone: No external AI APIs required
 
 import { DatasetColumn } from '@/types';
@@ -39,16 +39,27 @@ const GREETING_PATTERNS = [
 const THANKS_PATTERNS = [/^(thanks?|thank\s*you|thx|ty|cheers|appreciate)\b/i];
 const HELP_PATTERNS = [/^(help|what can you do|what are your capabilities|how do you work)\b/i];
 
+// STRICT data analysis patterns - only trigger for clear data queries
 const DATA_PATTERNS = [
-  /\b(show|display|list|find|get|fetch|query|select|count|sum|average|avg|total|max|min|top|bottom|highest|lowest|most|least|group|filter|where|between|compare|analyze|trend|correlation|anomaly|distribution|revenue|sales|profit|cost|price|amount|quantity|rate|score|performance|rank|ranking|growth|running|cumulative|cte|with\s+\w+\s+as)\b/i,
-  /\b(column|row|table|dataset|data|field|record|schema|metric|kpi|dimension|measure)\b/i,
-  /\b(by|per|across|over|for each|grouped|sorted|ordered|breakdown|segment|monthly|weekly|daily|yearly)\b/i,
-  /\b(chart|graph|plot|visualize|visualization|bar|line|pie|scatter|heatmap)\b/i,
-  /\b(sql|query|select\s+from|group\s+by|order\s+by|where|having|join|limit|window|partition|lag|lead|dense_rank|row_number|date_trunc)\b/i,
-  /\b(increase|decrease|growth|decline|change|spike|drop|peak|dip)\b/i,
+  /\b(show|display|list|fetch|query|select)\s+(all|my|the)?\s*(data|records|rows|dataset)/i,
+  /\b(count|sum|average|avg|total|max|min)\s+(of|the)?\s*\w+/i,
+  /\b(top|bottom|highest|lowest|most|least)\s+\d+/i,
+  /\b(group|filter|where|aggregate)\s+by/i,
+  /\b(sql|query)\b/i,
+  /\b(chart|graph|visualize|visualization|bar chart|line chart|pie chart)\b/i,
+  /\b(analyze|analysis)\s+(my|the|this)?\s*(data|dataset)/i,
+  /\b(trend|correlation|distribution)\b/i,
+  /\b(by region|by category|by month|by year|by product)\b/i,
 ];
 
-type Intent = 'greeting' | 'thanks' | 'help' | 'smalltalk' | 'joke' | 'identity' | 'farewell' | 'affirmation' | 'data-analysis';
+// General knowledge patterns - handle with conversational response
+const GENERAL_PATTERNS = [
+  /^(what|who|why|how|when|where|which|can you|could you|would you|do you|is it|are there)\b/i,
+  /\b(explain|tell me about|describe|define|meaning of)\b/i,
+  /\b(difference between|compare|versus|vs)\b/i,
+];
+
+type Intent = 'greeting' | 'thanks' | 'help' | 'smalltalk' | 'joke' | 'identity' | 'farewell' | 'affirmation' | 'general' | 'data-analysis';
 
 function detectIntent(input: string): Intent {
   const t = input.trim();
@@ -59,9 +70,16 @@ function detectIntent(input: string): Intent {
   if (/^(who are you|what are you|what'?s your name)/i.test(t)) return 'identity';
   if (/^(bye|goodbye|see you|later|good night)/i.test(t)) return 'farewell';
   if (/^(yes|no|ok|okay|sure|alright|got it|cool|nice|great|awesome|perfect)[\s!.]*$/i.test(t)) return 'affirmation';
-  if (DATA_PATTERNS.reduce((s, p) => s + (p.test(t) ? 1 : 0), 0) >= 1) return 'data-analysis';
-  if (t.endsWith('?')) return 'data-analysis';
-  return 'greeting';
+  
+  // Check for explicit data analysis intent (needs 2+ matches for stronger signal)
+  const dataScore = DATA_PATTERNS.reduce((s, p) => s + (p.test(t) ? 1 : 0), 0);
+  if (dataScore >= 1) return 'data-analysis';
+  
+  // General questions go to general chat, NOT data-analysis
+  if (GENERAL_PATTERNS.some(p => p.test(t))) return 'general';
+  
+  // Default to general conversation for everything else
+  return 'general';
 }
 
 // ── Conversation Responses ────────────────────────────────────────
@@ -69,22 +87,22 @@ function detectIntent(input: string): Intent {
 const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 const GREETINGS = [
-  "Hello! 👋 How can I help you today? I can analyze your data, generate SQL queries, or just chat.",
-  "Hey there! Ready to help with data analysis, SQL generation, or anything else. What's on your mind?",
-  "Hi! I'm your AI analytics assistant. Ask me anything about your data, or just say hi! 😊",
+  "Hello! 👋 How can I help you today?",
+  "Hey there! What's on your mind?",
+  "Hi! I'm here to help with anything you need. 😊",
 ];
 const THANKS_R = [
   "You're welcome! Let me know if you need anything else. 😊",
   "Happy to help! Feel free to ask more questions anytime.",
-  "Glad I could help! Anything else you'd like to explore?",
+  "Glad I could help! Anything else you'd like to know?",
 ];
 const FAREWELL_R = [
-  "Goodbye! Come back anytime you need data insights! 👋",
-  "See you later! Happy analyzing! 📊",
+  "Goodbye! Come back anytime! 👋",
+  "See you later! Take care! 😊",
 ];
 const AFFIRM_R = [
   "Great! What would you like to do next?",
-  "Perfect! Feel free to ask another question or try a different analysis.",
+  "Perfect! Feel free to ask another question.",
 ];
 const JOKES = [
   "Why did the data analyst cross the road? To aggregate the other side! 😄",
@@ -93,46 +111,62 @@ const JOKES = [
   "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
 ];
 
-const HELP_RESPONSE = `I'm your **AI Analytics Copilot**! Here's what I can do:
+const HELP_RESPONSE = `I'm your **AI Assistant**! Here's what I can do:
 
-🔍 **Data Analysis** — Ask questions about your dataset in natural language
-📝 **SQL Generation** — I generate SQL from basic SELECT to advanced CTEs & window functions
-📊 **Chart Recommendations** — I suggest the best visualization for your data
-💡 **Insights** — I identify trends, patterns, and opportunities
-🧮 **7 SQL Complexity Levels** — Basic → Aggregation → Filtering → Ranking → Time Series → Window Functions → CTEs
+💬 **General Chat** — Ask me anything, I'll do my best to help
+🔍 **Data Analysis** — Ask questions about your dataset (if loaded)
+📊 **Visualizations** — I can recommend charts for your data
+💡 **Business Insights** — Get ideas and suggestions
 
-**Try asking:**
-- "Show all data"
-- "Total revenue by region"
-- "Top 5 products by sales"
-- "Monthly revenue trend"
-- "Rank regions by revenue"
-- "Running total of sales"
-- "CTE query for top customers"`;
+**Examples:**
+- "What is machine learning?"
+- "Explain data visualization best practices"
+- "Show all data" (when dataset loaded)
+- "Top 10 products by revenue"`;
 
-const IDENTITY_RESPONSE = `I'm **DataPulse AI Copilot** — your intelligent data analytics assistant! 🤖
+const IDENTITY_RESPONSE = `I'm **DataPulse AI** — your friendly assistant! 🤖
 
-I combine natural conversation with powerful SQL analytics:
-- 💬 Chat naturally like ChatGPT
-- 📝 Generate SQL queries (7 complexity levels)
-- 📊 Auto-recommend visualizations
-- 🔄 Import queries directly to SQL Engine
-- 💡 Provide data-driven insights`;
+I can help with:
+- 💬 General questions and conversation
+- 📊 Data analysis (when you have a dataset loaded)
+- 💡 Business insights and recommendations
+- 🎯 Anything else you want to chat about!`;
 
-function handleConversation(intent: Intent, schema: DataSchema | null): { answer: string; metadata: CopilotMetadata } {
+// General knowledge responses for common questions
+const GENERAL_RESPONSES: Record<string, string> = {
+  'machine learning': "**Machine Learning** is a type of AI that allows computers to learn from data without being explicitly programmed. It works by:\n\n1. **Training** - Feeding data to algorithms\n2. **Learning** - Finding patterns in the data\n3. **Predicting** - Making decisions on new data\n\nCommon types include supervised learning, unsupervised learning, and reinforcement learning.",
+  'data visualization': "**Data Visualization** is the graphical representation of data to help people understand patterns, trends, and insights. Best practices include:\n\n- Choose the right chart type for your data\n- Keep it simple and avoid clutter\n- Use color meaningfully\n- Label axes clearly\n- Tell a story with your data",
+  'analytics': "**Analytics** is the process of discovering, interpreting, and communicating meaningful patterns in data. Types include:\n\n1. **Descriptive** - What happened?\n2. **Diagnostic** - Why did it happen?\n3. **Predictive** - What might happen?\n4. **Prescriptive** - What should we do?",
+};
+
+function handleConversation(intent: Intent, schema: DataSchema | null, question: string): { answer: string; metadata: CopilotMetadata } {
   const suggestions = schema
-    ? ['Show all data', `Total by ${schema.columns.find(c => c.type === 'string')?.name || 'category'}`, 'Generate advanced SQL']
-    : ['What can you do?', 'Tell me a joke'];
+    ? ['Analyze my data', 'Show summary', 'Recommend a chart']
+    : ['What can you do?', 'Tell me a joke', 'Help'];
 
   switch (intent) {
     case 'greeting': return { answer: pick(GREETINGS), metadata: { mode: 'conversation', suggestions } };
     case 'thanks': return { answer: pick(THANKS_R), metadata: { mode: 'conversation' } };
-    case 'help': return { answer: HELP_RESPONSE, metadata: { mode: 'conversation', suggestions: ['Show top metrics', 'Generate CTE query', 'Rank analysis'] } };
-    case 'joke': return { answer: pick(JOKES), metadata: { mode: 'conversation', suggestions: ['Another joke', 'Back to analysis'] } };
+    case 'help': return { answer: HELP_RESPONSE, metadata: { mode: 'conversation', suggestions: ['Analyze data', 'Tell me a joke', 'What is analytics?'] } };
+    case 'joke': return { answer: pick(JOKES), metadata: { mode: 'conversation', suggestions: ['Another joke', 'Back to work'] } };
     case 'identity': return { answer: IDENTITY_RESPONSE, metadata: { mode: 'conversation', suggestions } };
     case 'farewell': return { answer: pick(FAREWELL_R), metadata: { mode: 'conversation' } };
     case 'affirmation': return { answer: pick(AFFIRM_R), metadata: { mode: 'conversation', suggestions } };
-    default: return { answer: "I'm here to help! Ask me about your data or just chat. 😊", metadata: { mode: 'conversation', suggestions } };
+    case 'general': {
+      // Try to match known topics
+      const q = question.toLowerCase();
+      for (const [topic, response] of Object.entries(GENERAL_RESPONSES)) {
+        if (q.includes(topic)) {
+          return { answer: response, metadata: { mode: 'conversation', confidence: 0.9, suggestions: ['Tell me more', 'Another topic'] } };
+        }
+      }
+      // Generic helpful response
+      return {
+        answer: `That's a great question! I'll do my best to help.\n\n${schema ? "Since you have data loaded, I can also analyze it for you. Try asking specific data questions like 'show top 10 by revenue' or 'total sales by region'." : "I'm a general assistant - feel free to ask me anything! If you upload a dataset, I can also help with data analysis."}\n\nWhat would you like to know more about?`,
+        metadata: { mode: 'conversation', suggestions: schema ? ['Analyze my dataset', 'Show all data'] : ['What can you do?', 'Tell me a joke'] },
+      };
+    }
+    default: return { answer: "I'm here to help! Ask me anything. 😊", metadata: { mode: 'conversation', suggestions } };
   }
 }
 

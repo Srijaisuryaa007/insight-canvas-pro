@@ -158,15 +158,16 @@ function clearCredentials(connId: string) {
 }
 
 export function ConnectorPanel() {
-  const { uploadData } = useData();
+  const { uploadData, refreshDatasets } = useData();
   const [connections, setConnections] = useState<SavedConnection[]>(loadConnections());
   const [selectedConnector, setSelectedConnector] = useState<ConnectorConfig | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isTesting, setIsTesting] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
 
   // Schema discovery step
-  const [discoveredSchema, setDiscoveredSchema] = useState<{ tables: string[]; connId: string } | null>(null);
+  const [discoveredSchema, setDiscoveredSchema] = useState<{ tables: string[]; connId: string; connectorId: string; credentials: Record<string, string> } | null>(null);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
 

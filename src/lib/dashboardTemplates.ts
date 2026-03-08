@@ -232,6 +232,140 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
       w(chart(6, 2, 6, 4, 'line', 'Enrollment Trend'), { w: 6, h: 4 }),
     ])],
   },
+  // ——— NEW TEMPLATES (21–32) ———
+  {
+    id: 'cybersecurity', name: 'Cybersecurity', category: 'Engineering',
+    description: 'Threat detection, incident response, and security posture monitoring.',
+    thumbnail: '🔐',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Security', [
+      kpi(0, 0, '', 'Threat Score'), kpi(3, 0, '', 'Incidents'), kpi(6, 0, '', 'Response Time'), kpi(9, 0, '', 'Compliance'),
+      w(chart(0, 2, 6, 4, 'line', 'Security Incidents (30 days)'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'donut', 'Attack Vector Distribution'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'investment-portfolio', name: 'Investment Portfolio', category: 'Finance',
+    description: 'Asset allocation, returns, risk metrics, and portfolio performance tracking.',
+    thumbnail: '💹',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Portfolio', [
+      kpi(0, 0, '', 'Portfolio Value'), kpi(3, 0, '', 'Sharpe Ratio'), kpi(6, 0, '', 'Beta'), kpi(9, 0, '', 'Max Drawdown'),
+      w(chart(0, 2, 6, 4, 'area', 'Portfolio Returns vs Benchmark'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'pie', 'Asset Allocation'), { w: 6, h: 4 }),
+      w(chart(0, 6, 12, 4, 'bar', 'Daily P&L (Last 30 Days)'), { w: 12, h: 4 }),
+    ])],
+  },
+  {
+    id: 'customer-support', name: 'Customer Support', category: 'Customer',
+    description: 'Ticket volume, resolution time, CSAT, and agent performance metrics.',
+    thumbnail: '📞',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Support', [
+      kpi(0, 0, '', 'Open Tickets'), kpi(3, 0, '', 'Avg Resolution'), kpi(6, 0, '', 'CSAT Score'), kpi(9, 0, '', 'FCR Rate'),
+      w(chart(0, 2, 6, 4, 'line', 'Avg Resolution Time (hrs)'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'bar', 'Tickets by Channel'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'logistics-fleet', name: 'Logistics & Fleet', category: 'Operations',
+    description: 'Vehicle tracking, delivery performance, fuel efficiency, and route optimization.',
+    thumbnail: '🚗',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Fleet', [
+      kpi(0, 0, '', 'Active Vehicles'), kpi(3, 0, '', 'In Maintenance'), kpi(6, 0, '', 'On-Time %'), kpi(9, 0, '', 'Cost/Delivery'),
+      w(chart(0, 2, 6, 4, 'pie', 'Delivery Status'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'line', 'Fuel Efficiency (km/L)'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'media-streaming', name: 'Media & Streaming', category: 'Product',
+    description: 'Content views, watch time, subscriber growth, and content performance.',
+    thumbnail: '📺',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Streaming', [
+      kpi(0, 0, '', 'Total Views'), kpi(3, 0, '', 'Watch Time'), kpi(6, 0, '', 'Subscribers'), kpi(9, 0, '', 'Completion Rate'),
+      w(chart(0, 2, 6, 4, 'area', 'Watch Time by Hour'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'bar', 'Top 10 Content by Views'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'restaurant-food', name: 'Restaurant & Food', category: 'Industry',
+    description: 'Revenue, table turnover, menu performance, and customer satisfaction tracking.',
+    thumbnail: '🍽️',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Restaurant', [
+      kpi(0, 0, '', 'Daily Revenue'), kpi(3, 0, '', 'Table Turnover'), kpi(6, 0, '', 'Avg Rating'), kpi(9, 0, '', 'Orders'),
+      w(chart(0, 2, 6, 4, 'bar', 'Top Selling Items'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'pie', 'Revenue Split'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'gaming-analytics', name: 'Gaming Analytics', category: 'Product',
+    description: 'DAU, session length, monetization, retention, and level completion rates.',
+    thumbnail: '🎮',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Gaming', [
+      kpi(0, 0, '', 'DAU/MAU'), kpi(3, 0, '', 'Avg Session'), kpi(6, 0, '', 'Revenue'), kpi(9, 0, '', 'D1 Retention'),
+      w(chart(0, 2, 6, 4, 'line', 'Player Retention (D1/D7/D30)'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'bar', 'Revenue by Source'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'fintech-payments', name: 'Fintech & Payments', category: 'Finance',
+    description: 'Transaction volume, success rates, fraud detection, and payment trends.',
+    thumbnail: '💳',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Payments', [
+      kpi(0, 0, '', 'Transactions'), kpi(3, 0, '', 'Success Rate'), kpi(6, 0, '', 'Fraud Alerts'), kpi(9, 0, '', 'Chargeback %'),
+      w(chart(0, 2, 6, 4, 'area', 'Transaction Value (30 days)'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'pie', 'Transaction Outcomes'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'esg-sustainability', name: 'ESG & Sustainability', category: 'Industry',
+    description: 'Carbon emissions, energy consumption, waste reduction, and ESG score tracking.',
+    thumbnail: '🌱',
+    theme: DEFAULT_THEME,
+    pages: [makePage('ESG', [
+      kpi(0, 0, '', 'Environmental'), kpi(3, 0, '', 'Social'), kpi(6, 0, '', 'Governance'), kpi(9, 0, '', 'Overall ESG'),
+      w(chart(0, 2, 6, 4, 'area', 'CO2 Emissions (tonnes)'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'pie', 'Energy Source Breakdown'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'ai-model-performance', name: 'AI Model Performance', category: 'Engineering',
+    description: 'Model accuracy, drift detection, inference speed, and prediction quality.',
+    thumbnail: '🤖',
+    theme: DEFAULT_THEME,
+    pages: [makePage('AI Models', [
+      kpi(0, 0, '', 'Accuracy'), kpi(3, 0, '', 'Predictions/hr'), kpi(6, 0, '', 'Drift Score'), kpi(9, 0, '', 'Latency (ms)'),
+      w(chart(0, 2, 6, 4, 'area', 'Predictions Per Hour'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'bar', 'Top Feature Importance'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'hospitality-hotels', name: 'Hospitality & Hotels', category: 'Industry',
+    description: 'Occupancy rates, RevPAR, guest satisfaction, and booking channel performance.',
+    thumbnail: '🏨',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Hotels', [
+      kpi(0, 0, '', 'Occupancy'), kpi(3, 0, '', 'RevPAR'), kpi(6, 0, '', 'NPS'), kpi(9, 0, '', 'Revenue'),
+      w(chart(0, 2, 6, 4, 'pie', 'Booking Source'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'bar', 'Revenue by Room Type'), { w: 6, h: 4 }),
+    ])],
+  },
+  {
+    id: 'research-science', name: 'Research & Science', category: 'Industry',
+    description: 'Experiment tracking, statistical analysis, publication metrics, and research KPIs.',
+    thumbnail: '🧬',
+    theme: DEFAULT_THEME,
+    pages: [makePage('Research', [
+      kpi(0, 0, '', 'Running'), kpi(3, 0, '', 'Completed'), kpi(6, 0, '', 'Failed'), kpi(9, 0, '', 'Pending'),
+      w(chart(0, 2, 6, 4, 'scatter', 'Results Distribution'), { w: 6, h: 4 }),
+      w(chart(6, 2, 6, 4, 'bar', 'P-value by Experiment'), { w: 6, h: 4 }),
+    ])],
+  },
   {
     id: 'blank', name: 'Blank Canvas', category: 'Custom',
     description: 'Start from scratch with an empty canvas.',
@@ -239,4 +373,33 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     theme: DEFAULT_THEME,
     pages: [makePage('Page 1', [])],
   },
+];
+
+// Category color mapping
+export const CATEGORY_COLORS: Record<string, string> = {
+  Business: '#2563EB',
+  Sales: '#16A34A',
+  Marketing: '#7C3AED',
+  Finance: '#D97706',
+  Operations: '#EA580C',
+  Product: '#4F46E5',
+  Customer: '#DB2777',
+  Engineering: '#374151',
+  Industry: '#0891B2',
+  HR: '#8B5CF6',
+  Custom: '#64748B',
+};
+
+export const ALL_CATEGORIES = ['All', ...Object.keys(CATEGORY_COLORS)];
+
+// IDs of newly added templates for "NEW" badge
+export const NEW_TEMPLATE_IDS = [
+  'cybersecurity', 'investment-portfolio', 'customer-support', 'logistics-fleet',
+  'media-streaming', 'restaurant-food', 'gaming-analytics', 'fintech-payments',
+  'esg-sustainability', 'ai-model-performance', 'hospitality-hotels', 'research-science',
+];
+
+// Popular template IDs for featured section
+export const FEATURED_TEMPLATE_IDS = [
+  'executive-overview', 'sales-performance', 'saas-metrics', 'ecommerce', 'finance-summary',
 ];

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { parseCSV, detectSchema } from '@/lib/dataParser';
 import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
+import { Badge } from '@/components/ui/badge';
 
 interface DatasetUploaderProps {
   onUploadComplete?: (data: Record<string, unknown>[]) => void;

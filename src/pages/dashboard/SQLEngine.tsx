@@ -634,15 +634,24 @@ function RecommendedQueriesPanel({ onSelect }: { onSelect: (sql: string) => void
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({ Basic: true });
 
   const queries = useMemo(() => {
-    if (!currentDataset || !currentData.length) return [];
+    if (!currentData.length) return [];
+    const actualCols = Object.keys(currentData[0]);
+    const sampleRow = currentData[0];
     const schema = {
-      tableName: currentDataset.name?.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'dataset',
-      columns: currentDataset.columns || [],
+      tableName: 'data',
+      columns: actualCols.map(name => ({
+        name,
+        type: (typeof sampleRow[name] === 'number' ? 'number'
+          : typeof sampleRow[name] === 'boolean' ? 'boolean'
+          : (typeof sampleRow[name] === 'string' && /^\d{4}-\d{2}-\d{2}/.test(sampleRow[name] as string)) ? 'date'
+          : 'string') as 'string' | 'number' | 'date' | 'boolean',
+        nullable: false, uniqueValues: 0, sampleValues: [],
+      })),
       rowCount: currentData.length,
       sampleData: currentData.slice(0, 5),
     };
     return generateRecommendedQueries(schema);
-  }, [currentDataset, currentData]);
+  }, [currentData]);
 
   if (queries.length === 0) return null;
 

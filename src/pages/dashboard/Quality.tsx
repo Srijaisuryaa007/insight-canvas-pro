@@ -511,7 +511,7 @@ export default function Quality() {
                       {cleaningSummary.columnsNeedingDecision.length > 0 && (
                         <Card className="bg-amber-500/5 border-amber-500/20">
                           <CardHeader className="pb-3">
-                            <CardTitle className="text-base">⚠️ Columns Needing Your Decision</CardTitle>
+                            <CardTitle className="text-base">Columns Requiring Your Decision</CardTitle>
                           </CardHeader>
                           <CardContent>
                             <p className="text-xs text-muted-foreground mb-4">

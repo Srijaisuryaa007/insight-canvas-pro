@@ -598,7 +598,7 @@ export default function SQLEngine() {
     }
   }, []);
 
-  const chartDetection = useMemo(() => autoDetectChartType(results), [results]);
+  const chartDetection = useMemo(() => autoDetectChartType(results, query), [results, query]);
 
   const handleRunQuery = () => {
     if (!query.trim()) return;

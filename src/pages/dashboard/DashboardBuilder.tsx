@@ -75,6 +75,43 @@ export default function DashboardBuilder() {
     addWidget(type, config);
   }, [canAddWidget, plan, widgetLimit, isChartAvailable, addWidget]);
 
+  const handleCopyFromVisualization = useCallback(() => {
+    if (!currentData.length) {
+      toast({ title: 'No data available', variant: 'destructive' });
+      return;
+    }
+    const keys = Object.keys(currentData[0]);
+    const numCols = keys.filter(k => typeof currentData[0][k] === 'number');
+    const strCols = keys.filter(k => typeof currentData[0][k] === 'string');
+
+    const chartTypes = ['bar', 'line', 'pie', 'area', 'scatter'];
+    const added: string[] = [];
+    chartTypes.forEach((type, i) => {
+      if (!canAddWidget || !isChartAvailable(type)) return;
+      const xAxis = strCols[0] || keys[0];
+      const yAxis = numCols[i % numCols.length] || numCols[0] || keys[1];
+      if (xAxis && yAxis) {
+        addWidget('chart', { chartType: type, title: `${type.charAt(0).toUpperCase() + type.slice(1)}: ${yAxis}`, xAxis, yAxis, aggregation: 'sum' });
+        added.push(type);
+      }
+    });
+    toast({ title: 'Charts Imported', description: `Added ${added.length} recommended charts from your dataset.` });
+  }, [currentData, canAddWidget, isChartAvailable, addWidget]);
+
+  const handleExportDashboard = useCallback(async (format: 'pdf' | 'pptx' | 'docx') => {
+    if (!currentData.length) { toast({ title: 'No data', variant: 'destructive' }); return; }
+    try {
+      const report = buildReportData(currentData, currentDataset?.name || 'Dashboard', user?.name || 'User', dashboard?.name);
+      switch (format) {
+        case 'pdf': await exportPDF(report); break;
+        case 'pptx': await exportPPTX(report); break;
+        case 'docx': await exportDOCX(report); break;
+      }
+    } catch {
+      toast({ title: 'Export Failed', variant: 'destructive' });
+    }
+  }, [currentData, currentDataset, user, dashboard]);
+
   const handleExportHTML = useCallback(() => {
     if (!dashboard || !currentData.length) return;
     const schema = JSON.stringify(dashboard);

@@ -19,12 +19,12 @@ const MIN_SIZE = 180;
 const MAX_HORIZONTAL = 480;
 const MAX_VERTICAL = 360;
 
-const slideVariants: Record<PanelPosition, { hidden: Record<string, number>; visible: Record<string, number> }> = {
-  left: { hidden: { x: '-100%', opacity: 0 }, visible: { x: 0, opacity: 1 } },
-  right: { hidden: { x: '100%', opacity: 0 }, visible: { x: 0, opacity: 1 } },
-  top: { hidden: { y: '-100%', opacity: 0 }, visible: { y: 0, opacity: 1 } },
-  bottom: { hidden: { y: '100%', opacity: 0 }, visible: { y: 0, opacity: 1 } },
-};
+const slideVariants = {
+  left: { hidden: { x: -300, opacity: 0 }, visible: { x: 0, opacity: 1 } },
+  right: { hidden: { x: 300, opacity: 0 }, visible: { x: 0, opacity: 1 } },
+  top: { hidden: { y: -200, opacity: 0 }, visible: { y: 0, opacity: 1 } },
+  bottom: { hidden: { y: 200, opacity: 0 }, visible: { y: 0, opacity: 1 } },
+} as const;
 
 export function WorkspacePanel({ position, collapsed, onToggle, size, onResize, children, className }: WorkspacePanelProps) {
   const isHorizontal = position === 'left' || position === 'right';

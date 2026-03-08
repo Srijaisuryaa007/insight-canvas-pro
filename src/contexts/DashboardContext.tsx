@@ -38,7 +38,7 @@ interface DashboardContextType {
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
-const MAX_HISTORY = 30;
+const MAX_HISTORY = 30; // v2
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();

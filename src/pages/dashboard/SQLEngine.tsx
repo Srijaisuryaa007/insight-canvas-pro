@@ -696,15 +696,17 @@ export default function SQLEngine() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-                <TabsContent value="chart" className="flex-1 mt-2">
-                  <VisualizationEngine
-                    chartType={chartDetection.type as any}
-                    data={results.slice(0, 100)}
-                    xAxis={chartDetection.xAxis}
-                    yAxis={chartDetection.yAxis}
-                    title={`Query Results: ${chartDetection.yAxis} by ${chartDetection.xAxis}`}
-                    height={350}
-                  />
+                <TabsContent value="chart" className="flex-1 mt-2 overflow-auto">
+                  <div className="min-h-[400px] h-[calc(100vh-34rem)]">
+                    <VisualizationEngine
+                      chartType={chartDetection.type as any}
+                      data={results.slice(0, 100)}
+                      xAxis={chartDetection.xAxis}
+                      yAxis={chartDetection.yAxis}
+                      title={`Query Results: ${chartDetection.yAxis} by ${chartDetection.xAxis}`}
+                      height={Math.max(400, window.innerHeight - 550)}
+                    />
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>

@@ -1,21 +1,17 @@
 import { useState } from 'react';
 import { 
-  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2, Globe, Link2, FileText, List, Image, TableIcon
+  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2
 } from 'lucide-react';
 import { DataAlerts } from '@/components/dashboard/DataAlerts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePayment } from '@/hooks/usePayment';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLANS, PlanType } from '@/types/subscription';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
 
 const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 

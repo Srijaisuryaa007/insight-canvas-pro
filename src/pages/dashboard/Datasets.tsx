@@ -106,6 +106,8 @@ export default function Datasets() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [inspectorColumn, setInspectorColumn] = useState<string | undefined>(undefined);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const rowLimit = ROW_LIMITS[plan] || 1000;
 
@@ -210,6 +212,57 @@ export default function Datasets() {
     selectedIds.forEach(id => deleteDataset(id));
     setSelectedIds(new Set());
     toast({ title: 'Datasets Deleted', description: `${selectedIds.size} datasets removed.` });
+  };
+
+  const handleDownload = (ds: Dataset) => {
+    const data = ds.data || [];
+    if (!data.length) {
+      toast({ title: 'No Data', description: 'This dataset has no rows to download.', variant: 'destructive' });
+      return;
+    }
+    const keys = Object.keys(data[0]);
+    const csvRows = [keys.join(',')];
+    data.forEach(row => {
+      csvRows.push(keys.map(k => {
+        const val = row[k];
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"` : str;
+      }).join(','));
+    });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ds.name.replace(/\s+/g, '_')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Downloaded', description: `${ds.name}.csv saved.` });
+  };
+
+  const handleBulkDownload = () => {
+    const selected = datasets.filter(d => selectedIds.has(d.id));
+    selected.forEach(ds => handleDownload(ds));
+  };
+
+  const handleStartRename = (ds: Dataset) => {
+    setRenamingId(ds.id);
+    setRenameValue(ds.name);
+  };
+
+  const handleConfirmRename = () => {
+    if (!renamingId || !renameValue.trim()) return;
+    const ds = datasets.find(d => d.id === renamingId);
+    if (ds) {
+      ds.name = renameValue.trim();
+      refreshDatasets();
+    }
+    toast({ title: 'Renamed', description: `Dataset renamed to "${renameValue.trim()}"` });
+    setRenamingId(null);
+    setRenameValue('');
   };
 
   // ─── Detail View ────────────────────────────────────────────────
@@ -614,9 +667,9 @@ export default function Datasets() {
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); selectDataset(ds.id); navigate('/dashboard/visualizations'); }}><BarChart3 className="h-3.5 w-3.5 mr-2" />Visualize</DropdownMenuItem>
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); selectDataset(ds.id); navigate('/dashboard/reports'); }}><FileText className="h-3.5 w-3.5 mr-2" />Generate Report</DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={e => { e.stopPropagation(); toast({ title: 'Renamed' }); }}><Pencil className="h-3.5 w-3.5 mr-2" />Rename</DropdownMenuItem>
+                              <DropdownMenuItem onClick={e => { e.stopPropagation(); handleStartRename(ds); }}><Pencil className="h-3.5 w-3.5 mr-2" />Rename</DropdownMenuItem>
                               
-                              <DropdownMenuItem onClick={e => { e.stopPropagation(); toast({ title: 'Downloaded' }); }}><Download className="h-3.5 w-3.5 mr-2" />Download</DropdownMenuItem>
+                              <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDownload(ds); }}><Download className="h-3.5 w-3.5 mr-2" />Download</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(ds.id); }}><Trash2 className="h-3.5 w-3.5 mr-2" />Delete</DropdownMenuItem>
                             </DropdownMenuContent>
@@ -724,7 +777,7 @@ export default function Datasets() {
             <Card className="bg-card border-border shadow-2xl">
               <CardContent className="py-3 px-5 flex items-center gap-4">
                 <span className="text-sm font-medium">{selectedIds.size} dataset{selectedIds.size > 1 ? 's' : ''} selected</span>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => toast({ title: 'Downloaded' })}>
+                <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleBulkDownload}>
                   <Download className="h-3.5 w-3.5" />Download All
                 </Button>
                 <Button variant="destructive" size="sm" className="text-xs gap-1.5" onClick={handleBulkDelete}>
@@ -749,6 +802,21 @@ export default function Datasets() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Dialog */}
+      <AlertDialog open={!!renamingId} onOpenChange={() => setRenamingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Dataset</AlertDialogTitle>
+            <AlertDialogDescription>Enter a new name for this dataset.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input value={renameValue} onChange={e => setRenameValue(e.target.value)} placeholder="Dataset name" className="my-2" onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); }} autoFocus />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRename}>Rename</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

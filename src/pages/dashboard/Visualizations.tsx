@@ -1900,16 +1900,16 @@ export default function Visualizations() {
         </motion.div>
       </div>
 
-      {/* Visual Gallery Sub-Section */}
+      {/* Visual Gallery — AI Recommended */}
       <VisualGallery
         recommendations={recommendations}
         chartData={chartData}
         xAxis={xAxis}
         yAxis={yAxis}
         colorPalette={colorPalette}
-        showLegend={showLegend}
         showGrid={showGrid}
-        showLabels={showLabels}
+        isChartAvailable={isChartAvailable}
+        onSelectChart={setSelectedChart}
       />
 
       {/* Save Chart Modal */}

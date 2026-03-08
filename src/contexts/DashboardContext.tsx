@@ -1,76 +1,74 @@
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { DashboardSchema, DashboardPage, DashboardWidget, DashboardHistoryEntry, DEFAULT_THEME, createWidget } from '@/types/dashboard';
 import { DashboardTemplate } from '@/types/dashboard';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from './AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 interface DashboardContextType {
   dashboard: DashboardSchema | null;
   currentPageId: string | null;
   currentPage: DashboardPage | null;
   selectedWidgetId: string | null;
-
-  // CRUD
   createDashboard: (name: string, template?: DashboardTemplate) => void;
   loadDashboard: (schema: DashboardSchema) => void;
   renameDashboard: (name: string) => void;
   closeDashboard: () => void;
-
-  // Pages
   addPage: (name: string) => void;
   removePage: (id: string) => void;
   renamePage: (id: string, name: string) => void;
   setCurrentPage: (id: string) => void;
-
-  // Widgets
   addWidget: (type: DashboardWidget['type'], config?: Partial<DashboardWidget['config']>) => void;
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<DashboardWidget>) => void;
   updateWidgetConfig: (id: string, config: Partial<DashboardWidget['config']>) => void;
   updateLayouts: (layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>) => void;
   selectWidget: (id: string | null) => void;
-
-  // Cross-filter
   crossFilter: { key: string; value: string } | null;
   setCrossFilter: (filter: { key: string; value: string } | null) => void;
-
-  // Undo/Redo
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-
-  // Saved dashboards
   savedDashboards: DashboardSchema[];
   saveDashboard: () => void;
   deleteSavedDashboard: (id: string) => void;
-
-  // Zoom
   zoom: number;
   setZoom: (z: number) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
-
-const STORAGE_KEY = 'datapulse_dashboards';
 const MAX_HISTORY = 30;
 
-function loadSaved(): DashboardSchema[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch { return []; }
-}
-
-function persistSaved(dashboards: DashboardSchema[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(dashboards));
-}
-
 export function DashboardProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardSchema | null>(null);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const [crossFilter, setCrossFilter] = useState<{ key: string; value: string } | null>(null);
-  const [savedDashboards, setSavedDashboards] = useState<DashboardSchema[]>(loadSaved);
+  const [savedDashboards, setSavedDashboards] = useState<DashboardSchema[]>([]);
   const [zoom, setZoom] = useState(100);
+
+  // Load saved dashboards from Supabase
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !supabase) return;
+    supabase.from('dashboards').select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) {
+          setSavedDashboards(data.map(d => {
+            const config = (d.layout_config || {}) as any;
+            return {
+              id: d.id, name: d.dashboard_name,
+              createdAt: d.created_at, updatedAt: d.created_at,
+              pages: config.pages || [{ id: crypto.randomUUID(), name: 'Page 1', widgets: [] }],
+              theme: config.theme || DEFAULT_THEME,
+              globalFilters: config.globalFilters || {},
+            };
+          }));
+        }
+      });
+  }, [user]);
 
   // History
   const historyRef = useRef<DashboardHistoryEntry[]>([]);
@@ -118,7 +116,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const currentPage = dashboard?.pages.find(p => p.id === currentPageId) || dashboard?.pages[0] || null;
 
-  // Dashboard CRUD
   const createDashboard = useCallback((name: string, template?: DashboardTemplate) => {
     const pages = template ? JSON.parse(JSON.stringify(template.pages)) : [{ id: crypto.randomUUID(), name: 'Page 1', widgets: [] }];
     const schema: DashboardSchema = {
@@ -145,15 +142,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const closeDashboard = useCallback(() => {
-    setDashboard(null);
-    setCurrentPageId(null);
-    setSelectedWidgetId(null);
-    setCrossFilter(null);
-    historyRef.current = [];
-    historyIdxRef.current = -1;
+    setDashboard(null); setCurrentPageId(null); setSelectedWidgetId(null);
+    setCrossFilter(null); historyRef.current = []; historyIdxRef.current = -1;
   }, []);
 
-  // Pages
   const addPage = useCallback((name: string) => {
     const page: DashboardPage = { id: crypto.randomUUID(), name, widgets: [] };
     mutatePages(pages => [...pages, page]);
@@ -163,7 +155,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const removePage = useCallback((id: string) => {
     mutatePages(pages => {
       const remaining = pages.filter(p => p.id !== id);
-      if (remaining.length === 0) return pages; // don't allow empty
+      if (remaining.length === 0) return pages;
       if (currentPageId === id) setCurrentPageId(remaining[0].id);
       return remaining;
     });
@@ -173,7 +165,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     mutatePages(pages => pages.map(p => p.id === id ? { ...p, name } : p));
   }, [mutatePages]);
 
-  // Widgets
   const addWidget = useCallback((type: DashboardWidget['type'], config?: Partial<DashboardWidget['config']>) => {
     if (!currentPageId) return;
     const widget = createWidget(type, 0, 0, config);
@@ -190,15 +181,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const updateWidget = useCallback((id: string, updates: Partial<DashboardWidget>) => {
     if (!currentPageId) return;
     mutatePages(pages => pages.map(p => p.id === currentPageId
-      ? { ...p, widgets: p.widgets.map(w => w.id === id ? { ...w, ...updates } : w) }
-      : p));
+      ? { ...p, widgets: p.widgets.map(w => w.id === id ? { ...w, ...updates } : w) } : p));
   }, [currentPageId, mutatePages]);
 
   const updateWidgetConfig = useCallback((id: string, config: Partial<DashboardWidget['config']>) => {
     if (!currentPageId) return;
     mutatePages(pages => pages.map(p => p.id === currentPageId
-      ? { ...p, widgets: p.widgets.map(w => w.id === id ? { ...w, config: { ...w.config, ...config } } : w) }
-      : p));
+      ? { ...p, widgets: p.widgets.map(w => w.id === id ? { ...w, config: { ...w.config, ...config } } : w) } : p));
   }, [currentPageId, mutatePages]);
 
   const updateLayouts = useCallback((layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>) => {
@@ -215,24 +204,33 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }));
   }, [currentPageId, mutatePages]);
 
-  // Save/Load
+  // Save to Supabase
   const saveDashboard = useCallback(() => {
     if (!dashboard) return;
+    const config = { pages: dashboard.pages, theme: dashboard.theme, globalFilters: dashboard.globalFilters };
+
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('dashboards').upsert({
+        id: dashboard.id, user_id: user.id, dashboard_name: dashboard.name,
+        layout_config: config,
+      }, { onConflict: 'id' }).then(({ error }) => {
+        if (error) console.error('Save dashboard error:', error);
+      });
+    }
+
     setSavedDashboards(prev => {
       const updated = prev.filter(d => d.id !== dashboard.id);
       updated.push({ ...dashboard, updatedAt: new Date().toISOString() });
-      persistSaved(updated);
       return updated;
     });
     toast({ title: 'Dashboard Saved', description: `"${dashboard.name}" saved.` });
-  }, [dashboard]);
+  }, [dashboard, user]);
 
   const deleteSavedDashboard = useCallback((id: string) => {
-    setSavedDashboards(prev => {
-      const updated = prev.filter(d => d.id !== id);
-      persistSaved(updated);
-      return updated;
-    });
+    setSavedDashboards(prev => prev.filter(d => d.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('dashboards').delete().eq('id', id).then();
+    }
     if (dashboard?.id === id) { setDashboard(null); setCurrentPageId(null); }
     toast({ title: 'Dashboard Deleted' });
   }, [dashboard]);

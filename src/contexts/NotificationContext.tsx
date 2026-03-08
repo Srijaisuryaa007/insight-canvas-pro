@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 export interface AppNotification {
   id: string;
@@ -20,55 +22,62 @@ interface NotificationContextType {
   filterByCategory: (cat: string) => AppNotification[];
 }
 
-const STORAGE_KEY = 'datapulse_notifications';
-
-function loadNotifications(): AppNotification[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
-}
-
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<AppNotification[]>(loadNotifications());
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  const persist = useCallback((items: AppNotification[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, []);
+  // Load from Supabase
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !supabase) return;
+    supabase.from('notifications').select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: false }).limit(100)
+      .then(({ data }) => {
+        if (data) {
+          setNotifications(data.map(n => ({
+            id: n.id, type: n.type as any, title: n.title,
+            description: n.description, read: n.read,
+            createdAt: n.created_at, category: n.category as any,
+          })));
+        }
+      });
+  }, [user]);
 
   const addNotification = useCallback((n: Omit<AppNotification, 'id' | 'read' | 'createdAt'>) => {
     const newN: AppNotification = {
-      ...n,
-      id: crypto.randomUUID(),
-      read: false,
-      createdAt: new Date().toISOString(),
+      ...n, id: crypto.randomUUID(), read: false, createdAt: new Date().toISOString(),
     };
-    setNotifications(prev => {
-      const updated = [newN, ...prev].slice(0, 100);
-      persist(updated);
-      return updated;
-    });
-  }, [persist]);
+    setNotifications(prev => [newN, ...prev].slice(0, 100));
+
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('notifications').insert({
+        id: newN.id, user_id: user.id, type: newN.type, title: newN.title,
+        description: newN.description, read: false, category: newN.category,
+      }).then();
+    }
+  }, [user]);
 
   const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => {
-      const updated = prev.map(n => n.id === id ? { ...n, read: true } : n);
-      persist(updated);
-      return updated;
-    });
-  }, [persist]);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('notifications').update({ read: true }).eq('id', id).then();
+    }
+  }, []);
 
   const markAllRead = useCallback(() => {
-    setNotifications(prev => {
-      const updated = prev.map(n => ({ ...n, read: true }));
-      persist(updated);
-      return updated;
-    });
-  }, [persist]);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('notifications').update({ read: true }).eq('user_id', user.id).then();
+    }
+  }, [user]);
 
   const clearAll = useCallback(() => {
     setNotifications([]);
-    persist([]);
-  }, [persist]);
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('notifications').delete().eq('user_id', user.id).then();
+    }
+  }, [user]);
 
   const filterByCategory = useCallback((cat: string) => {
     if (cat === 'all') return notifications;

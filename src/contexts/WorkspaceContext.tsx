@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Workspace, Dataset, QualityReport, Insight, Visualization } from '@/types';
 import { useAuth } from './AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 interface WorkspaceContextType {
   workspaces: Workspace[];
@@ -28,47 +29,66 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [currentDataset, setCurrentDataset] = useState<Dataset | null>(null);
   const [qualityReports, setQualityReports] = useState<Record<string, QualityReport>>({});
-  const [insights, setInsights] = useState<Record<string, Insight[]>>({});
+  const [insights, setInsightsState] = useState<Record<string, Insight[]>>({});
   const [visualizations, setVisualizations] = useState<Record<string, Visualization[]>>({});
 
+  // Load from Supabase on user change
   useEffect(() => {
-    if (user) {
-      const stored = localStorage.getItem(`datapulse_workspaces_${user.id}`);
-      if (stored) {
-        const ws = JSON.parse(stored);
-        setWorkspaces(ws);
-        if (ws.length > 0) setCurrentWorkspace(ws[0]);
+    if (!user || !isSupabaseConfigured || !supabase) return;
+
+    const loadData = async () => {
+      // Load workspaces
+      const { data: ws } = await supabase.from('workspaces').select('*').eq('user_id', user.id).order('created_at');
+      if (ws) {
+        const mapped = ws.map(w => ({ id: w.id, name: w.name, userId: w.user_id, datasets: [], createdAt: w.created_at }));
+        setWorkspaces(mapped);
+        if (mapped.length > 0) setCurrentWorkspace(mapped[0]);
       }
-      
-      const storedDatasets = localStorage.getItem(`datapulse_datasets_${user.id}`);
-      if (storedDatasets) setDatasets(JSON.parse(storedDatasets));
-      
-      const storedReports = localStorage.getItem(`datapulse_reports_${user.id}`);
-      if (storedReports) setQualityReports(JSON.parse(storedReports));
-      
-      const storedInsights = localStorage.getItem(`datapulse_insights_${user.id}`);
-      if (storedInsights) setInsights(JSON.parse(storedInsights));
-      
-      const storedViz = localStorage.getItem(`datapulse_viz_${user.id}`);
-      if (storedViz) setVisualizations(JSON.parse(storedViz));
-    }
+
+      // Load datasets
+      const { data: ds } = await supabase.from('datasets').select('*').eq('user_id', user.id).order('created_at');
+      if (ds) {
+        const mapped = ds.map(d => ({
+          id: d.id, name: d.dataset_name, fileName: d.file_name,
+          rowCount: d.row_count, columns: d.columns || [], qualityScore: d.quality_score,
+          uploadedAt: d.created_at, data: [], datasetId: d.id,
+        }));
+        setDatasets(mapped as any);
+      }
+
+      // Load quality reports
+      const { data: qr } = await supabase.from('quality_reports').select('*').eq('user_id', user.id);
+      if (qr) {
+        const mapped: Record<string, QualityReport> = {};
+        qr.forEach(r => { mapped[r.dataset_id] = r.report_data as QualityReport; });
+        setQualityReports(mapped);
+      }
+
+      // Load insights
+      const { data: ins } = await supabase.from('insights').select('*').eq('user_id', user.id);
+      if (ins) {
+        const mapped: Record<string, Insight[]> = {};
+        ins.forEach(r => { mapped[r.dataset_id] = r.insights_data as Insight[]; });
+        setInsightsState(mapped);
+      }
+
+      // Load visualizations
+      const { data: viz } = await supabase.from('visualizations').select('*').eq('user_id', user.id);
+      if (viz) {
+        const mapped: Record<string, Visualization[]> = {};
+        viz.forEach(r => {
+          const datasetId = r.dataset_id;
+          if (!mapped[datasetId]) mapped[datasetId] = [];
+          mapped[datasetId].push(r.viz_data as Visualization);
+        });
+        setVisualizations(mapped);
+      }
+    };
+
+    loadData();
   }, [user]);
 
-  const persistWorkspaces = (ws: Workspace[]) => {
-    if (user) {
-      localStorage.setItem(`datapulse_workspaces_${user.id}`, JSON.stringify(ws));
-    }
-    setWorkspaces(ws);
-  };
-
-  const persistDatasets = (ds: Dataset[]) => {
-    if (user) {
-      localStorage.setItem(`datapulse_datasets_${user.id}`, JSON.stringify(ds));
-    }
-    setDatasets(ds);
-  };
-
-  const createWorkspace = (name: string): Workspace => {
+  const createWorkspace = useCallback((name: string): Workspace => {
     const workspace: Workspace = {
       id: crypto.randomUUID(),
       name,
@@ -76,69 +96,77 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       datasets: [],
       createdAt: new Date().toISOString(),
     };
-    const updated = [...workspaces, workspace];
-    persistWorkspaces(updated);
+    setWorkspaces(prev => [...prev, workspace]);
     setCurrentWorkspace(workspace);
+
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('workspaces').insert({ id: workspace.id, user_id: user.id, name }).then();
+    }
     return workspace;
-  };
+  }, [user]);
 
   const selectWorkspace = (id: string) => {
     const ws = workspaces.find(w => w.id === id);
     if (ws) setCurrentWorkspace(ws);
   };
 
-  const addDataset = (dataset: Dataset) => {
-    const updated = [...datasets, dataset];
-    persistDatasets(updated);
+  const addDataset = useCallback((dataset: Dataset) => {
+    setDatasets(prev => [...prev, dataset]);
     setCurrentDataset(dataset);
-  };
+
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('datasets').insert({
+        id: dataset.id, user_id: user.id, dataset_name: (dataset as any).name || dataset.id,
+        file_name: (dataset as any).fileName, row_count: (dataset as any).rowCount || 0,
+        columns: (dataset as any).columns || [], quality_score: (dataset as any).qualityScore,
+      }).then();
+    }
+  }, [user]);
 
   const selectDataset = (id: string) => {
     const ds = datasets.find(d => d.id === id);
     if (ds) setCurrentDataset(ds);
   };
 
-  const setQualityReport = (datasetId: string, report: QualityReport) => {
-    const updated = { ...qualityReports, [datasetId]: report };
-    if (user) {
-      localStorage.setItem(`datapulse_reports_${user.id}`, JSON.stringify(updated));
-    }
-    setQualityReports(updated);
-  };
+  const setQualityReport = useCallback((datasetId: string, report: QualityReport) => {
+    setQualityReports(prev => ({ ...prev, [datasetId]: report }));
 
-  const setInsightsData = (datasetId: string, newInsights: Insight[]) => {
-    const updated = { ...insights, [datasetId]: newInsights };
-    if (user) {
-      localStorage.setItem(`datapulse_insights_${user.id}`, JSON.stringify(updated));
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('quality_reports').upsert({
+        user_id: user.id, dataset_id: datasetId, report_data: report,
+      }, { onConflict: 'user_id,dataset_id' }).then();
     }
-    setInsights(updated);
-  };
+  }, [user]);
 
-  const addVisualization = (viz: Visualization) => {
-    const datasetViz = visualizations[viz.datasetId] || [];
-    const updated = { ...visualizations, [viz.datasetId]: [...datasetViz, viz] };
-    if (user) {
-      localStorage.setItem(`datapulse_viz_${user.id}`, JSON.stringify(updated));
+  const setInsightsData = useCallback((datasetId: string, newInsights: Insight[]) => {
+    setInsightsState(prev => ({ ...prev, [datasetId]: newInsights }));
+
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('insights').upsert({
+        user_id: user.id, dataset_id: datasetId, insights_data: newInsights,
+      }, { onConflict: 'user_id,dataset_id' }).then();
     }
-    setVisualizations(updated);
-  };
+  }, [user]);
+
+  const addVisualization = useCallback((viz: Visualization) => {
+    setVisualizations(prev => {
+      const datasetViz = prev[viz.datasetId] || [];
+      return { ...prev, [viz.datasetId]: [...datasetViz, viz] };
+    });
+
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('visualizations').insert({
+        user_id: user.id, dataset_id: viz.datasetId, viz_data: viz,
+      }).then();
+    }
+  }, [user]);
 
   return (
     <WorkspaceContext.Provider value={{
-      workspaces,
-      currentWorkspace,
-      datasets,
-      currentDataset,
-      qualityReports,
-      insights,
-      visualizations,
-      createWorkspace,
-      selectWorkspace,
-      addDataset,
-      selectDataset,
-      setQualityReport,
-      setInsights: setInsightsData,
-      addVisualization,
+      workspaces, currentWorkspace, datasets, currentDataset,
+      qualityReports, insights, visualizations,
+      createWorkspace, selectWorkspace, addDataset, selectDataset,
+      setQualityReport, setInsights: setInsightsData, addVisualization,
     }}>
       {children}
     </WorkspaceContext.Provider>
@@ -147,8 +175,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);
-  if (!context) {
-    throw new Error('useWorkspace must be used within a WorkspaceProvider');
-  }
+  if (!context) throw new Error('useWorkspace must be used within a WorkspaceProvider');
   return context;
 }

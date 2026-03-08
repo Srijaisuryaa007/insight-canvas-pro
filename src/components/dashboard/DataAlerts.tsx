@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { toast } from '@/hooks/use-toast';
-
-const ALERT_STORAGE = 'datavora_data_alerts';
 
 interface DataAlert {
   id: string;
@@ -25,20 +25,12 @@ interface DataAlert {
   enabled: boolean;
 }
 
-function loadAlerts(): DataAlert[] {
-  try { return JSON.parse(localStorage.getItem(ALERT_STORAGE) || '[]'); } catch { return []; }
-}
-
-function saveAlerts(alerts: DataAlert[]) {
-  localStorage.setItem(ALERT_STORAGE, JSON.stringify(alerts));
-}
-
 export function DataAlerts() {
   const { datasets, currentData } = useData();
-  const [alerts, setAlerts] = useState<DataAlert[]>(loadAlerts);
+  const { user } = useAuth();
+  const [alerts, setAlerts] = useState<DataAlert[]>([]);
   const [open, setOpen] = useState(false);
 
-  // New alert form
   const [name, setName] = useState('');
   const [dataset, setDataset] = useState('');
   const [column, setColumn] = useState('');
@@ -46,6 +38,21 @@ export function DataAlerts() {
   const [value, setValue] = useState('');
   const [notifyApp, setNotifyApp] = useState(true);
   const [notifyEmail, setNotifyEmail] = useState(false);
+
+  // Load from Supabase
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !supabase) return;
+    supabase.from('data_alerts').select('*').eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data) {
+          setAlerts(data.map(a => ({
+            id: a.id, name: a.name, dataset: a.dataset || '',
+            column: a.column_name, condition: a.condition as any,
+            value: a.value, notifyApp: a.notify_app, notifyEmail: a.notify_email, enabled: a.enabled,
+          })));
+        }
+      });
+  }, [user]);
 
   const columns = currentData.length > 0 ? Object.keys(currentData[0]).filter(k => typeof currentData[0][k] === 'number' || !isNaN(Number(currentData[0][k]))) : [];
 
@@ -55,29 +62,37 @@ export function DataAlerts() {
       return;
     }
     const alert: DataAlert = {
-      id: crypto.randomUUID(),
-      name, dataset, column, condition,
-      value: parseFloat(value),
-      notifyApp, notifyEmail, enabled: true,
+      id: crypto.randomUUID(), name, dataset, column, condition,
+      value: parseFloat(value), notifyApp, notifyEmail, enabled: true,
     };
-    const updated = [...alerts, alert];
-    setAlerts(updated);
-    saveAlerts(updated);
+    setAlerts(prev => [...prev, alert]);
     setOpen(false);
     setName(''); setColumn(''); setValue('');
+
+    if (isSupabaseConfigured && supabase && user) {
+      supabase.from('data_alerts').insert({
+        id: alert.id, user_id: user.id, name: alert.name, dataset: alert.dataset,
+        column_name: alert.column, condition: alert.condition, value: alert.value,
+        notify_app: alert.notifyApp, notify_email: alert.notifyEmail, enabled: true,
+      }).then();
+    }
+
     toast({ title: 'Alert Created', description: `"${name}" will trigger when ${column} ${condition.replace('_', ' ')} ${value}` });
   };
 
   const toggleAlert = (id: string) => {
-    const updated = alerts.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a);
-    setAlerts(updated);
-    saveAlerts(updated);
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a));
+    const alert = alerts.find(a => a.id === id);
+    if (isSupabaseConfigured && supabase && alert) {
+      supabase.from('data_alerts').update({ enabled: !alert.enabled }).eq('id', id).then();
+    }
   };
 
   const deleteAlert = (id: string) => {
-    const updated = alerts.filter(a => a.id !== id);
-    setAlerts(updated);
-    saveAlerts(updated);
+    setAlerts(prev => prev.filter(a => a.id !== id));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('data_alerts').delete().eq('id', id).then();
+    }
     toast({ title: 'Alert Deleted' });
   };
 

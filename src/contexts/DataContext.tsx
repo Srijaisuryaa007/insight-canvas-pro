@@ -152,11 +152,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setCurrentData(data);
     setIsDataCleaned(false);
     setCleaningReport(null);
-    // Reset history for new dataset
     historyRef.current = [data];
     historyIndexRef.current = 0;
+    localStorage.setItem(LS_ACTIVE, dataset.id);
     console.log('Active dataset:', dataset.name, 'Rows:', data.length);
   }, []);
+
+  // Auto-restore last active dataset on mount
+  useEffect(() => {
+    if (currentDataset || datasets.length === 0) return;
+    const lastActiveId = localStorage.getItem(LS_ACTIVE);
+    const target = datasets.find(d => d.id === lastActiveId) || datasets[datasets.length - 1];
+    if (target?.data && target.data.length > 0) {
+      activateDataset(target, target.data);
+    }
+  }, [datasets, currentDataset, activateDataset]);
 
 
   const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[]): Promise<boolean> => {

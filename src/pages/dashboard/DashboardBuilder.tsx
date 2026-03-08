@@ -4,6 +4,8 @@ import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { DashboardCanvas } from '@/components/dashboard/DashboardCanvas';
 import { WidgetConfigPanel } from '@/components/dashboard/WidgetConfigPanel';
+import { WorkspacePanel, PanelPosition } from '@/components/dashboard/WorkspacePanel';
+import { PanelContent } from '@/components/dashboard/PanelContent';
 import { DASHBOARD_TEMPLATES } from '@/lib/dashboardTemplates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +17,8 @@ import { Separator } from '@/components/ui/separator';
 import {
   LayoutDashboard, Plus, Undo2, Redo2, Save, ZoomIn, ZoomOut,
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
-  ChevronLeft, Download, FolderOpen, Lock, Image, Copy, FileText, Presentation, File
+  ChevronLeft, Download, FolderOpen, Lock, Image, Copy, FileText, Presentation, File,
+  PanelLeft, PanelRight, PanelTop, PanelBottom
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';

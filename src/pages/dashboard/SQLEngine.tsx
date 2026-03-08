@@ -471,9 +471,9 @@ function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { resul
       const orderEnd = limitIdx > orderIdx ? limitIdx : query.length;
       const orderPart = query.substring(orderIdx + 10, orderEnd).trim();
       const descending = orderPart.toUpperCase().includes('DESC');
-      const orderColName = orderPart.replace(/\s+(ASC|DESC)/i, '').trim();
+      const orderColName = stripBackticks(orderPart.replace(/\s+(ASC|DESC)/i, '').trim());
       const keys = Object.keys(filtered[0] || {});
-      const actualOrderCol = keys.find(c => c.toLowerCase() === orderColName.toLowerCase()) ||
+      const actualOrderCol = resolveColumnName(orderColName, keys) ||
         keys.find(c => c.toLowerCase().includes(orderColName.toLowerCase()));
       if (actualOrderCol) {
         filtered.sort((a, b) => {

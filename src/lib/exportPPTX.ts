@@ -200,7 +200,7 @@ function buildAnalyst(pptx: any, stats: ReportStats, data: Record<string, unknow
     ['Continuous', String(stats.numericColumns.length)],
     ['Categorical', String(stats.categoricalColumns.length)],
     ['Temporal', String(stats.dateColumns.length)],
-    ['Missing Rate', `${s.missingPct || 0}%`],
+    ['Missing Rate', `${stats.missingPct || 0}%`],
     ['Completeness', `${(100 - (stats.missingPct || 0)).toFixed(1)}%`],
   ];
   addTableSlide(pptx, stats, 'Dataset Structure', 'Schema composition and completeness', structRows, [4.5, 4.5], 4, total);

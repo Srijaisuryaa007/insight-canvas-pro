@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { 
-  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2
+  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2, Cpu, CheckCircle2, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePayment } from '@/hooks/usePayment';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLANS, PlanType } from '@/types/subscription';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 
@@ -18,6 +20,59 @@ export default function Settings() {
   const { user } = useAuth();
   const { plan, credits, isEnterprise, upgradePlan } = useSubscription();
   const { isProcessing, currentPackage, currentPlanUpgrade, creditPackages, initiatePayment, initiateSubscriptionUpgrade } = usePayment();
+  
+  // API Test state
+  const [apiKey, setApiKey] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+
+  const testApiKey = async () => {
+    if (!apiKey.trim()) {
+      toast({ title: 'Enter API Key', description: 'Please enter your Groq or Grok API key', variant: 'destructive' });
+      return;
+    }
+
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      // Detect API type
+      const isGroq = apiKey.startsWith('gsk_');
+      const apiUrl = isGroq 
+        ? 'https://api.groq.com/openai/v1/chat/completions'
+        : 'https://api.x.ai/v1/chat/completions';
+      const model = isGroq ? 'llama-3.3-70b-versatile' : 'grok-beta';
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: 'Say "API working!" in 3 words max.' }],
+          max_tokens: 20
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || 'OK';
+        setTestResult('success');
+        toast({ title: '✅ API Key Valid!', description: `Response: "${reply}"` });
+      } else {
+        const error = await response.json();
+        setTestResult('error');
+        toast({ title: '❌ API Error', description: error.error?.message || 'Invalid API key', variant: 'destructive' });
+      }
+    } catch (err) {
+      setTestResult('error');
+      toast({ title: '❌ Connection Failed', description: 'Could not reach the API server', variant: 'destructive' });
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const planConfigs = planOrder.map(id => ({
     ...PLANS[id],

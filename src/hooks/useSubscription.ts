@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { PlanType, PLANS, CREDIT_COSTS, CreditAction, CHART_TYPES_BY_PLAN, FEATURES_BY_PLAN } from '@/types/subscription';
+import { PlanType, PLANS, CREDIT_COSTS, CreditAction, CHART_TYPES_BY_PLAN, FEATURES_BY_PLAN, PLAN_REQUIRED_FOR_ACTION } from '@/types/subscription';
 import { toast } from '@/hooks/use-toast';
 
 const STORAGE_KEY = 'datapulse_subscription';
@@ -9,6 +9,7 @@ interface SubscriptionState {
   credits: number;
   purchasedCredits: number;
   upgradeDate?: string;
+  subscriptionEndDate?: string;
 }
 
 export function useSubscription() {
@@ -31,31 +32,61 @@ export function useSubscription() {
 
   const currentPlan = PLANS[state.plan];
   const isEnterprise = state.plan === 'enterprise';
+  const isFree = state.plan === 'free';
   const totalCredits = isEnterprise ? Infinity : state.credits + state.purchasedCredits;
 
-  // Check if action can be performed
+  // Get minimum required plan for an action
+  const getRequiredPlan = useCallback((action: string): PlanType => {
+    return PLAN_REQUIRED_FOR_ACTION[action] || 'free';
+  }, []);
+
+  // Check if current plan meets requirement
+  const meetsPlanRequirement = useCallback((requiredPlan: PlanType): boolean => {
+    const planHierarchy: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
+    const currentIndex = planHierarchy.indexOf(state.plan);
+    const requiredIndex = planHierarchy.indexOf(requiredPlan);
+    return currentIndex >= requiredIndex;
+  }, [state.plan]);
+
+  // Check if action can be performed (plan + credits)
   const canPerformAction = useCallback((action: CreditAction): boolean => {
+    // Check plan requirement first
+    const requiredPlan = getRequiredPlan(action);
+    if (!meetsPlanRequirement(requiredPlan)) {
+      return false;
+    }
+    
     if (isEnterprise) return true;
     const cost = CREDIT_COSTS[action];
     return totalCredits >= cost;
-  }, [isEnterprise, totalCredits]);
+  }, [isEnterprise, totalCredits, getRequiredPlan, meetsPlanRequirement]);
 
-  // Consume credits for an action
+  // Consume credits for an action (with plan check)
   const consumeCredits = useCallback((action: CreditAction): boolean => {
+    // Check plan requirement
+    const requiredPlan = getRequiredPlan(action);
+    if (!meetsPlanRequirement(requiredPlan)) {
+      toast({
+        title: 'Upgrade Required',
+        description: `This feature requires ${PLANS[requiredPlan].name} plan or higher.`,
+        variant: 'destructive'
+      });
+      return false;
+    }
+
     if (isEnterprise) return true;
     
     const cost = CREDIT_COSTS[action];
     if (totalCredits < cost) {
       toast({
         title: 'Insufficient Credits',
-        description: `This action requires ${cost} credits. You have ${totalCredits} remaining.`,
+        description: `This action requires ${cost} credits. You have ${totalCredits} remaining. Purchase more credits or upgrade your plan.`,
         variant: 'destructive'
       });
       return false;
     }
 
     setState(prev => {
-      // First use purchased credits, then plan credits
       let newPurchased = prev.purchasedCredits;
       let newCredits = prev.credits;
       let remaining = cost;
@@ -75,31 +106,47 @@ export function useSubscription() {
       };
     });
 
-    toast({
-      title: 'Credits Used',
-      description: `${cost} credits consumed for ${action.replace('-', ' ')}.`
-    });
-
     return true;
-  }, [isEnterprise, totalCredits]);
+  }, [isEnterprise, totalCredits, getRequiredPlan, meetsPlanRequirement]);
 
-  // Upgrade plan
-  const upgradePlan = useCallback((newPlan: PlanType) => {
+  // Upgrade plan (requires payment verification)
+  const upgradePlan = useCallback((newPlan: PlanType, paymentVerified: boolean = false) => {
+    if (newPlan === 'free') {
+      // Downgrade to free is always allowed
+      setState(prev => ({
+        ...prev,
+        plan: 'free',
+        credits: PLANS.free.credits,
+      }));
+      toast({ title: 'Plan Changed', description: 'You are now on the Free plan.' });
+      return;
+    }
+
+    if (!paymentVerified) {
+      toast({
+        title: 'Payment Required',
+        description: `Please complete payment to upgrade to ${PLANS[newPlan].name}.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const planConfig = PLANS[newPlan];
     setState(prev => ({
       ...prev,
       plan: newPlan,
       credits: planConfig.credits === -1 ? Infinity : planConfig.credits,
-      upgradeDate: new Date().toISOString()
+      upgradeDate: new Date().toISOString(),
+      subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
     }));
 
     toast({
       title: 'Plan Upgraded!',
-      description: `You're now on the ${planConfig.name} plan.`
+      description: `You're now on the ${planConfig.name} plan with ${planConfig.credits === -1 ? 'unlimited' : planConfig.credits} credits.`
     });
   }, []);
 
-  // Add credits after verified payment (called by payment flow only)
+  // Add credits after verified payment
   const addVerifiedCredits = useCallback((amount: number, paymentId?: string) => {
     setState(prev => ({
       ...prev,
@@ -112,8 +159,7 @@ export function useSubscription() {
     });
   }, []);
 
-  // Legacy buyCredits - now requires payment verification
-  // This should only be called after successful payment verification
+  // Legacy buyCredits - requires payment verification
   const buyCredits = useCallback((amount: number, paymentVerified: boolean = false) => {
     if (!paymentVerified) {
       toast({
@@ -147,24 +193,48 @@ export function useSubscription() {
     return currentCount < currentPlan.maxDatasets;
   }, [currentPlan]);
 
+  // Check row limit
+  const canIngestRows = useCallback((rowCount: number): { allowed: boolean; maxRows: number } => {
+    if (currentPlan.maxRows === -1) return { allowed: true, maxRows: -1 };
+    return { allowed: rowCount <= currentPlan.maxRows, maxRows: currentPlan.maxRows };
+  }, [currentPlan]);
+
   // Get credit cost for action
   const getCreditCost = useCallback((action: CreditAction): number => {
     return CREDIT_COSTS[action];
   }, []);
+
+  // Check if AI is available
+  const isAIAvailable = useCallback((): boolean => {
+    return currentPlan.aiModels.length > 0;
+  }, [currentPlan]);
+
+  // Get upgrade message for locked feature
+  const getUpgradeMessage = useCallback((feature: string): string => {
+    const requiredPlan = getRequiredPlan(feature);
+    return `Upgrade to ${PLANS[requiredPlan].name} to unlock this feature.`;
+  }, [getRequiredPlan]);
 
   return {
     plan: state.plan,
     planConfig: currentPlan,
     credits: isEnterprise ? Infinity : totalCredits,
     isEnterprise,
+    isFree,
     canPerformAction,
     consumeCredits,
     upgradePlan,
     buyCredits,
+    addVerifiedCredits,
     isChartAvailable,
     getAvailableCharts,
     isFeatureAvailable,
     canAddDataset,
-    getCreditCost
+    canIngestRows,
+    getCreditCost,
+    isAIAvailable,
+    getRequiredPlan,
+    meetsPlanRequirement,
+    getUpgradeMessage
   };
 }

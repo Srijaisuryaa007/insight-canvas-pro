@@ -1334,6 +1334,147 @@ function detectColumns(data) {
   });
 }
 
+// ============ WEB SCRAPING ENDPOINT ============
+
+app.post('/api/scrape', async (req, res) => {
+  try {
+    const { url, mode = 'readable' } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Validate URL
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+    } catch {
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    console.log(`[SCRAPE] Fetching: ${parsedUrl.href} (mode: ${mode})`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(parsedUrl.href, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `Failed to fetch: HTTP ${response.status}` });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const html = await response.text();
+
+    // Extract metadata
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
+    const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+
+    // Extract text content (strip HTML tags)
+    let textContent = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Extract links
+    const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    const links = [];
+    let match;
+    while ((match = linkRegex.exec(html)) !== null && links.length < 50) {
+      const href = match[1];
+      const text = match[2].replace(/<[^>]+>/g, '').trim();
+      if (href && !href.startsWith('#') && !href.startsWith('javascript:') && text) {
+        try {
+          const absoluteUrl = new URL(href, parsedUrl.href).href;
+          links.push({ url: absoluteUrl, text: text.substring(0, 100) });
+        } catch {}
+      }
+    }
+
+    // Extract headings
+    const headingRegex = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi;
+    const headings = [];
+    while ((match = headingRegex.exec(html)) !== null && headings.length < 30) {
+      const text = match[2].replace(/<[^>]+>/g, '').trim();
+      if (text) headings.push({ level: parseInt(match[1]), text: text.substring(0, 200) });
+    }
+
+    // Extract images
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*(?:alt=["']([^"']+)["'])?/gi;
+    const images = [];
+    while ((match = imgRegex.exec(html)) !== null && images.length < 20) {
+      try {
+        const src = new URL(match[1], parsedUrl.href).href;
+        images.push({ src, alt: match[2] || '' });
+      } catch {}
+    }
+
+    // Extract tables as structured data
+    const tables = [];
+    const tableRegex = /<table[\s\S]*?<\/table>/gi;
+    let tableMatch;
+    while ((tableMatch = tableRegex.exec(html)) !== null && tables.length < 5) {
+      const tableHtml = tableMatch[0];
+      const rows = [];
+      const rowRegex = /<tr[\s\S]*?<\/tr>/gi;
+      let rowMatch;
+      while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
+        const cells = [];
+        const cellRegex = /<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi;
+        let cellMatch;
+        while ((cellMatch = cellRegex.exec(rowMatch[0])) !== null) {
+          cells.push(cellMatch[1].replace(/<[^>]+>/g, '').trim());
+        }
+        if (cells.length > 0) rows.push(cells);
+      }
+      if (rows.length > 0) tables.push(rows);
+    }
+
+    const result = {
+      success: true,
+      url: parsedUrl.href,
+      title: titleMatch ? titleMatch[1].trim() : null,
+      description: descMatch ? descMatch[1].trim() : null,
+      ogImage: ogImageMatch ? ogImageMatch[1] : null,
+      contentType,
+      textContent: textContent.substring(0, 50000),
+      textLength: textContent.length,
+      headings,
+      links,
+      images,
+      tables: tables.slice(0, 3),
+      scrapedAt: new Date().toISOString(),
+    };
+
+    console.log(`[SCRAPE] Success: ${parsedUrl.href} — ${textContent.length} chars, ${links.length} links, ${headings.length} headings`);
+    res.json(result);
+  } catch (error) {
+    console.error('[SCRAPE ERROR]', error);
+    if (error.name === 'AbortError') {
+      return res.status(408).json({ error: 'Request timed out (15s limit)' });
+    }
+    res.status(500).json({ error: error.message || 'Scraping failed' });
+  }
+});
+
 // ============ START SERVER ============
 
 app.listen(PORT, () => {
@@ -1350,11 +1491,10 @@ app.listen(PORT, () => {
 ║   • POST /api/quality                - Quality scan        ║
 ║   • POST /api/insights               - Generate insights   ║
 ║   • POST /api/copilot                - AI assistant        ║
+║   • POST /api/scrape                 - Web scraping        ║
 ║                                                            ║
 ║   Set GROK_API_KEY in .env for real AI responses           ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
   `);
 });
-
-module.exports = app;

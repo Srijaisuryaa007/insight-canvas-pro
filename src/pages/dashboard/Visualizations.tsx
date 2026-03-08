@@ -787,23 +787,56 @@ export default function Visualizations() {
     };
   }, [chartData, yAxis, xAxis]);
 
-  const handleSaveChart = () => {
+  const handleSaveChart = async () => {
+    if (!supabase || !user?.id) {
+      toast({ title: 'Error', description: 'You must be logged in to save charts', variant: 'destructive' });
+      return;
+    }
+    const title = saveTitle || formatChartTitle(xAxis, yAxis);
+    const { data, error } = await supabase
+      .from('saved_charts')
+      .insert({
+        user_id: user.id,
+        title,
+        description: saveDescription,
+        tags: saveTags,
+        chart_type: selectedChart,
+        x_axis: xAxis,
+        y_axis: yAxis,
+        color_palette: colorPalette,
+        aggregation,
+        show_legend: showLegend,
+        show_grid: showGrid,
+        show_labels: showLabels,
+        sort_column: sortColumn,
+        sort_direction: sortDirection,
+        top_n: topN,
+        dataset_id: currentDataset?.id || '',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({ title: 'Save Failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+
     const newChart = {
-      id: Date.now().toString(),
-      title: saveTitle || formatChartTitle(xAxis, yAxis),
+      id: data.id,
+      title,
       description: saveDescription,
       tags: saveTags,
       chartType: selectedChart,
       xAxis,
       yAxis,
-      savedAt: new Date(),
+      savedAt: new Date(data.created_at),
     };
     setSavedCharts(prev => [newChart, ...prev]);
     setSaveModalOpen(false);
     setSaveTitle('');
     setSaveDescription('');
     setSaveTags('');
-    toast({ title: 'Chart Saved', description: `"${newChart.title}" added to your library` });
+    toast({ title: 'Chart Saved', description: `"${title}" saved to your library` });
   };
 
   const handleLoadSavedChart = (chart: typeof savedCharts[0]) => {

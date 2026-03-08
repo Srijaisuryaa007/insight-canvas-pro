@@ -1839,6 +1839,26 @@ export default function Visualizations() {
                   </div>
                 )}
               </Card>
+
+              {/* Chart Action Buttons */}
+              <ChartActionButtons
+                xAxis={xAxis}
+                yAxis={yAxis}
+                chartData={chartData}
+                onSave={() => {
+                  setSaveTitle(formatChartTitle(xAxis, yAxis));
+                  setSaveModalOpen(true);
+                }}
+              />
+
+              {/* AI Chart Explanation */}
+              <AIChartExplanation
+                chartType={selectedChart}
+                xAxis={xAxis}
+                yAxis={yAxis}
+                chartStats={chartStats}
+                chartData={chartData}
+              />
             </motion.div>
           ) : !suitabilityWarning ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

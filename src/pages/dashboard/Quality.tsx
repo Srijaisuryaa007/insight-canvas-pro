@@ -24,7 +24,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function Quality() {
   const { datasets, currentDataset, currentData, selectDataset, updateCurrentData, undo, redo, canUndo, canRedo } = useData();
-  const { isScanning, report, scanDataset, getFixPreview, applyFix } = useDataQuality();
+  const { isScanning, report, scanDataset, getFixPreview, applyFix, setReport } = useDataQuality();
   const { getCreditCost } = useSubscription();
   const [previewFix, setPreviewFix] = useState<{ column: string; type: string; description: string; before: string; after: string; affectedRows: number } | null>(null);
   const [confirmFix, setConfirmFix] = useState<{ column: string; type: string } | null>(null);
@@ -92,12 +92,31 @@ export default function Quality() {
     setConfirmFix({ column, type });
   };
 
+  // Helper: remove fixed issue from report immediately (optimistic)
+  const removeIssueFromReport = (column: string, type: string) => {
+    if (!report) return;
+    const remaining = report.issues.filter(i => !(i.column === column && i.type === type));
+    const newScore = remaining.length === 0 ? 100 : Math.min(100, report.overallScore + Math.round(10 / report.issues.length));
+    setReport({ ...report, issues: remaining, overallScore: newScore });
+  };
+
   const handleApplyFix = async (column: string, type: string) => {
     const newData = applyFix(currentData, column, type);
     updateCurrentData(newData);
     setPreviewFix(null);
     setConfirmFix(null);
-    toast({ title: 'Fix Applied', description: `Fixed ${type} issues in "${column}". Re-scanning...` });
+    // Remove fixed issue immediately from UI
+    removeIssueFromReport(column, type);
+    // Clear strategy for this column
+    setMissingStrategy(s => { const n = { ...s }; delete n[column]; return n; });
+    const remaining = report ? report.issues.filter(i => !(i.column === column && i.type === type)).length : 0;
+    toast({ 
+      title: '✅ Fix Applied', 
+      description: remaining > 0 
+        ? `Fixed ${type} in "${column}". ${remaining} issue${remaining > 1 ? 's' : ''} remaining.`
+        : `Fixed ${type} in "${column}". All issues resolved! 🎉`
+    });
+    // Re-scan in background to get accurate report
     if (currentDataset) await scanDataset(currentDataset.id, newData);
   };
 
@@ -126,19 +145,31 @@ export default function Quality() {
     }
 
     updateCurrentData(newData);
-    toast({ title: 'Missing Values Fixed', description: `Applied "${strategy}" strategy to "${column}". Re-scanning...` });
+    removeIssueFromReport(column, 'missing');
+    setMissingStrategy(s => { const n = { ...s }; delete n[column]; return n; });
+    const remaining = report ? report.issues.filter(i => !(i.column === column && i.type === 'missing')).length : 0;
+    toast({ 
+      title: '✅ Missing Values Fixed', 
+      description: remaining > 0
+        ? `Applied "${strategy}" to "${column}". ${remaining} issue${remaining > 1 ? 's' : ''} remaining.`
+        : `Applied "${strategy}" to "${column}". All issues resolved! 🎉`
+    });
     if (currentDataset) await scanDataset(currentDataset.id, newData);
   };
 
   const handleFixAll = async () => {
     if (!report || !currentDataset) return;
     let data = [...currentData];
+    const count = report.issues.length;
     for (const issue of report.issues) {
       data = applyFix(data, issue.column, issue.type);
     }
     updateCurrentData(data);
     setConfirmFixAll(false);
-    toast({ title: 'All Fixes Applied', description: `Fixed ${report.issues.length} issue types. Re-scanning...` });
+    setMissingStrategy({});
+    // Clear all issues immediately
+    setReport({ ...report, issues: [], overallScore: 100 });
+    toast({ title: '✅ All Fixes Applied', description: `Fixed ${count} issue types. All clean! 🎉` });
     await scanDataset(currentDataset.id, data);
   };
 

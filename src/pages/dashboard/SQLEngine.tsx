@@ -693,7 +693,7 @@ export default function SQLEngine() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Database className="h-7 w-7 text-primary" />SQL Engine</h1>
           <p className="text-muted-foreground text-sm">Query your data with SQL — supports CTEs, window functions, and more</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {datasets.length > 0 && (
             <select className="h-9 rounded-md border border-input bg-background px-3 text-sm"
               value={currentDataset?.id || ''} onChange={e => selectDataset(e.target.value)}>
@@ -702,8 +702,16 @@ export default function SQLEngine() {
             </select>
           )}
           <Badge variant="outline">{currentData.length} rows</Badge>
+          {columns.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setShowBuilder(prev => !prev)} className="text-xs">
+              {showBuilder ? 'Hide' : 'Show'} Builder
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Data Sync Banner */}
+      <DataSyncBanner />
 
       {/* Schema reference */}
       {columns.length > 0 && (
@@ -723,6 +731,11 @@ export default function SQLEngine() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Visual Query Builder */}
+      {showBuilder && columns.length > 0 && (
+        <VisualQueryBuilder columns={columns} onQueryChange={handleQueryFromBuilder} />
       )}
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">

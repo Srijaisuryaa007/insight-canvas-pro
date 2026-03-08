@@ -900,11 +900,11 @@ export default function Quality() {
                               <p className="text-xs text-muted-foreground">Duplicate Rows</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50 text-center">
-                              <p className="text-2xl font-bold">{dataProfile.numericCount}</p>
+                              <p className="text-2xl font-bold">{dataProfile.columns.filter(c => c.type === 'number').length}</p>
                               <p className="text-xs text-muted-foreground">Numeric</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50 text-center">
-                              <p className="text-2xl font-bold">{dataProfile.textCount}</p>
+                              <p className="text-2xl font-bold">{dataProfile.columns.filter(c => c.type === 'string').length}</p>
                               <p className="text-xs text-muted-foreground">Text</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50 text-center">

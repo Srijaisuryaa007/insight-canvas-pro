@@ -13,7 +13,7 @@ import { PLANS } from '@/types/subscription';
 export default function Copilot() {
   const { currentDataset, currentData, datasets, selectDataset } = useData();
   const { plan } = useSubscription();
-  const navigate = useNavigate();
+  
   const [stakeholderView, setStakeholderView] = useState(false);
   const [aiMode, setAiMode] = useState<'fast' | 'precise'>('fast');
   const planConfig = PLANS[plan];

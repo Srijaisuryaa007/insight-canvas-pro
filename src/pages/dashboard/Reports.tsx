@@ -855,46 +855,8 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* ── Report History ── */}
-      {history.length > 0 && (
-        <>
-          <Separator />
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Clock className="h-4 w-4" />Previously Generated Reports</h3>
-            </div>
-            <ScrollArea className="w-full">
-              <div className="flex gap-3 pb-2">
-                {history.map(h => (
-                  <Card key={h.id} className="bg-card border-border shrink-0 w-[220px]">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge className="text-[9px] text-white px-1.5 py-0" style={{ backgroundColor: formatBadge[h.format]?.color }}>
-                          {formatBadge[h.format]?.label}
-                        </Badge>
-                        <span className="text-xs font-semibold truncate">{h.templateName}</span>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground space-y-0.5">
-                        <p className="truncate">{formatDatasetName(h.datasetName)}</p>
-                        <p>{h.sectionCount} sections</p>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(h.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        {' • '}
-                        {new Date(h.generatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                      </p>
-                      <Button variant="ghost" size="sm" className="w-full h-7 text-[10px] text-destructive hover:text-destructive"
-                        onClick={() => deleteHistory(h.id)}>
-                        <Trash2 className="h-3 w-3 mr-1" />Remove
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        </>
-      )}
+
+
 
       {/* ── Share Your Report ── */}
       <Separator />

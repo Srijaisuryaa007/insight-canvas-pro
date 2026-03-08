@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Bell, CheckCheck, Sun, Moon } from 'lucide-react';
+import { Bell, CheckCheck, Sun, Moon, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -44,8 +44,24 @@ export function TopBar() {
     localStorage.setItem('datapulse_theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
   return (
     <header className="h-14 border-b border-border bg-card px-6 flex items-center justify-end gap-3">
+      {/* Credits Badge */}
+      {user && (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-xs font-medium text-muted-foreground">
+          <CreditCard className="h-3.5 w-3.5" />
+          <span>{user.credits} credits</span>
+          <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
+            {user.plan}
+          </Badge>
+        </div>
+      )}
+
       {/* Dark Mode Toggle */}
       <Button variant="ghost" size="icon" onClick={() => setIsDark(!isDark)} title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
         {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -100,6 +116,9 @@ export function TopBar() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-9 w-9 rounded-full">
             <Avatar className="h-9 w-9">
+              {user?.profilePicture && (
+                <AvatarImage src={user.profilePicture} alt={user.name} />
+              )}
               <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                 {user?.name?.charAt(0).toUpperCase() ?? 'U'}
               </AvatarFallback>
@@ -117,7 +136,7 @@ export function TopBar() {
           <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>Profile</DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>Settings</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => { logout(); navigate('/'); }} className="text-destructive">
+          <DropdownMenuItem onClick={handleLogout} className="text-destructive">
             Log out
           </DropdownMenuItem>
         </DropdownMenuContent>

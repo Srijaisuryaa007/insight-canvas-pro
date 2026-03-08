@@ -568,6 +568,7 @@ export default function Visualizations() {
   const { plan, isChartAvailable, getAvailableCharts } = useSubscription();
   const { user } = useAuth();
   const { exportCSV, exportPNG } = useExport();
+  const navigate = useNavigate();
 
   const [selectedChart, setSelectedChart] = useState('bar');
   const [xAxis, setXAxis] = useState('');

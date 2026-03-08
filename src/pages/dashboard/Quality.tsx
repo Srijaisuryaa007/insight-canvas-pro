@@ -998,7 +998,7 @@ export default function Quality() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
                             <div className="p-3 rounded-lg bg-muted/50 text-center">
                               <p className="text-2xl font-bold">{dataProfile.totalRows}</p>
                               <p className="text-xs text-muted-foreground">Total Rows</p>
@@ -1020,6 +1020,10 @@ export default function Quality() {
                               <p className="text-xs text-muted-foreground">Issues Found</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50 text-center">
+                              <p className="text-2xl font-bold">{dataProfile.memoryEstimateKB.toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground">~KB Memory</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50 text-center col-span-2">
                               <p className={cn("text-2xl font-bold", dataProfile.issuesFound === 0 ? "text-emerald-500" : "text-amber-500")}>
                                 {dataProfile.issuesFound === 0 ? '✅' : '⚠️'}
                               </p>

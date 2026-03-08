@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Plug, Lock, Check, ExternalLink, X } from 'lucide-react';
+import { Search, Plug, Lock, Check, ExternalLink, X, Database } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ConnectorPanel } from '@/components/connectors/ConnectorPanel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const CATEGORIES = ['All', 'Files', 'Databases', 'Cloud', 'Apps', 'APIs'];
 
@@ -78,107 +80,131 @@ export default function Integrations() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2"><Plug className="h-7 w-7" />Connect Your Data Sources</h1>
-        <p className="text-muted-foreground">Import data directly from your tools</p>
+        <p className="text-muted-foreground">Import data directly from your tools and databases</p>
       </div>
 
-      {/* Search + Filter */}
-      <div className="space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search integrations..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={cn(
-                'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-                category === cat
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-muted/50 text-muted-foreground border-border hover:border-muted-foreground/40'
-              )}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs defaultValue="connectors" className="w-full">
+        <TabsList>
+          <TabsTrigger value="connectors" className="gap-2">
+            <Database className="h-4 w-4" />Database & App Connectors
+          </TabsTrigger>
+          <TabsTrigger value="browse" className="gap-2">
+            <Plug className="h-4 w-4" />Browse All Integrations
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Connected count */}
-      <div className="flex gap-4 text-sm text-muted-foreground">
-        <span>{INTEGRATIONS.filter(i => i.status === 'connected').length} connected</span>
-        <span>{filtered.length} shown</span>
-      </div>
+        {/* Real Connectors Tab */}
+        <TabsContent value="connectors" className="mt-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Connect directly to databases and SaaS apps. Requires the backend server running on port 3001.
+            </p>
+            <ConnectorPanel />
+          </div>
+        </TabsContent>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <AnimatePresence mode="popLayout">
-          {filtered.map((integration, i) => (
-            <motion.div
-              key={integration.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, delay: i * 0.03 }}
-            >
-              <Card className="bg-card border-border hover:shadow-md transition-all">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">{integration.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold">{integration.name}</h3>
-                        {integration.status === 'connected' && (
-                          <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30">
-                            <Check className="h-2.5 w-2.5 mr-0.5" />Connected
-                          </Badge>
-                        )}
-                        {integration.status === 'pro' && !isPro && (
-                          <Badge variant="outline" className="text-[10px]">
-                            <Lock className="h-2.5 w-2.5 mr-0.5" />Pro
-                          </Badge>
+        {/* Browse Integrations Tab */}
+        <TabsContent value="browse" className="mt-4 space-y-4">
+          {/* Search + Filter */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search integrations..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+              {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                    category === cat
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 text-muted-foreground border-border hover:border-muted-foreground/40'
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Connected count */}
+          <div className="flex gap-4 text-sm text-muted-foreground">
+            <span>{INTEGRATIONS.filter(i => i.status === 'connected').length} connected</span>
+            <span>{filtered.length} shown</span>
+          </div>
+
+          {/* Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((integration, i) => (
+                <motion.div
+                  key={integration.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25, delay: i * 0.03 }}
+                >
+                  <Card className="bg-card border-border hover:shadow-md transition-all">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">{integration.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold">{integration.name}</h3>
+                            {integration.status === 'connected' && (
+                              <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30">
+                                <Check className="h-2.5 w-2.5 mr-0.5" />Connected
+                              </Badge>
+                            )}
+                            {integration.status === 'pro' && !isPro && (
+                              <Badge variant="outline" className="text-[10px]">
+                                <Lock className="h-2.5 w-2.5 mr-0.5" />Pro
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{integration.description}</p>
+                          <Badge variant="secondary" className="text-[10px] mt-2">{integration.category}</Badge>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        {integration.status === 'connected' ? (
+                          <Button variant="outline" size="sm" className="w-full text-xs" disabled>
+                            <Check className="h-3 w-3 mr-1" />Connected
+                          </Button>
+                        ) : (
+                          <Button
+                            variant={integration.status === 'pro' && !isPro ? 'outline' : 'default'}
+                            size="sm"
+                            className="w-full text-xs"
+                            onClick={() => handleConnect(integration)}
+                          >
+                            {integration.status === 'pro' && !isPro ? (
+                              <><Lock className="h-3 w-3 mr-1" />Upgrade to Connect</>
+                            ) : (
+                              <><ExternalLink className="h-3 w-3 mr-1" />Connect</>
+                            )}
+                          </Button>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">{integration.description}</p>
-                      <Badge variant="secondary" className="text-[10px] mt-2">{integration.category}</Badge>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    {integration.status === 'connected' ? (
-                      <Button variant="outline" size="sm" className="w-full text-xs" disabled>
-                        <Check className="h-3 w-3 mr-1" />Connected
-                      </Button>
-                    ) : (
-                      <Button
-                        variant={integration.status === 'pro' && !isPro ? 'outline' : 'default'}
-                        size="sm"
-                        className="w-full text-xs"
-                        onClick={() => handleConnect(integration)}
-                      >
-                        {integration.status === 'pro' && !isPro ? (
-                          <><Lock className="h-3 w-3 mr-1" />Upgrade to Connect</>
-                        ) : (
-                          <><ExternalLink className="h-3 w-3 mr-1" />Connect</>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-12">
-          <span className="text-4xl block mb-3">🔍</span>
-          <h3 className="font-medium">No integrations found</h3>
-          <p className="text-sm text-muted-foreground mt-1">Try a different search term</p>
-        </div>
-      )}
+          {filtered.length === 0 && (
+            <div className="text-center py-12">
+              <span className="text-4xl block mb-3">🔍</span>
+              <h3 className="font-medium">No integrations found</h3>
+              <p className="text-sm text-muted-foreground mt-1">Try a different search term</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

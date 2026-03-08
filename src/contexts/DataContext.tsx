@@ -29,7 +29,7 @@ interface DataContextType {
   isLoading: boolean;
   isDataCleaned: boolean;
   cleaningReport: Record<string, unknown> | null;
-  uploadData: (name: string, fileName: string, data: Record<string, unknown>[]) => Promise<boolean>;
+  uploadData: (name: string, fileName: string, data: Record<string, unknown>[], fileSizeMB?: number) => Promise<boolean>;
   refreshDatasets: () => Promise<void>;
   selectDataset: (id: string) => Promise<void>;
   getDatasetData: (id: string) => Promise<Record<string, unknown>[]>;

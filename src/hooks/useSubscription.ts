@@ -40,12 +40,14 @@ export function useSubscription() {
           upgradeDate: data.upgrade_date,
           subscriptionEndDate: data.subscription_end_date,
         });
+        setLoaded(true);
       } else {
         // Create initial subscription state
         await supabase.from('subscription_state').insert({
           user_id: session.user.id, plan: 'free',
           credits: PLANS.free.credits, purchased_credits: 0,
         });
+        setLoaded(true);
       }
     };
 

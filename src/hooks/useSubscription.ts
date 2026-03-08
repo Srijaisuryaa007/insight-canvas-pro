@@ -18,6 +18,7 @@ export function useSubscription() {
     purchasedCredits: 0
   });
   const [userId, setUserId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   // Load from Supabase
   useEffect(() => {

@@ -381,6 +381,12 @@ export function ConnectorPanel() {
               <Lock className="h-3 w-3 shrink-0" />
               Credentials are encrypted at rest. Read-only access enforced by default.
             </div>
+            {testError && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-xs text-destructive border border-destructive/20">
+                <AlertCircle className="h-3 w-3 shrink-0" />
+                {testError}
+              </div>
+            )}
             {selectedConnector?.fields.map(field => (
               <div key={field.key} className="space-y-1.5">
                 <Label className="text-sm">{field.label} {field.required && <span className="text-destructive">*</span>}</Label>

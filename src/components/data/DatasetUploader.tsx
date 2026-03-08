@@ -148,11 +148,28 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Upload Dataset</h3>
-          {!canUpload && (
-            <span className="text-sm text-destructive">
-              Dataset limit reached
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {isFree && (
+              <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">
+                Session only — no storage
+              </Badge>
+            )}
+            {!isFree && maxStorageMB !== -1 && (
+              <Badge variant="outline" className="text-xs">
+                {maxStorageMB >= 1024 ? `${(maxStorageMB / 1024).toFixed(0)}GB` : `${maxStorageMB}MB`} storage
+              </Badge>
+            )}
+            {maxStorageMB === -1 && (
+              <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                Unlimited storage
+              </Badge>
+            )}
+            {!canUpload && (
+              <span className="text-sm text-destructive">
+                Dataset limit reached
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Hidden file input */}

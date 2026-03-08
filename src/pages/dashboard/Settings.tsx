@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { 
   Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2, Cpu, CheckCircle2, XCircle
 } from 'lucide-react';
+import { DataAlerts } from '@/components/dashboard/DataAlerts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

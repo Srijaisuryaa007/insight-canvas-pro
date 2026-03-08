@@ -603,7 +603,7 @@ export default function Quality() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                               <div className="p-3 rounded-lg bg-destructive/10">
                                 <p className="text-2xl font-bold text-destructive">{dr.fullDuplicates}</p>
-                                <p className="text-xs text-muted-foreground">🔴 Full Duplicates</p>
+                                <p className="text-xs text-muted-foreground">Full Duplicates</p>
                               </div>
                               <div className="p-3 rounded-lg bg-amber-500/10">
                                 <p className="text-2xl font-bold text-amber-600">{Object.values(dr.partialDuplicates).reduce((a, b) => a + b, 0)}</p>

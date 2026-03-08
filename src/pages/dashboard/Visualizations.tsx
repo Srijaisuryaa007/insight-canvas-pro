@@ -992,18 +992,20 @@ export default function Visualizations() {
           <Card className="bg-card border-border">
             <CardContent className="p-4">
               <Tabs value={configTab} onValueChange={setConfigTab}>
-                <TabsList className="w-full grid grid-cols-5 bg-muted/50 p-0.5 rounded-lg">
-                  <TabsTrigger value="axes" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Columns className="h-3 w-3" />Axes</TabsTrigger>
+                <TabsList className="w-full grid grid-cols-6 bg-muted/50 p-0.5 rounded-lg">
+                  <TabsTrigger value="axes" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Columns className="h-3 w-3" />Fields</TabsTrigger>
                   <TabsTrigger value="style" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Palette className="h-3 w-3" />Style</TabsTrigger>
                   <TabsTrigger value="sort" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><ArrowUpDown className="h-3 w-3" />Sort & Filter</TabsTrigger>
                   <TabsTrigger value="analytics" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><TrendingUp className="h-3 w-3" />Analytics</TabsTrigger>
                   <TabsTrigger value="advanced" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Layers className="h-3 w-3" />Advanced</TabsTrigger>
+                  <TabsTrigger value="matrix" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-md"><Grid3X3 className="h-3 w-3" />Matrix</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="axes" className="mt-4">
+                <TabsContent value="axes" className="mt-4 space-y-4">
+                  {/* Row 1: Dataset + Primary Axes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Dataset</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Dataset</Label>
                       <Select value={currentDataset?.id || ''} onValueChange={selectDataset}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="Select dataset" /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -1012,7 +1014,7 @@ export default function Visualizations() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">X Axis (Dimension)</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">X-Axis (Dimension)</Label>
                       <Select value={xAxis} onValueChange={setXAxis}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="Select column" /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -1021,7 +1023,7 @@ export default function Visualizations() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Y Axis (Measure)</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Y-Axis (Measure)</Label>
                       <Select value={yAxis} onValueChange={setYAxis}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="Select column" /></SelectTrigger>
                         <SelectContent className="bg-popover">
@@ -1030,6 +1032,168 @@ export default function Visualizations() {
                       </Select>
                     </div>
                   </div>
+
+                  <Separator />
+
+                  {/* Row 2: Secondary Y, Values, Legend */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Secondary Y-Axis</Label>
+                      <Select value={secondaryYAxis || '__none__'} onValueChange={v => setSecondaryYAxis(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {numericColumns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Values</Label>
+                      <Select value={valuesField || '__none__'} onValueChange={v => setValuesField(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Auto (Y-Axis)" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">Auto (Y-Axis)</SelectItem>
+                          {numericColumns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Legend (Color By)</Label>
+                      <Select value={legendField || '__none__'} onValueChange={v => setLegendField(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {categoricalColumns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Tooltip, Details, Small Multiples */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Tooltip</Label>
+                      <Select
+                        value={tooltipFields.length > 0 ? tooltipFields[tooltipFields.length - 1] : '__none__'}
+                        onValueChange={v => {
+                          if (v === '__none__') { setTooltipFields([]); return; }
+                          if (!tooltipFields.includes(v)) setTooltipFields(prev => [...prev, v]);
+                        }}
+                      >
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Add fields..." /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">Clear all</SelectItem>
+                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)} <span className="text-muted-foreground">({col.type})</span></SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {tooltipFields.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {tooltipFields.map(f => (
+                            <Badge key={f} variant="secondary" className="text-[10px] h-5 px-1.5 gap-1 cursor-pointer" onClick={() => setTooltipFields(prev => prev.filter(x => x !== f))}>
+                              {formatColumnName(f)} <X className="h-2.5 w-2.5" />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Details</Label>
+                      <Select value={detailsField || '__none__'} onValueChange={v => setDetailsField(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Small Multiples</Label>
+                      <Select value={smallMultiplesField || '__none__'} onValueChange={v => setSmallMultiplesField(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {categoricalColumns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Drill Through + Filters */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Drill Through</Label>
+                      <Select value={drillThroughField || '__none__'} onValueChange={v => setDrillThroughField(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Filters</Label>
+                      <Select value={filterColumn || '__none__'} onValueChange={v => setFilterColumn(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {columns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Aggregation</Label>
+                      <Select value={aggregation} onValueChange={setAggregation}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          {['sum', 'avg', 'count', 'min', 'max', 'median', 'distinct_count'].map(a =>
+                            <SelectItem key={a} value={a}>{a === 'distinct_count' ? 'Distinct Count' : a.charAt(0).toUpperCase() + a.slice(1)}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Active field wells summary */}
+                  {(legendField || secondaryYAxis || tooltipFields.length > 0 || smallMultiplesField || drillThroughField || detailsField) && (
+                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border">
+                      <span className="text-[10px] text-muted-foreground font-medium mr-1 self-center">Active:</span>
+                      {legendField && <Badge variant="outline" className="text-[10px] h-5 px-1.5">Legend: {formatColumnName(legendField)}</Badge>}
+                      {secondaryYAxis && <Badge variant="outline" className="text-[10px] h-5 px-1.5">2nd Y: {formatColumnName(secondaryYAxis)}</Badge>}
+                      {tooltipFields.map(f => <Badge key={f} variant="outline" className="text-[10px] h-5 px-1.5">Tip: {formatColumnName(f)}</Badge>)}
+                      {smallMultiplesField && <Badge variant="outline" className="text-[10px] h-5 px-1.5">Multiples: {formatColumnName(smallMultiplesField)}</Badge>}
+                      {drillThroughField && <Badge variant="outline" className="text-[10px] h-5 px-1.5">Drill: {formatColumnName(drillThroughField)}</Badge>}
+                      {detailsField && <Badge variant="outline" className="text-[10px] h-5 px-1.5">Details: {formatColumnName(detailsField)}</Badge>}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Matrix tab for Rows/Columns */}
+                <TabsContent value="matrix" className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Rows</Label>
+                      <Select value={rowsField || '__none__'} onValueChange={v => setRowsField(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select row grouping" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {categoricalColumns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">Columns</Label>
+                      <Select value={columnsField || '__none__'} onValueChange={v => setColumnsField(v === '__none__' ? '' : v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select column grouping" /></SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="__none__">None</SelectItem>
+                          {categoricalColumns.map(col => <SelectItem key={col.name} value={col.name}>{formatColumnName(col.name)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    Use Rows and Columns for matrix/pivot table or heatmap layouts. Assign fields to cross-tabulate your data.
+                  </p>
                 </TabsContent>
 
                 <TabsContent value="style" className="mt-4">

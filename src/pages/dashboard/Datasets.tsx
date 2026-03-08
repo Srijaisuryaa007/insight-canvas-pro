@@ -303,31 +303,6 @@ export default function Datasets() {
             <>
               <ColumnInspector columns={currentDataset.columns} />
 
-              {/* Field List */}
-              <Card className="bg-card border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Dataset Fields</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Columns</p>
-                    <div className="space-y-1">
-                      {currentDataset.columns.map(col => (
-                        <div key={col.name} className="flex items-center justify-between px-2 py-1 rounded bg-muted/30 text-xs">
-                          <span>{col.name}</span>
-                          <Badge variant="outline" className="text-[9px] h-4">{col.type}</Badge>
-                        </div>
-                      ))}
-                      {formulaColumns.map(fc => (
-                        <div key={fc.id} className="flex items-center justify-between px-2 py-1 rounded bg-primary/5 text-xs">
-                          <span className="flex items-center gap-1">{fc.name} <Badge variant="secondary" className="text-[8px] h-3 px-1">fx</Badge></span>
-                          <span className="text-[9px] text-muted-foreground font-mono truncate max-w-[100px]">{fc.formula}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
 
             </>
           ) : (

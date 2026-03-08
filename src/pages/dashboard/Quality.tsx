@@ -1367,7 +1367,7 @@ export default function Quality() {
                               <p className="font-bold">{cleaningSummary.outliersCapped} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">
-                              <p className="text-xs text-muted-foreground">✅ Text Standardized</p>
+                              <p className="text-xs text-muted-foreground">Text Standardized</p>
                               <p className="font-bold">{cleaningSummary.textStandardized} values</p>
                             </div>
                             <div className="p-3 rounded-lg bg-muted/50">

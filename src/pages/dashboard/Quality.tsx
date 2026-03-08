@@ -92,7 +92,7 @@ export default function Quality() {
       // If columns need decisions, show analysis tab first
       if (summary.columnsNeedingDecision.length > 0) {
         setActiveTab('columns');
-        toast({ title: '⚠️ Columns Need Your Decision', description: `${summary.columnsNeedingDecision.length} columns are 50-70% empty. Choose: Drop, Fill, or Keep.` });
+        toast({ title: 'Action Required', description: `${summary.columnsNeedingDecision.length} columns are 50–70% empty and require your decision.` });
       } else {
         setActiveTab('summary');
         toast({ title: '✅ Full Cleaning Complete', description: `Health Score: ${summary.healthScore}/100 | ${summary.steps.reduce((a, s) => a + s.changesMade, 0)} changes made` });

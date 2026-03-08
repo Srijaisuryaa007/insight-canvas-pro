@@ -20,7 +20,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { applyFormulaColumn, FormulaColumn, DAXMeasure, executeDAXMeasure } from '@/lib/formulaEngine';
+import { applyFormulaColumn, FormulaColumn } from '@/lib/formulaEngine';
 
 const ROW_LIMITS: Record<string, number> = {
   free: 1000, basic: 10000, pro: 100000, enterprise: Infinity,

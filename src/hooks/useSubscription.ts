@@ -99,18 +99,32 @@ export function useSubscription() {
     });
   }, []);
 
-  // Buy additional credits
-  const buyCredits = useCallback((amount: number) => {
+  // Add credits after verified payment (called by payment flow only)
+  const addVerifiedCredits = useCallback((amount: number, paymentId?: string) => {
     setState(prev => ({
       ...prev,
       purchasedCredits: prev.purchasedCredits + amount
     }));
 
     toast({
-      title: 'Credits Purchased!',
-      description: `${amount} credits added to your account.`
+      title: 'Credits Added!',
+      description: `${amount} credits added to your account.${paymentId ? ` (Payment: ${paymentId.slice(-8)})` : ''}`
     });
   }, []);
+
+  // Legacy buyCredits - now requires payment verification
+  // This should only be called after successful payment verification
+  const buyCredits = useCallback((amount: number, paymentVerified: boolean = false) => {
+    if (!paymentVerified) {
+      toast({
+        title: 'Payment Required',
+        description: 'Please complete payment to purchase credits.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    addVerifiedCredits(amount);
+  }, [addVerifiedCredits]);
 
   // Check if chart type is available
   const isChartAvailable = useCallback((chartType: string): boolean => {

@@ -9,6 +9,7 @@ import { askCopilot } from '@/lib/api';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { searchExcelKnowledge, EXCEL_FORMULAS, EXCEL_CONCEPTS, EXCEL_TROUBLESHOOTING } from '@/lib/excelKnowledgeBase';
 
 interface ExcelMessage {
   id: string;

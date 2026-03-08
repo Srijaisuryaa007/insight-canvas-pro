@@ -1,13 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, SubscriptionPlan, AddonType } from '@/types';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
+import { SubscriptionPlan, AddonType } from '@/types';
+
+export interface AppUser {
+  id: string;
+  email: string;
+  name: string;
+  profilePicture?: string;
+  plan: SubscriptionPlan;
+  credits: number;
+  addons: AddonType[];
+  createdAt: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
+  supabaseUser: SupabaseUser | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   updatePlan: (plan: SubscriptionPlan) => void;
   addAddon: (addon: AddonType) => void;
   deductCredits: (amount: number) => boolean;
@@ -16,99 +32,210 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'datapulse_user';
+const DEFAULT_FREE_CREDITS = 100;
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+async function upsertProfile(supabaseUser: SupabaseUser): Promise<AppUser> {
+  const meta = supabaseUser.user_metadata || {};
+  const name = meta.full_name || meta.name || meta.display_name || supabaseUser.email?.split('@')[0] || 'User';
+  const profilePicture = meta.avatar_url || meta.picture || undefined;
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch { /* ignore corrupt data */ }
-    }
-    setIsLoading(false);
-  }, []);
+  // Try to fetch existing profile
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', supabaseUser.id)
+    .single();
 
-  const persistUser = (userData: User) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-    setUser(userData);
+  if (existing) {
+    return {
+      id: existing.id,
+      email: existing.email,
+      name: existing.name,
+      profilePicture: existing.profile_picture || profilePicture,
+      plan: existing.subscription_plan || 'free',
+      credits: existing.credits_balance ?? DEFAULT_FREE_CREDITS,
+      addons: existing.addons || [],
+      createdAt: existing.created_at,
+    };
+  }
+
+  // Create new profile
+  const newProfile = {
+    id: supabaseUser.id,
+    email: supabaseUser.email!,
+    name,
+    profile_picture: profilePicture || null,
+    subscription_plan: 'free',
+    credits_balance: DEFAULT_FREE_CREDITS,
+    addons: [],
+    created_at: new Date().toISOString(),
   };
 
+  const { data: created, error } = await supabase
+    .from('profiles')
+    .insert(newProfile)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating profile:', error);
+  }
+
+  const profile = created || newProfile;
+
+  return {
+    id: profile.id,
+    email: profile.email,
+    name: profile.name,
+    profilePicture: profile.profile_picture || profilePicture,
+    plan: profile.subscription_plan || 'free',
+    credits: profile.credits_balance ?? DEFAULT_FREE_CREDITS,
+    addons: profile.addons || [],
+    createdAt: profile.created_at,
+  };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set up auth listener BEFORE getSession
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        setSession(newSession);
+        setSupabaseUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          // Defer profile fetch to avoid Supabase deadlock
+          setTimeout(async () => {
+            try {
+              const appUser = await upsertProfile(newSession.user);
+              setUser(appUser);
+            } catch (err) {
+              console.error('Profile sync error:', err);
+            }
+            setIsLoading(false);
+          }, 0);
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    // Then check existing session
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+      if (existingSession?.user) {
+        setSession(existingSession);
+        setSupabaseUser(existingSession.user);
+        try {
+          const appUser = await upsertProfile(existingSession.user);
+          setUser(appUser);
+        } catch (err) {
+          console.error('Profile sync error:', err);
+        }
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const login = async (email: string, password: string): Promise<boolean> => {
-    const stored = localStorage.getItem(`datapulse_users_${email}`);
-    if (stored) {
-      const userData = JSON.parse(stored);
-      persistUser(userData);
-      return true;
-    }
-    return false;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   };
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
-    const newUser: User = {
-      id: crypto.randomUUID(),
+    const { error } = await supabase.auth.signUp({
       email,
-      name,
-      plan: 'free',
-      credits: 100,
-      addons: [],
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem(`datapulse_users_${email}`, JSON.stringify(newUser));
-    persistUser(newUser);
-    return true;
+      password,
+      options: {
+        data: { full_name: name },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    return !error;
   };
 
-  const logout = () => {
-    localStorage.removeItem(STORAGE_KEY);
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
+    setSupabaseUser(null);
   };
 
-  const updatePlan = (plan: SubscriptionPlan) => {
-    if (user) {
-      const credits = plan === 'free' ? 100 : plan === 'pro' ? 1000 : 99999;
-      const updated = { ...user, plan, credits };
-      persistUser(updated);
-      localStorage.setItem(`datapulse_users_${user.email}`, JSON.stringify(updated));
-    }
+  const updatePlan = async (plan: SubscriptionPlan) => {
+    if (!user) return;
+    const credits = plan === 'free' ? 100 : plan === 'pro' ? 1000 : 99999;
+    const updated = { ...user, plan, credits };
+    setUser(updated);
+
+    await supabase.from('profiles').update({
+      subscription_plan: plan,
+      credits_balance: credits,
+    }).eq('id', user.id);
   };
 
-  const addAddon = (addon: AddonType) => {
-    if (user && !user.addons.includes(addon)) {
-      const updated = { ...user, addons: [...user.addons, addon] };
-      persistUser(updated);
-      localStorage.setItem(`datapulse_users_${user.email}`, JSON.stringify(updated));
-    }
+  const addAddon = async (addon: AddonType) => {
+    if (!user || user.addons.includes(addon)) return;
+    const updatedAddons = [...user.addons, addon];
+    const updated = { ...user, addons: updatedAddons };
+    setUser(updated);
+
+    await supabase.from('profiles').update({
+      addons: updatedAddons,
+    }).eq('id', user.id);
   };
 
   const deductCredits = (amount: number): boolean => {
     if (!user) return false;
     if (user.plan === 'enterprise') return true;
     if (user.credits < amount) return false;
-    const updated = { ...user, credits: user.credits - amount };
-    persistUser(updated);
-    localStorage.setItem(`datapulse_users_${user.email}`, JSON.stringify(updated));
+    const newCredits = user.credits - amount;
+    const updated = { ...user, credits: newCredits };
+    setUser(updated);
+
+    supabase.from('profiles').update({
+      credits_balance: newCredits,
+    }).eq('id', user.id);
+
     return true;
   };
 
   const addCredits = (amount: number) => {
-    if (user) {
-      const updated = { ...user, credits: user.credits + amount };
-      persistUser(updated);
-      localStorage.setItem(`datapulse_users_${user.email}`, JSON.stringify(updated));
-    }
+    if (!user) return;
+    const newCredits = user.credits + amount;
+    const updated = { ...user, credits: newCredits };
+    setUser(updated);
+
+    supabase.from('profiles').update({
+      credits_balance: newCredits,
+    }).eq('id', user.id);
   };
 
   return (
     <AuthContext.Provider value={{
       user,
-      isAuthenticated: !!user,
+      supabaseUser,
+      session,
+      isAuthenticated: !!session,
       isLoading,
       login,
       signup,
+      loginWithGoogle,
       logout,
       updatePlan,
       addAddon,

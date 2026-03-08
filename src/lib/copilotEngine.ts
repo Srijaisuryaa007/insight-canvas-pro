@@ -49,7 +49,7 @@ const DATA_PATTERNS = [
   /\b(charts?|graphs?|visuali[sz](e|ation)|bar\s*charts?|line\s*charts?|pie\s*charts?|scatter|heatmap|histogram|plot)\b/i,
   /\b(suggest|recommend)\b.*\b(charts?|visuals?|graphs?|visuali[sz]ation)\b/i,
   /\b(analyze|analysis|analyse)\s*(my|the|this)?\s*(data|dataset)?/i,
-  /\b(trend|correlation|distribution|pattern|outlier|anomal|insight|segment|cluster)\b/i,
+  /\b(trends?|correlations?|distributions?|patterns?|outliers?|anomal\w*|insights?|segments?|clusters?)\b/i,
   /\b(by region|by category|by month|by year|by product)\b/i,
   /\b(summarize|summary|overview|describe)\s*(my|the|this)?\s*(data|dataset)?/i,
   /\b(find|detect|discover|check|scan)\s*(pattern|trend|outlier|anomal|insight|correlation)/i,
@@ -749,7 +749,7 @@ export function processQuery(
     analysisAnswer = `### 📊 Chart Recommendations for ${schema.tableName}\n\nBased on **${schema.rowCount} rows** with **${numCols.length} numeric**, **${strCols.length} categorical**${dateCols.length ? `, **${dateCols.length} date**` : ''} columns:\n\n${recommendations.join('\n\n')}\n\n> 🎯 **My #1 pick:** ${chart!.type.charAt(0).toUpperCase() + chart!.type.slice(1)} Chart — ${chart!.reason}`;
   }
   // Find patterns / analyze
-  else if (/\b(pattern|find|discover|analyze|analysis|insight|anomal|outlier|correlat|trend)\b/i.test(q)) {
+  else if (/\b(patterns?|find|discover|analy[sz]e|analysis|insights?|anomal\w*|outliers?|correlat\w*|trends?)\b/i.test(q)) {
     const patternFindings: string[] = [];
     
     // Check for concentration

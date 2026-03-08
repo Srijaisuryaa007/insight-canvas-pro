@@ -200,15 +200,19 @@ export async function askCopilot(
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Copilot request failed');
+      let errorMsg = 'Copilot request failed';
+      try {
+        const error = await response.json();
+        errorMsg = error.error || errorMsg;
+      } catch { /* empty body */ }
+      throw new Error(errorMsg);
     }
 
     return await response.json();
   } catch (error) {
     console.error('[API] Copilot error:', error);
     return {
-      answer: 'Sorry, I encountered an error processing your request. Please try again.',
+      answer: '',
       confidence: 0,
       reasoning: 'API connection failed'
     };

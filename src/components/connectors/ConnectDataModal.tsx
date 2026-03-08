@@ -271,7 +271,7 @@ function WebScraperExpanded({ onClose, onImportComplete }: { onClose: () => void
   const [isLoading, setIsLoading] = useState(false);
   const [preview, setPreview] = useState<any>(null);
   const [error, setError] = useState('');
-  const { addDataset } = useData();
+  const { uploadData } = useData();
 
   const handlePreview = async () => {
     if (!url.trim()) return;
@@ -297,29 +297,21 @@ function WebScraperExpanded({ onClose, onImportComplete }: { onClose: () => void
     }
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!preview) return;
-    // Import tables if available, otherwise text
     const tables = preview.tables;
     if (tables && tables.length > 0 && tables[0].length > 0) {
       const tableData = tables[0];
       const headers = tableData[0] || [];
       const rows = tableData.slice(1).map((row: string[]) => {
-        const obj: Record<string, string> = {};
+        const obj: Record<string, unknown> = {};
         headers.forEach((h: string, i: number) => { obj[h || `col_${i}`] = row[i] || ''; });
         return obj;
       });
       if (rows.length > 0) {
-        addDataset({
-          id: `scrape-${Date.now()}`,
-          name: `Web Scrape - ${new URL(url).hostname}`,
-          fileName: `scrape_${Date.now()}.csv`,
-          data: rows,
-          columns: Object.keys(rows[0]),
-          rowCount: rows.length,
-          uploadedAt: new Date().toISOString(),
-        });
-        toast({ title: '✓ Web data imported', description: `${rows.length} rows imported from ${new URL(url).hostname}` });
+        const hostname = new URL(url).hostname;
+        await uploadData(`Web Scrape - ${hostname}`, `scrape_${Date.now()}.csv`, rows);
+        toast({ title: '✓ Web data imported', description: `${rows.length} rows imported from ${hostname}` });
         onImportComplete();
         return;
       }

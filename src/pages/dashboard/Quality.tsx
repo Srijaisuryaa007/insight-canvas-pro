@@ -191,10 +191,10 @@ export default function Quality() {
     setMissingStrategy(s => { const n = { ...s }; delete n[column]; return n; });
     const remaining = report ? report.issues.filter(i => !(i.column === column && i.type === 'missing')).length : 0;
     toast({ 
-      title: '✅ Missing Values Fixed', 
+      title: 'Missing Values Resolved', 
       description: remaining > 0
         ? `Applied "${strategy}" to "${column}". ${remaining} issue${remaining > 1 ? 's' : ''} remaining.`
-        : `Applied "${strategy}" to "${column}". All issues resolved! 🎉`
+        : `Applied "${strategy}" to "${column}". All issues cleared.`
     });
     if (currentDataset) await scanDataset(currentDataset.id, newData);
   };

@@ -35,6 +35,7 @@ export default function Quality() {
   const [isProfileRunning, setIsProfileRunning] = useState(false);
   const [isCleaningRunning, setIsCleaningRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('issues');
+  const [columnDecisions, setColumnDecisions] = useState<Record<string, 'drop' | 'fill' | 'keep'>>({});
 
   // Missing value strategy state
   const [missingStrategy, setMissingStrategy] = useState<Record<string, string>>({});

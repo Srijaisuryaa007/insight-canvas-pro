@@ -1485,7 +1485,7 @@ export default function Quality() {
                         )}
                         <Card className="bg-card border-border">
                           <CardContent className="py-4">
-                            <h4 className="font-medium text-sm mb-3">💡 Recommendations for Analysis</h4>
+                            <h4 className="font-medium text-sm mb-3">Recommendations</h4>
                             <div className="space-y-2">
                               {cleaningSummary.recommendations.map((r, i) => (
                                 <p key={i} className="text-xs text-muted-foreground">• {r}</p>

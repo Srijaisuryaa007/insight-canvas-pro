@@ -248,6 +248,7 @@ export default function Overview() {
 
       {showUploader && <DatasetUploader onUploadComplete={() => { setShowUploader(false); refreshDatasets(); }} />}
       {showConnectors && <ConnectorPanel />}
+      <ConnectDataModal open={showConnectModal} onOpenChange={setShowConnectModal} />
 
       <AnimatePresence mode="wait">
         {!hasData ? (

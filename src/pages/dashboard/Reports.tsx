@@ -70,6 +70,7 @@ const REPORT_SECTIONS = [
 const CREDIT_COSTS: Record<string, number> = { pdf: 5, pptx: 8, docx: 5 };
 const TEMPLATE_STORAGE_KEY = 'datapulse_report_template';
 const HISTORY_KEY = 'datapulse_report_history';
+const NOTES_KEY = 'datapulse_report_notes';
 
 interface ReportHistoryItem {
   id: string;

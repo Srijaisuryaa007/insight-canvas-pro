@@ -1283,7 +1283,7 @@ export default function Quality() {
                       <Card className="bg-primary/5 border-primary/20">
                         <CardContent className="py-4">
                           <div className="flex items-center justify-between">
-                            <p className="text-lg font-bold">╔══ DATA CLEANING COMPLETE ✅ ══╗</p>
+                            <p className="text-lg font-bold tracking-wide uppercase">Data Cleaning Complete</p>
                             <div className="flex items-center gap-3">
                               <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-primary-foreground font-bold text-xl",
                                 cleaningSummary.letterGrade === 'A' ? 'bg-emerald-500' : cleaningSummary.letterGrade === 'B' ? 'bg-chart-1' : cleaningSummary.letterGrade === 'C' ? 'bg-amber-500' : 'bg-destructive'

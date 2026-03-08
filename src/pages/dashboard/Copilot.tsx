@@ -6,11 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Database, Lightbulb, BarChart3, Eye, Zap, Target, Terminal } from 'lucide-react';
+import { Sparkles, Database, Lightbulb, BarChart3, Eye, Zap, Target } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PLANS } from '@/types/subscription';
-import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
 
 export default function Copilot() {
   const { currentDataset, currentData, datasets, selectDataset } = useData();

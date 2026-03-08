@@ -30,7 +30,7 @@ let cachedActiveTab: string = 'issues';
 let cachedColumnDecisions: Record<string, 'drop' | 'fill' | 'keep'> = {};
 
 export default function Quality() {
-  const { datasets, currentDataset, currentData, selectDataset, updateCurrentData, undo, redo, canUndo, canRedo } = useData();
+  const { datasets, currentDataset, currentData, selectDataset, updateCurrentData, updateCleanedData, undo, redo, canUndo, canRedo } = useData();
   const { isScanning, report, scanDataset, getFixPreview, applyFix, setReport } = useDataQuality();
   const { getCreditCost } = useSubscription();
   const [previewFix, setPreviewFix] = useState<{ column: string; type: string; description: string; before: string; after: string; affectedRows: number } | null>(null);

@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { 
-  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2
+  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2, Cpu, CheckCircle2, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePayment } from '@/hooks/usePayment';
 import { useAuth } from '@/contexts/AuthContext';
 import { PLANS, PlanType } from '@/types/subscription';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 
@@ -18,6 +20,59 @@ export default function Settings() {
   const { user } = useAuth();
   const { plan, credits, isEnterprise, upgradePlan } = useSubscription();
   const { isProcessing, currentPackage, currentPlanUpgrade, creditPackages, initiatePayment, initiateSubscriptionUpgrade } = usePayment();
+  
+  // API Test state
+  const [apiKey, setApiKey] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+
+  const testApiKey = async () => {
+    if (!apiKey.trim()) {
+      toast({ title: 'Enter API Key', description: 'Please enter your Groq or Grok API key', variant: 'destructive' });
+      return;
+    }
+
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      // Detect API type
+      const isGroq = apiKey.startsWith('gsk_');
+      const apiUrl = isGroq 
+        ? 'https://api.groq.com/openai/v1/chat/completions'
+        : 'https://api.x.ai/v1/chat/completions';
+      const model = isGroq ? 'llama-3.3-70b-versatile' : 'grok-beta';
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: 'Say "API working!" in 3 words max.' }],
+          max_tokens: 20
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || 'OK';
+        setTestResult('success');
+        toast({ title: '✅ API Key Valid!', description: `Response: "${reply}"` });
+      } else {
+        const error = await response.json();
+        setTestResult('error');
+        toast({ title: '❌ API Error', description: error.error?.message || 'Invalid API key', variant: 'destructive' });
+      }
+    } catch (err) {
+      setTestResult('error');
+      toast({ title: '❌ Connection Failed', description: 'Could not reach the API server', variant: 'destructive' });
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const planConfigs = planOrder.map(id => ({
     ...PLANS[id],
@@ -52,7 +107,44 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Subscription Plans */}
+      {/* API Key Test */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Cpu className="h-5 w-5" />Test AI API Key
+          </CardTitle>
+          <CardDescription>
+            Test your Groq (gsk_...) or Grok/X.AI (xai-...) API key to verify it works.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-3">
+            <Input 
+              type="password"
+              placeholder="Paste your API key here (gsk_... or xai-...)"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={testApiKey} disabled={isTesting}>
+              {isTesting ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Testing...</>
+              ) : testResult === 'success' ? (
+                <><CheckCircle2 className="h-4 w-4 mr-2" />Valid!</>
+              ) : testResult === 'error' ? (
+                <><XCircle className="h-4 w-4 mr-2" />Failed</>
+              ) : (
+                'Test API'
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Your key is tested directly with the AI provider. It's not stored anywhere.
+          </p>
+        </CardContent>
+      </Card>
+
+
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <CreditCard className="h-5 w-5" />Subscription Plans

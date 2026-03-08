@@ -381,7 +381,7 @@ app.post('/api/copilot', async (req, res) => {
       const apiUrl = isGroq 
         ? 'https://api.groq.com/openai/v1/chat/completions'
         : 'https://api.x.ai/v1/chat/completions';
-      const model = isGroq ? 'llama-3.3-70b-versatile' : 'grok-beta';
+      const model = isGroq ? 'llama-3.1-8b-instant' : 'grok-beta';
 
       // Use real AI API
       try {

@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronUp, ArrowLeftRight, Plus, Code, Undo2, Redo2, FlaskConical } from 'lucide-react';
+import { Database, FileSpreadsheet, Trash2, Eye, Shield, MoreVertical, Calendar, Rows, ChevronUp, ArrowLeftRight, Plus, Undo2, Redo2, FlaskConical } from 'lucide-react';
 import { DatasetUploader } from '@/components/data/DatasetUploader';
 import { ColumnInspector } from '@/components/data/ColumnInspector';
 import { FormulaColumnEditor } from '@/components/data/FormulaColumnEditor';
-import { DAXMeasurePanel } from '@/components/data/DAXMeasurePanel';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,7 +20,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { applyFormulaColumn, FormulaColumn, DAXMeasure, executeDAXMeasure } from '@/lib/formulaEngine';
+import { applyFormulaColumn, FormulaColumn } from '@/lib/formulaEngine';
 
 const ROW_LIMITS: Record<string, number> = {
   free: 1000, basic: 10000, pro: 100000, enterprise: Infinity,
@@ -34,7 +34,7 @@ export default function Datasets() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formulaEditorOpen, setFormulaEditorOpen] = useState(false);
   const [formulaColumns, setFormulaColumns] = useState<FormulaColumn[]>([]);
-  const [daxMeasures, setDaxMeasures] = useState<DAXMeasure[]>([]);
+  
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const navigate = useNavigate();
@@ -284,35 +284,6 @@ export default function Datasets() {
                             })}
                           </TableRow>
                         ))}
-                        {/* DAX Measures Summary Row */}
-                        {daxMeasures.length > 0 && (
-                          <TableRow className="bg-chart-1/5 border-t-2 border-primary/30 font-semibold">
-                            <TableCell className="text-[10px] text-primary sticky left-0 bg-chart-1/10 z-10 text-center border-r border-border font-mono">
-                              Σ
-                            </TableCell>
-                            {dataColumns.map(col => {
-                              const measure = daxMeasures.find(m => {
-                                const colMatch = m.formula.match(/\w+\[(\w+)\]/);
-                                const simpleMatch = m.formula.match(/(?:SUM|AVERAGE|COUNT|MAX|MIN)\s*\(\s*(\w+)\s*\)/i);
-                                const matchedCol = colMatch?.[1] || simpleMatch?.[1];
-                                return matchedCol === col;
-                              });
-                              if (measure) {
-                                let val: number | null = null;
-                                try { val = executeDAXMeasure(measure.formula, viewData); } catch {}
-                                return (
-                                  <TableCell key={col} className="text-xs border-r border-border/30 p-0">
-                                    <div className="px-2 py-1.5 text-primary font-mono font-bold">
-                                      {val !== null ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                                      <span className="ml-1 text-[8px] font-normal text-muted-foreground">{measure.name}</span>
-                                    </div>
-                                  </TableCell>
-                                );
-                              }
-                              return <TableCell key={col} className="text-xs border-r border-border/30"><div className="px-2 py-1.5 text-muted-foreground">—</div></TableCell>;
-                            })}
-                          </TableRow>
-                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -355,30 +326,9 @@ export default function Datasets() {
                       ))}
                     </div>
                   </div>
-                  {daxMeasures.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Measures</p>
-                      <div className="space-y-1">
-                        {daxMeasures.map(m => (
-                          <div key={m.id} className="flex items-center justify-between px-2 py-1 rounded bg-chart-1/5 text-xs">
-                            <span className="flex items-center gap-1"><Code className="h-3 w-3 text-chart-1" />{m.name}</span>
-                            <Badge variant="outline" className="text-[9px] h-4">DAX</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
-              {/* DAX Measures */}
-              <DAXMeasurePanel
-                measures={daxMeasures}
-                data={currentData}
-                columns={currentDataset.columns.map(c => c.name)}
-                onAddMeasure={m => setDaxMeasures(prev => [...prev, m])}
-                onRemoveMeasure={id => setDaxMeasures(prev => prev.filter(m => m.id !== id))}
-              />
             </>
           ) : (
             <Card className="bg-card border-border">

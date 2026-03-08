@@ -730,7 +730,7 @@ export function processQuery(
     }
   }
   // Chart recommendation request
-  else if (/\b(chart|graph|visualize|visualization|recommend.*chart|suggest.*chart|best.*chart)\b/i.test(q)) {
+  else if (/\b(charts?|graphs?|visuali[sz]e?|visuali[sz]ation|recommend|suggest)\b/i.test(q)) {
     const dateCols = schema.columns.filter(c => c.type === 'date');
     const recommendations: string[] = [];
     if (dateCols.length > 0 && numCols.length > 0)

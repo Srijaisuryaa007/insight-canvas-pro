@@ -388,51 +388,26 @@ export function runFullCleaningPipeline(
   }
 
   // ══════════════════════════════════════════════
-  // STEP 3: Remove Duplicates (keep='first')
+  // STEP 3: Remove Duplicates (All 8 Scenarios)
   // ══════════════════════════════════════════════
   {
-    const actions: string[] = [];
-    const details: CleaningStepDetail[] = [];
     const before = current.length;
+    const colsBeforeDup = Object.keys(current[0] || {}).length;
+    
+    const dupResult = runFullDuplicateCheck(current);
+    current = dupResult.cleanedData;
+    duplicatesRemoved += (before - dupResult.rowsAfter);
+    
+    // Store duplicate report on summary for the UI
+    (summary as any).__duplicateReport = dupResult.report;
 
-    // Exact duplicates — drop_duplicates(keep='first')
-    const seenExact = new Set<string>();
-    const dedupedExact: Record<string, unknown>[] = [];
-    current.forEach(row => {
-      const key = JSON.stringify(row);
-      if (!seenExact.has(key)) { seenExact.add(key); dedupedExact.push(row); }
-    });
-    const exactDupes = before - dedupedExact.length;
-    if (exactDupes > 0) {
-      actions.push(`🔍 Full Duplicates Found: ${exactDupes} rows`);
-      actions.push(`✅ Kept: 1 original row each (keep='first')`);
-      actions.push(`❌ Removed: ${exactDupes} extra copies`);
-      actions.push(`📊 Rows Before: ${before} → Rows After: ${dedupedExact.length}`);
-      details.push({ column: '(all columns)', before: `${before} rows`, after: `${dedupedExact.length} rows`, action: `Removed ${exactDupes} exact dupes` });
+    const actions = [...dupResult.report.actions];
+    const details = [...dupResult.report.details];
+    
+    // Final summary line
+    if (before !== dupResult.rowsAfter || colsBeforeDup !== dupResult.colsAfter) {
+      actions.push(`📊 Rows: ${before} → ${dupResult.rowsAfter} | Columns: ${colsBeforeDup} → ${dupResult.colsAfter}`);
     }
-    current = dedupedExact;
-    duplicatesRemoved += exactDupes;
-
-    // Partial duplicates on key columns
-    const currentKeys = Object.keys(current[0] || {});
-    const partialDupeCols = currentKeys.filter(k =>
-      /email|phone|name|id|username|account/i.test(k) &&
-      current.some(r => typeof r[k] === 'string')
-    );
-    let partialRemoved = 0;
-    partialDupeCols.forEach(col => {
-      const beforePartial = current.length;
-      const seenPartial = new Set<string>();
-      current = current.filter(row => {
-        const key = String(row[col] ?? '').toLowerCase().trim();
-        if (key === '') return true;
-        if (seenPartial.has(key)) return false;
-        seenPartial.add(key);
-        return true;
-      });
-      const removed = beforePartial - current.length;
-      if (removed > 0) {
-        partialRemoved += removed;
         actions.push(`🔍 Partial dupes on "${col}": ${removed} extra copies removed (subset=['${col}'], keep='first')`);
         details.push({ column: col, before: `${beforePartial} rows`, after: `${current.length} rows`, action: `Removed ${removed} partial dupes` });
       }

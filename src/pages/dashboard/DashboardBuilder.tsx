@@ -4,6 +4,8 @@ import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { DashboardCanvas } from '@/components/dashboard/DashboardCanvas';
 import { WidgetConfigPanel } from '@/components/dashboard/WidgetConfigPanel';
+import { WorkspacePanel, PanelPosition } from '@/components/dashboard/WorkspacePanel';
+import { PanelContent } from '@/components/dashboard/PanelContent';
 import { DASHBOARD_TEMPLATES } from '@/lib/dashboardTemplates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +17,8 @@ import { Separator } from '@/components/ui/separator';
 import {
   LayoutDashboard, Plus, Undo2, Redo2, Save, ZoomIn, ZoomOut,
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
-  ChevronLeft, Download, FolderOpen, Lock, Image, Copy, FileText, Presentation, File
+  ChevronLeft, Download, FolderOpen, Lock, Image, Copy, FileText, Presentation, File,
+  PanelLeft, PanelRight, PanelTop, PanelBottom
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
@@ -28,6 +31,27 @@ const WIDGET_LIMITS: Record<string, number> = {
   pro: 40,
   enterprise: Infinity,
 };
+
+// Panel layout persistence
+const PANEL_STORAGE_KEY = 'datapulse_panel_layout';
+
+interface PanelState {
+  activePanels: PanelPosition[];
+  sizes: Record<PanelPosition, number>;
+  collapsed: Record<PanelPosition, boolean>;
+}
+
+function loadPanelState(): PanelState {
+  try {
+    const saved = localStorage.getItem(PANEL_STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { activePanels: ['left'], sizes: { left: 240, right: 240, top: 200, bottom: 200 }, collapsed: { left: false, right: false, top: false, bottom: false } };
+}
+
+function savePanelState(state: PanelState) {
+  localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify(state));
+}
 
 export default function DashboardBuilder() {
   const {
@@ -47,6 +71,30 @@ export default function DashboardBuilder() {
   const [newPageName, setNewPageName] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
+
+  // Panel state
+  const [panelState, setPanelState] = useState<PanelState>(loadPanelState);
+
+  useEffect(() => { savePanelState(panelState); }, [panelState]);
+
+  const togglePanel = useCallback((pos: PanelPosition) => {
+    setPanelState(prev => {
+      const isActive = prev.activePanels.includes(pos);
+      return {
+        ...prev,
+        activePanels: isActive ? prev.activePanels.filter(p => p !== pos) : [...prev.activePanels, pos],
+        collapsed: { ...prev.collapsed, [pos]: false },
+      };
+    });
+  }, []);
+
+  const toggleCollapse = useCallback((pos: PanelPosition) => {
+    setPanelState(prev => ({ ...prev, collapsed: { ...prev.collapsed, [pos]: !prev.collapsed[pos] } }));
+  }, []);
+
+  const resizePanel = useCallback((pos: PanelPosition, size: number) => {
+    setPanelState(prev => ({ ...prev, sizes: { ...prev.sizes, [pos]: size } }));
+  }, []);
 
   const widgetLimit = WIDGET_LIMITS[plan] || 6;
   const currentWidgetCount = currentPage?.widgets.length || 0;
@@ -266,6 +314,22 @@ render();
 
         <Separator orientation="vertical" className="h-6" />
 
+        {/* Panel layout toggles */}
+        <Button variant={panelState.activePanels.includes('left') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('left')} title="Left Panel">
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+        <Button variant={panelState.activePanels.includes('right') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('right')} title="Right Panel">
+          <PanelRight className="h-4 w-4" />
+        </Button>
+        <Button variant={panelState.activePanels.includes('top') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('top')} title="Top Panel">
+          <PanelTop className="h-4 w-4" />
+        </Button>
+        <Button variant={panelState.activePanels.includes('bottom') ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => togglePanel('bottom')} title="Bottom Panel">
+          <PanelBottom className="h-4 w-4" />
+        </Button>
+
+        <Separator orientation="vertical" className="h-6" />
+
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(50, zoom - 10))}><ZoomOut className="h-4 w-4" /></Button>
@@ -327,10 +391,65 @@ render();
         </Dialog>
       </div>
 
-      {/* Canvas + Config */}
-      <div className="flex gap-3 flex-1 overflow-hidden" ref={containerRef}>
-        <DashboardCanvas width={selectedWidgetId ? containerWidth - 300 : containerWidth} />
-        {selectedWidgetId && <WidgetConfigPanel />}
+      {/* Workspace with panels */}
+      <div className="flex flex-col flex-1 overflow-hidden gap-1">
+        {/* Top panel */}
+        {panelState.activePanels.includes('top') && (
+          <WorkspacePanel
+            position="top"
+            collapsed={panelState.collapsed.top}
+            onToggle={() => toggleCollapse('top')}
+            size={panelState.sizes.top}
+            onResize={(s) => resizePanel('top', s)}
+          >
+            <PanelContent />
+          </WorkspacePanel>
+        )}
+
+        {/* Middle row: left + canvas + right */}
+        <div className="flex gap-1 flex-1 overflow-hidden" ref={containerRef}>
+          {panelState.activePanels.includes('left') && (
+            <WorkspacePanel
+              position="left"
+              collapsed={panelState.collapsed.left}
+              onToggle={() => toggleCollapse('left')}
+              size={panelState.sizes.left}
+              onResize={(s) => resizePanel('left', s)}
+            >
+              <PanelContent />
+            </WorkspacePanel>
+          )}
+
+          <div className="flex-1 flex gap-3 overflow-hidden min-w-0">
+            <DashboardCanvas width={selectedWidgetId ? containerWidth - 300 : containerWidth} />
+            {selectedWidgetId && <WidgetConfigPanel />}
+          </div>
+
+          {panelState.activePanels.includes('right') && (
+            <WorkspacePanel
+              position="right"
+              collapsed={panelState.collapsed.right}
+              onToggle={() => toggleCollapse('right')}
+              size={panelState.sizes.right}
+              onResize={(s) => resizePanel('right', s)}
+            >
+              <PanelContent />
+            </WorkspacePanel>
+          )}
+        </div>
+
+        {/* Bottom panel */}
+        {panelState.activePanels.includes('bottom') && (
+          <WorkspacePanel
+            position="bottom"
+            collapsed={panelState.collapsed.bottom}
+            onToggle={() => toggleCollapse('bottom')}
+            size={panelState.sizes.bottom}
+            onResize={(s) => resizePanel('bottom', s)}
+          >
+            <PanelContent />
+          </WorkspacePanel>
+        )}
       </div>
     </div>
   );

@@ -274,7 +274,7 @@ render();
         <Button variant="outline" size="sm" onClick={() => handleAddWidget('text', { textContent: 'Text', title: '' })} disabled={!canAddWidget}>
           <Type className="h-4 w-4 mr-1" />Text
         </Button>
-        <Button variant="outline" size="sm" onClick={handleCopyFromVisualization} disabled={!canAddWidget || !currentData.length}>
+        <Button variant="outline" size="sm" onClick={handleCopyFromVisualization} disabled={!currentData.length}>
           <Copy className="h-4 w-4 mr-1" />Copy from Viz
         </Button>
 

@@ -169,6 +169,17 @@ export function useSubscription() {
     return CREDIT_COSTS[action];
   }, []);
 
+  const hasPersistentStorage = currentPlan.hasPersistentStorage;
+  const maxStorageMB = currentPlan.maxStorageMB;
+
+  const canUploadFile = useCallback((fileSizeMB: number): { allowed: boolean; reason?: string } => {
+    if (currentPlan.maxStorageMB === -1) return { allowed: true };
+    if (fileSizeMB > currentPlan.maxStorageMB) {
+      return { allowed: false, reason: `File exceeds your ${currentPlan.maxStorageMB}MB storage limit. Upgrade to get more storage.` };
+    }
+    return { allowed: true };
+  }, [currentPlan]);
+
   const isAIAvailable = useCallback((): boolean => {
     return currentPlan.aiModels.length > 0;
   }, [currentPlan]);
@@ -185,6 +196,7 @@ export function useSubscription() {
     canPerformAction, consumeCredits, upgradePlan, buyCredits, addVerifiedCredits,
     isChartAvailable, getAvailableCharts, isFeatureAvailable,
     canAddDataset, canIngestRows, getCreditCost, isAIAvailable,
-    getRequiredPlan, meetsPlanRequirement, getUpgradeMessage
+    getRequiredPlan, meetsPlanRequirement, getUpgradeMessage,
+    hasPersistentStorage, maxStorageMB, canUploadFile
   };
 }

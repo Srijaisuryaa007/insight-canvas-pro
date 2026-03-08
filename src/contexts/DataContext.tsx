@@ -29,7 +29,7 @@ interface DataContextType {
   isLoading: boolean;
   isDataCleaned: boolean;
   cleaningReport: Record<string, unknown> | null;
-  uploadData: (name: string, fileName: string, data: Record<string, unknown>[]) => Promise<boolean>;
+  uploadData: (name: string, fileName: string, data: Record<string, unknown>[], fileSizeMB?: number) => Promise<boolean>;
   refreshDatasets: () => Promise<void>;
   selectDataset: (id: string) => Promise<void>;
   getDatasetData: (id: string) => Promise<Record<string, unknown>[]>;
@@ -79,7 +79,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDataCleaned, setIsDataCleaned] = useState(false);
   const [cleaningReport, setCleaningReport] = useState<Record<string, unknown> | null>(null);
-  const { consumeCredits, canAddDataset } = useSubscription();
+  const { consumeCredits, canAddDataset, hasPersistentStorage, canUploadFile } = useSubscription();
   const { user } = useAuth();
 
   // Undo/Redo history
@@ -120,10 +120,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Redo', description: 'Reapplied data change.' });
   }, [currentDataset]);
 
-  // Persist datasets to localStorage whenever they change
+  // Persist datasets to localStorage only for paid plans
   useEffect(() => {
-    if (datasets.length > 0) saveToLocalStorage(datasets);
-  }, [datasets]);
+    if (datasets.length > 0 && hasPersistentStorage) saveToLocalStorage(datasets);
+  }, [datasets, hasPersistentStorage]);
 
 
 
@@ -175,11 +175,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [datasets, currentDataset, activateDataset]);
 
 
-  const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[]): Promise<boolean> => {
+  const uploadData = useCallback(async (name: string, fileName: string, data: Record<string, unknown>[], fileSizeMB?: number): Promise<boolean> => {
     if (!canAddDataset(datasets.length)) {
       toast({ title: 'Dataset Limit Reached', description: 'Upgrade your plan to add more datasets.', variant: 'destructive' });
       return false;
     }
+
+    // Check file size against storage limit
+    if (fileSizeMB !== undefined) {
+      const sizeCheck = canUploadFile(fileSizeMB);
+      if (!sizeCheck.allowed) {
+        toast({ title: 'Storage Limit Exceeded', description: sizeCheck.reason, variant: 'destructive' });
+        return false;
+      }
+    }
+
     if (!consumeCredits('upload-dataset')) return false;
 
     setIsLoading(true);
@@ -190,8 +200,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         uploadedAt: new Date().toISOString(), data,
       };
 
-      // Save to Supabase
-      if (isSupabaseConfigured && supabase && user) {
+      // Only save to Supabase if the plan has persistent storage
+      if (hasPersistentStorage && isSupabaseConfigured && supabase && user) {
         const { error } = await supabase.from('datasets').insert({
           id: localDataset.id, user_id: user.id, dataset_name: name,
           file_name: fileName, row_count: data.length,
@@ -200,9 +210,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (error) console.error('[DataContext] Supabase insert error:', error);
       }
 
+      // Free users: data stays in memory only (session), not persisted to localStorage or DB
+      if (!hasPersistentStorage) {
+        toast({ title: 'Dataset Loaded (Session Only)', description: `${name} loaded with ${data.length} rows. Data will be lost when you close the browser. Upgrade for persistent storage.` });
+      } else {
+        toast({ title: 'Dataset Uploaded', description: `${name} uploaded with ${data.length} rows.` });
+      }
+
       setDatasets(prev => [...prev, localDataset]);
       activateDataset(localDataset, data);
-      toast({ title: 'Dataset Uploaded', description: `${name} uploaded with ${data.length} rows.` });
       return true;
     } catch (error) {
       console.error('Upload error:', error);
@@ -211,7 +227,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [datasets.length, canAddDataset, consumeCredits, activateDataset, user]);
+  }, [datasets.length, canAddDataset, consumeCredits, activateDataset, user, hasPersistentStorage, canUploadFile]);
 
   const selectDataset = useCallback(async (id: string) => {
     const dataset = datasets.find(d => d.id === id);

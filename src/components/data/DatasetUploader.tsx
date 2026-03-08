@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { parseCSV, detectSchema } from '@/lib/dataParser';
 import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/hooks/useSubscription';
+import { Badge } from '@/components/ui/badge';
 
 interface DatasetUploaderProps {
   onUploadComplete?: (data: Record<string, unknown>[]) => void;
@@ -24,7 +25,7 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
   const [success, setSuccess] = useState(false);
 
   const { uploadData, datasets } = useData();
-  const { canAddDataset, getCreditCost } = useSubscription();
+  const { canAddDataset, getCreditCost, hasPersistentStorage, maxStorageMB, canUploadFile, isFree } = useSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canUpload = canAddDataset(datasets.length);
@@ -53,6 +54,12 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
 
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv'))) {
+      const fileSizeMB = droppedFile.size / (1024 * 1024);
+      const sizeCheck = canUploadFile(fileSizeMB);
+      if (!sizeCheck.allowed) {
+        setError(sizeCheck.reason || 'File too large for your plan');
+        return;
+      }
       setFile(droppedFile);
       setDatasetName(droppedFile.name.replace('.csv', ''));
       setError(null);
@@ -64,6 +71,12 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      const fileSizeMB = selectedFile.size / (1024 * 1024);
+      const sizeCheck = canUploadFile(fileSizeMB);
+      if (!sizeCheck.allowed) {
+        setError(sizeCheck.reason || 'File too large for your plan');
+        return;
+      }
       setFile(selectedFile);
       setDatasetName(selectedFile.name.replace('.csv', ''));
       setError(null);
@@ -97,8 +110,9 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
       clearInterval(progressInterval);
       setProgress(90);
 
-      // Upload to backend API
-      const success = await uploadData(datasetName || file.name, file.name, data);
+      // Upload to backend API — pass file size for storage limit check
+      const fileSizeMB = file.size / (1024 * 1024);
+      const success = await uploadData(datasetName || file.name, file.name, data, fileSizeMB);
 
       if (success) {
         setProgress(100);
@@ -134,11 +148,28 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Upload Dataset</h3>
-          {!canUpload && (
-            <span className="text-sm text-destructive">
-              Dataset limit reached
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {isFree && (
+              <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">
+                Session only — no storage
+              </Badge>
+            )}
+            {!isFree && maxStorageMB !== -1 && (
+              <Badge variant="outline" className="text-xs">
+                {maxStorageMB >= 1024 ? `${(maxStorageMB / 1024).toFixed(0)}GB` : `${maxStorageMB}MB`} storage
+              </Badge>
+            )}
+            {maxStorageMB === -1 && (
+              <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                Unlimited storage
+              </Badge>
+            )}
+            {!canUpload && (
+              <span className="text-sm text-destructive">
+                Dataset limit reached
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Hidden file input */}

@@ -1338,7 +1338,7 @@ export default function Quality() {
                       {/* Summary Stats */}
                       <Card className="bg-card border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">📊 Summary</CardTitle>
+                          <CardTitle className="text-base">Summary</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

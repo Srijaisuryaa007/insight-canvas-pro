@@ -110,7 +110,7 @@ function recommendCharts(data: Record<string, unknown>[]): Array<{ type: string;
   if (uniqueCategories >= 3 && uniqueCategories <= 8 && numCols.length >= 1) {
     recs.push({ type: 'radar', reason: `Multi-axis comparison across ${uniqueCategories} categories`, score: 68 });
   }
-  return recs.sort((a, b) => b.score - a.score).slice(0, 8);
+  return recs.sort((a, b) => b.score - a.score).slice(0, 12);
 }
 
 // ─── Sub-components ───────────────────────────────────────────────

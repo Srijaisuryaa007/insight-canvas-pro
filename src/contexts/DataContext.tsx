@@ -120,7 +120,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Redo', description: 'Reapplied data change.' });
   }, [currentDataset]);
 
-  useEffect(() => { refreshDatasets(); }, []);
+  // Persist datasets to localStorage whenever they change
+  useEffect(() => {
+    if (datasets.length > 0) saveToLocalStorage(datasets);
+  }, [datasets]);
+
+  // Auto-restore last active dataset on mount
+  useEffect(() => {
+    if (currentDataset || datasets.length === 0) return;
+    const lastActiveId = localStorage.getItem(LS_ACTIVE);
+    const target = datasets.find(d => d.id === lastActiveId) || datasets[datasets.length - 1];
+    if (target?.data && target.data.length > 0) {
+      activateDataset(target, target.data);
+    }
+  }, [datasets, currentDataset, activateDataset]);
+
 
   const refreshDatasets = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase || !user) return;

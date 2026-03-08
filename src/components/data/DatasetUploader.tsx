@@ -54,6 +54,12 @@ export function DatasetUploader({ onUploadComplete }: DatasetUploaderProps) {
 
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv'))) {
+      const fileSizeMB = droppedFile.size / (1024 * 1024);
+      const sizeCheck = canUploadFile(fileSizeMB);
+      if (!sizeCheck.allowed) {
+        setError(sizeCheck.reason || 'File too large for your plan');
+        return;
+      }
       setFile(droppedFile);
       setDatasetName(droppedFile.name.replace('.csv', ''));
       setError(null);

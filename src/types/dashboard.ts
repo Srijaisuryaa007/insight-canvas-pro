@@ -104,12 +104,12 @@ export const DEFAULT_THEME: DashboardTheme = {
 
 export function createWidget(type: DashboardWidget['type'], x: number, y: number, config?: Partial<WidgetConfig>): DashboardWidget {
   const defaults: Record<string, { w: number; h: number; minW: number; minH: number }> = {
-    chart: { w: 6, h: 4, minW: 3, minH: 3 },
-    kpi: { w: 3, h: 2, minW: 2, minH: 2 },
-    table: { w: 12, h: 4, minW: 4, minH: 3 },
-    text: { w: 4, h: 2, minW: 2, minH: 1 },
-    filter: { w: 3, h: 2, minW: 2, minH: 1 },
-    image: { w: 4, h: 3, minW: 2, minH: 2 },
+    chart: { w: 12, h: 5, minW: 3, minH: 3 },
+    kpi: { w: 4, h: 3, minW: 2, minH: 2 },
+    table: { w: 12, h: 5, minW: 4, minH: 3 },
+    text: { w: 12, h: 2, minW: 2, minH: 1 },
+    filter: { w: 4, h: 2, minW: 2, minH: 1 },
+    image: { w: 6, h: 4, minW: 2, minH: 2 },
   };
   const d = defaults[type] || defaults.chart;
   return {

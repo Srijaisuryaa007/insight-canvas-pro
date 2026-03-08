@@ -8,11 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, X, ChevronDown, GripVertical, Plus } from 'lucide-react';
-import { CHART_TYPES_BY_PLAN } from '@/types/subscription';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Trash2, X, ChevronDown, GripVertical, Plus, Lock } from 'lucide-react';
+import { CHART_TYPES_BY_PLAN, PLANS } from '@/types/subscription';
+import type { PlanType } from '@/types/subscription';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const AGGREGATIONS = ['sum', 'avg', 'count', 'min', 'max'] as const;
 const PALETTES = ['default', 'pastel', 'bold', 'monochrome', 'ocean', 'sunset'];

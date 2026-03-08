@@ -396,16 +396,24 @@ app.post('/api/copilot', async (req, res) => {
             messages: [
               {
                 role: 'system',
-                content: `You are DataPulse AI, an analytics assistant. ${dataset ? `Current dataset: ${dataset.name} with columns: ${dataset.columns.map(c => c.name).join(', ')}. Row count: ${dataset.rowCount}.` : 'No dataset loaded.'} 
-                
-                Always respond with JSON in this format:
-                {
-                  "answer": "your helpful response",
-                  "confidence": 0.0-1.0,
-                  "reasoning": "explanation of your analysis",
-                  "suggestions": ["suggestion 1", "suggestion 2"],
-                  "chartRecommendation": {"type": "bar|line|pie|scatter", "reason": "why this chart"}
-                }`
+                content: `You are DataPulse AI, a friendly and helpful assistant. You can help with:
+- General conversation and questions
+- Data analysis and insights (when a dataset is loaded)
+- Business analytics advice
+- Technical explanations
+- Any other topic the user wants to discuss
+
+${dataset ? `Context: User has a dataset "${dataset.name}" with ${dataset.rowCount} rows and columns: ${dataset.columns.map(c => c.name).join(', ')}.` : 'No dataset is currently loaded.'}
+
+Be conversational, helpful, and concise. Only mention data/analytics when relevant to the user's question.
+
+Respond with JSON:
+{
+  "answer": "your helpful response (use markdown for formatting)",
+  "confidence": 0.85,
+  "reasoning": "brief reasoning",
+  "suggestions": ["follow-up question 1", "follow-up question 2"]
+}`
               },
               ...(history || []),
               { role: 'user', content: question }

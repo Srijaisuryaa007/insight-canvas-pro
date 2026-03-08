@@ -46,10 +46,33 @@ function splitSelectParts(selectPart: string): string[] {
   return parts;
 }
 
+/** Case-insensitive column value getter */
+function getColumnValue(row: Record<string, unknown>, colName: string): unknown {
+  if (row[colName] !== undefined) return row[colName];
+  const normalizedTarget = colName.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const matchingKey = Object.keys(row).find(
+    key => key.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') === normalizedTarget
+  );
+  return matchingKey ? row[matchingKey] : null;
+}
+
+/** Resolves column names in a query to match actual data column names */
+function resolveColumns(query: string, data: Record<string, unknown>[]): string {
+  if (!data.length) return query;
+  const actualColumns = Object.keys(data[0]);
+  let resolved = query;
+  // For each word in the query that could be a column name, try to match it
+  actualColumns.forEach(actualCol => {
+    const regex = new RegExp(`\\b${actualCol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    resolved = resolved.replace(regex, actualCol);
+  });
+  return resolved;
+}
+
 function parseSelectQuery(sql: string, data: Record<string, unknown>[]): { result: Record<string, unknown>[]; error?: string } {
   if (!data.length) return { result: [], error: 'No data available.' };
   try {
-    let query = sql.trim();
+    let query = resolveColumns(sql.trim(), data);
     const cols = Object.keys(data[0]);
 
     // Handle CTE: extract the final SELECT

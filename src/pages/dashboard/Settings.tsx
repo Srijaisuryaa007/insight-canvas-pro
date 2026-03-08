@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { 
   Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2
 } from 'lucide-react';
@@ -16,6 +15,42 @@ import { cn } from '@/lib/utils';
 const planOrder: PlanType[] = ['free', 'basic', 'pro', 'enterprise'];
 
 export default function Settings() {
+  const { user } = useAuth();
+  const { plan, credits, isEnterprise, upgradePlan } = useSubscription();
+  const { isProcessing, currentPackage, currentPlanUpgrade, creditPackages, initiatePayment, initiateSubscriptionUpgrade } = usePayment();
+
+  const planConfigs = planOrder.map(id => ({
+    ...PLANS[id],
+    popular: id === 'pro',
+    icon: id === 'enterprise' ? Crown : id === 'pro' ? Sparkles : Zap,
+  }));
+
+  return (
+    <div className="space-y-6 max-w-5xl">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <SettingsIcon className="h-7 w-7" />
+          Settings
+        </h1>
+        <p className="text-muted-foreground">Manage your account and subscription</p>
+      </div>
+
+      {/* Account */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="h-5 w-5" />Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div><Label className="text-muted-foreground">Name</Label><p className="font-medium">{user?.name || 'User'}</p></div>
+            <div><Label className="text-muted-foreground">Email</Label><p className="font-medium">{user?.email || '-'}</p></div>
+            <div><Label className="text-muted-foreground">Current Plan</Label><Badge className="mt-1 capitalize">{plan}</Badge></div>
+            <div><Label className="text-muted-foreground">Credits</Label><p className="font-medium">{isEnterprise ? 'Unlimited' : credits}</p></div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">

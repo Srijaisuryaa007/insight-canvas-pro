@@ -6,18 +6,61 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Database, Lightbulb, BarChart3, Eye, Zap, Target } from 'lucide-react';
+import { Sparkles, Database, Lightbulb, BarChart3, Eye, Zap, Target, Lock } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PLANS } from '@/types/subscription';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
 
 export default function Copilot() {
   const { currentDataset, currentData, datasets, selectDataset } = useData();
-  const { plan } = useSubscription();
+  const { plan, isAIAvailable, isFree } = useSubscription();
   
   const [stakeholderView, setStakeholderView] = useState(false);
   const [aiMode, setAiMode] = useState<'fast' | 'precise'>('fast');
   const planConfig = PLANS[plan];
   const availableModels = planConfig.aiModels;
+
+  // Block free users from AI Copilot
+  if (isFree || !isAIAvailable()) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Sparkles className="h-7 w-7 text-primary" />AI Copilot
+            <Lock className="h-5 w-5 text-muted-foreground" />
+          </h1>
+          <p className="text-muted-foreground">Your intelligent data analysis assistant</p>
+        </div>
+        
+        <UpgradePrompt 
+          feature="copilot"
+          requiredPlan="basic"
+          title="AI Copilot Requires Basic Plan"
+          description="Unlock the AI Copilot to ask natural language questions about your data, get intelligent insights, and receive chart recommendations. Available on Basic plan and above."
+        />
+
+        <Card className="bg-card border-border">
+          <CardHeader><CardTitle className="text-base">What you get with AI Copilot</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            {[
+              { icon: Lightbulb, title: 'Natural Language Queries', desc: 'Ask questions in plain English' },
+              { icon: BarChart3, title: 'Chart Recommendations', desc: 'AI suggests best visualizations' },
+              { icon: Database, title: 'Data Analysis', desc: 'Deep insights from your datasets' },
+              { icon: Target, title: 'Stakeholder Reports', desc: 'Executive-ready summaries' },
+            ].map((f, i) => (
+              <div key={i} className="flex gap-3 p-3 rounded-lg bg-muted/30">
+                <f.icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">{f.title}</p>
+                  <p className="text-xs text-muted-foreground">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const features = [
     { icon: Lightbulb, title: 'Structured Insights', description: 'Key findings, evidence, risks, opportunities, and actions' },
@@ -51,7 +94,7 @@ export default function Copilot() {
             <Label className="text-xs">Stakeholder</Label>
             <Switch checked={stakeholderView} onCheckedChange={setStakeholderView} />
           </div>
-          <Badge variant="outline">5 credits per query</Badge>
+          <Badge variant="outline">2 credits per query</Badge>
         </div>
       </div>
 
@@ -79,7 +122,6 @@ export default function Copilot() {
               )}
             </CardContent>
           </Card>
-
 
           <Card className="bg-card border-border">
             <CardHeader className="pb-3"><CardTitle className="text-base">AI Models</CardTitle></CardHeader>

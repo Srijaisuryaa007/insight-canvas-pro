@@ -75,7 +75,8 @@ function TemplateThumbnail({ id, color }: { id: TemplateId; color: string }) {
           <rect x="12" y="42" width="90" height="3" rx="1" fill="#334155" />
           <rect x="12" y="50" width="70" height="3" rx="1" fill="#334155" />
           <rect x="140" y="22" width="48" height="48" rx="6" fill={muted} />
-          <circle cx="164" cy="46" r="14" fill={color} opacity="0.2" stroke={color} strokeWidth="2" opacity="0.4" />
+          <circle cx="164" cy="46" r="14" fill={color} opacity={0.2} />
+          <circle cx="164" cy="46" r="14" fill="none" stroke={color} strokeWidth="2" opacity={0.4} />
         </svg>
       );
     case 'operational':

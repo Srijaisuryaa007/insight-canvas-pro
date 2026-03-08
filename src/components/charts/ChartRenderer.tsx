@@ -100,10 +100,10 @@ export function ChartRenderer({
   } : null;
 
   const chartContent = useMemo(() => {
-    const commonProps = { data, margin: { top: 10, right: 20, left: 10, bottom: showLegend ? 30 : 10 } };
+    const commonProps = { data, margin: { top: 20, right: 30, left: 60, bottom: showLegend ? 30 : 10 } };
     const gridEl = showGrid ? <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /> : null;
-    const xEl = <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />;
-    const yEl = <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} width={50} />;
+    const xEl = <XAxis dataKey={xAxis} stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={80} interval={0} />;
+    const yEl = <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} width={55} />;
     const ttEl = <Tooltip contentStyle={tooltipStyle} />;
     const lgEl = legendProps ? <Legend {...legendProps} /> : null;
 

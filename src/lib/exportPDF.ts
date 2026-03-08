@@ -1,4 +1,4 @@
-// DataPulse — Rich PDF Export with Storytelling
+// DataPulse — Formal PDF Export (no colors, white background, legible text)
 import { toast } from '@/hooks/use-toast';
 import { getTemplate, type TemplateId } from './reportTemplates';
 import { buildReportStats, generateNarrative } from './reportNarrativeBuilder';
@@ -18,22 +18,20 @@ export async function exportRichPDF(
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pw = pdf.internal.pageSize.getWidth();
     const ph = pdf.internal.pageSize.getHeight();
-    const margin = 20;
+    const margin = 22;
     let y = margin;
 
-    const hexToRgb = (hex: string): [number, number, number] => {
-      const h = hex.replace('#', '');
-      return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
-    };
-
-    const priRgb = hexToRgb(tpl.colors[0]);
-    const accRgb = hexToRgb(tpl.colors[1]);
+    const BLACK: [number, number, number] = [26, 26, 26];
+    const DARK: [number, number, number] = [50, 50, 50];
+    const BODY: [number, number, number] = [60, 60, 60];
+    const MUTED: [number, number, number] = [120, 120, 120];
+    const LIGHT: [number, number, number] = [170, 170, 170];
 
     const ensureSpace = (needed: number) => {
-      if (y + needed > ph - 15) { pdf.addPage(); y = margin; }
+      if (y + needed > ph - 18) { pdf.addPage(); y = margin; }
     };
 
-    const addText = (text: string, size: number, color: [number, number, number] = [60, 60, 60], bold = false) => {
+    const addText = (text: string, size: number, color: [number, number, number] = BODY, bold = false) => {
       pdf.setFontSize(size);
       pdf.setTextColor(...color);
       pdf.setFont('helvetica', bold ? 'bold' : 'normal');
@@ -44,124 +42,131 @@ export async function exportRichPDF(
       y += lines.length * lineHeight + 3;
     };
 
-    const addSectionTitle = (text: string) => {
-      ensureSpace(20);
-      y += 4;
-      // Accent bar
-      pdf.setFillColor(...accRgb);
-      pdf.rect(margin, y - 2, 40, 1.5, 'F');
+    const addSection = (text: string) => {
+      ensureSpace(18);
       y += 6;
-      addText(text, 16, priRgb, true);
+      pdf.setDrawColor(26, 26, 26);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, y - 2, margin + 25, y - 2);
+      y += 4;
+      addText(text, 15, BLACK, true);
       y += 2;
     };
 
     const addNarrative = (text: string) => {
       text.split('\n').filter(Boolean).forEach(para => {
-        addText(para, 10, [70, 70, 70]);
+        addText(para, 10, BODY);
         y += 1;
       });
     };
 
-    const addBullets = (items: string[], color: [number, number, number] = [70, 70, 70]) => {
+    const addBullets = (items: string[]) => {
       items.forEach(item => {
-        addText(`  •  ${item}`, 9.5, color);
+        addText(`  -  ${item}`, 9.5, DARK);
       });
     };
 
-    // PAGE 1 — Cover
-    y = 60;
-    pdf.setFillColor(...priRgb);
-    pdf.rect(0, 0, pw, 8, 'F');
-    pdf.setFillColor(...accRgb);
-    pdf.rect(margin, 55, 50, 2, 'F');
-    y = 65;
-    addText(stats.title, 28, priRgb, true);
-    y += 4;
-    addText('Data Intelligence Report', 14, accRgb, true);
+    // ─── PAGE 1: Title ───────────────────────────────
+    y = 55;
+    addText(stats.title, 26, BLACK, true);
     y += 6;
-    addText(`Template: ${tpl.name}`, 10, [150, 150, 150]);
-    addText(`Generated: ${stats.date}  •  Analyst: ${stats.userName}`, 10, [150, 150, 150]);
-    addText(`Dataset: ${stats.datasetName}  •  ${stats.rowCount.toLocaleString()} records  •  ${stats.columnCount} columns`, 10, [150, 150, 150]);
+    pdf.setDrawColor(26, 26, 26);
+    pdf.setLineWidth(0.4);
+    pdf.line(margin, y, margin + 30, y);
+    y += 8;
+    addText('Data Intelligence Report', 13, DARK, true);
+    y += 8;
+    addText(`Date: ${stats.date}`, 10, MUTED);
+    addText(`Dataset: ${stats.datasetName}`, 10, MUTED);
+    addText(`Records: ${stats.rowCount.toLocaleString()}  |  Columns: ${stats.columnCount}`, 10, MUTED);
+    addText(`Prepared by: ${stats.userName}`, 10, MUTED);
 
-    // PAGE 2+ — Executive Summary
+    // ─── Executive Summary ───────────────────────────
     pdf.addPage(); y = margin;
-    addSectionTitle('1. Executive Summary');
+    addSection('1. Executive Summary');
     addNarrative(generateNarrative('executive-summary', stats, tpl.tone));
 
-    // Dataset Overview
-    addSectionTitle('2. Dataset Overview');
+    // ─── Dataset Overview ────────────────────────────
+    addSection('2. Dataset Overview');
     addNarrative(generateNarrative('dataset-overview', stats, tpl.tone));
 
-    // Data Quality
-    addSectionTitle('3. Data Quality Analysis');
+    // ─── Data Quality ────────────────────────────────
+    addSection('3. Data Quality');
     addNarrative(generateNarrative('quality', stats, tpl.tone));
 
-    // KPIs
-    addSectionTitle('4. KPI Performance');
+    // ─── KPIs ────────────────────────────────────────
+    addSection('4. Key Performance Indicators');
     addNarrative(generateNarrative('kpi-analysis', stats, tpl.tone));
     y += 2;
-    stats.kpis.forEach(kpi => { addText(`${kpi.label}: ${kpi.value}`, 10, [50, 50, 50], true); });
+    stats.kpis.forEach(kpi => {
+      addText(`${kpi.label}: ${kpi.value}`, 10, DARK, true);
+    });
 
-    // Trends
-    addSectionTitle('5. Trends & Patterns');
+    // ─── Trends ──────────────────────────────────────
+    addSection('5. Trend Analysis');
     addNarrative(generateNarrative('trends', stats, tpl.tone));
     y += 2;
     stats.trends.forEach(t => {
-      const color: [number, number, number] = t.change > 1 ? [34, 197, 94] : t.change < -1 ? [239, 68, 68] : [150, 150, 150];
-      addText(`${t.col}: ${t.direction} (${t.change > 0 ? '+' : ''}${t.change}%)`, 9.5, color);
+      addText(`${t.col}: ${t.direction} (${t.change > 0 ? '+' : ''}${t.change}%)`, 9.5, DARK);
     });
 
-    // Positive Findings
-    addSectionTitle('6. Positive Findings');
+    // ─── Strengths ───────────────────────────────────
+    addSection('6. Strengths');
     addNarrative(generateNarrative('positives', stats, tpl.tone));
-    addBullets(stats.positives.length ? stats.positives : ['All metrics stable'], [34, 150, 70]);
+    addBullets(stats.positives.length ? stats.positives : ['All metrics within expected ranges.']);
 
-    // Risks
-    addSectionTitle('7. Risks & Concerns');
+    // ─── Risks ───────────────────────────────────────
+    addSection('7. Risks and Issues');
     addNarrative(generateNarrative('negatives', stats, tpl.tone));
-    addBullets(stats.risks, [200, 50, 50]);
+    addBullets(stats.risks);
 
-    // Deep Insights
-    addSectionTitle('8. Deep Insights');
+    // ─── Insights ────────────────────────────────────
+    addSection('8. Analytical Insights');
     addNarrative(generateNarrative('deep-insights', stats, tpl.tone));
 
-    // Recommendations
-    addSectionTitle('9. Strategic Recommendations');
+    // ─── Recommendations ─────────────────────────────
+    addSection('9. Recommendations');
     addNarrative(generateNarrative('recommendations', stats, tpl.tone));
-    addBullets(stats.recommendations, priRgb);
+    addBullets(stats.recommendations);
 
-    // Data Table
+    // ─── Data Table ──────────────────────────────────
     if (data.length > 0) {
-      addSectionTitle('10. Appendix — Data Table');
+      addSection('10. Appendix: Data Sample');
       const headers = Object.keys(data[0]).slice(0, 7);
-      const rows = data.slice(0, 20);
+      const rows = data.slice(0, 25);
       const colW = (pw - 2 * margin) / headers.length;
+
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(...priRgb);
+      pdf.setTextColor(...BLACK);
       ensureSpace(10);
       headers.forEach((h, i) => { pdf.text(h.substring(0, 14), margin + i * colW, y); });
       y += 4;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, y - 2, pw - margin, y - 2);
+
       pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(80, 80, 80);
+      pdf.setTextColor(...BODY);
       rows.forEach(row => {
         ensureSpace(5);
-        headers.forEach((h, i) => { pdf.text(String(row[h] ?? '').substring(0, 14), margin + i * colW, y); });
+        pdf.setFontSize(6.5);
+        headers.forEach((h, i) => { pdf.text(String(row[h] ?? '').substring(0, 16), margin + i * colW, y); });
         y += 3.5;
       });
     }
 
-    // Footers
+    // ─── Footers ─────────────────────────────────────
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
       pdf.setFontSize(7);
-      pdf.setTextColor(180, 180, 180);
-      pdf.text(`DataPulse Analytics  •  ${tpl.name}  •  Page ${i} of ${totalPages}`, margin, ph - 8);
+      pdf.setTextColor(...LIGHT);
+      pdf.text(`DataVora  |  Page ${i} of ${totalPages}`, margin, ph - 10);
     }
 
     pdf.save(`${stats.title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
-    toast({ title: 'PDF Exported', description: 'Professional report downloaded successfully.' });
+    toast({ title: 'PDF Exported', description: 'Formal report downloaded.' });
   } catch (e) {
     console.error('PDF export error:', e);
     toast({ title: 'Export Failed', description: 'Could not generate PDF.', variant: 'destructive' });

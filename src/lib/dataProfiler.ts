@@ -19,6 +19,8 @@ export interface ColumnProfile {
   dateMax?: string;
   // Outlier count
   outlierCount?: number;
+  // Sample values
+  sampleValues?: string[];
 }
 
 export interface DataProfile {
@@ -29,11 +31,14 @@ export interface DataProfile {
   duplicateRows: number;
   issuesFound: number;
   columns: ColumnProfile[];
+  memoryEstimateKB: number;
+  firstFiveRows: Record<string, unknown>[];
+  lastFiveRows: Record<string, unknown>[];
 }
 
 export function profileData(data: Record<string, unknown>[]): DataProfile {
   if (!data || data.length === 0) {
-    return { totalRows: 0, totalColumns: 0, totalMissing: 0, totalMissingPct: 0, duplicateRows: 0, issuesFound: 0, columns: [] };
+    return { totalRows: 0, totalColumns: 0, totalMissing: 0, totalMissingPct: 0, duplicateRows: 0, issuesFound: 0, columns: [], memoryEstimateKB: 0, firstFiveRows: [], lastFiveRows: [] };
   }
 
   const keys = Object.keys(data[0]);
@@ -42,6 +47,15 @@ export function profileData(data: Record<string, unknown>[]): DataProfile {
   let totalMissing = 0;
   let issuesFound = 0;
   const columns: ColumnProfile[] = [];
+
+  // Memory estimate (rough: JSON string length as proxy)
+  const sampleSize = Math.min(100, data.length);
+  const sampleStr = JSON.stringify(data.slice(0, sampleSize));
+  const memoryEstimateKB = Math.round((sampleStr.length / sampleSize) * data.length / 1024);
+
+  // First/Last 5 rows
+  const firstFiveRows = data.slice(0, 5);
+  const lastFiveRows = data.slice(-5);
 
   // Duplicate rows
   const rowKeys = new Set<string>();
@@ -64,12 +78,19 @@ export function profileData(data: Record<string, unknown>[]): DataProfile {
     const uniqueSet = new Set(nonNull.map(String));
     const duplicateCount = nonNull.length - uniqueSet.size;
 
+    // Sample values (up to 5 unique)
+    const sampleValues = [...uniqueSet].slice(0, 5);
+
     // Detect type
     const sampleNonNull = nonNull[0];
     let type: ColumnProfile['type'] = 'string';
     if (typeof sampleNonNull === 'number') type = 'number';
     else if (typeof sampleNonNull === 'boolean') type = 'boolean';
     else if (typeof sampleNonNull === 'string' && /^\d{4}-\d{2}-\d{2}/.test(sampleNonNull)) type = 'date';
+
+    // Check for mixed types
+    const types = new Set(nonNull.map(v => typeof v));
+    if (types.size > 1) type = 'mixed';
 
     const profile: ColumnProfile = {
       name: col,
@@ -79,6 +100,7 @@ export function profileData(data: Record<string, unknown>[]): DataProfile {
       missingPct: Math.round((missing / total) * 100),
       uniqueCount: uniqueSet.size,
       duplicateCount,
+      sampleValues,
     };
 
     if (type === 'number') {
@@ -128,5 +150,8 @@ export function profileData(data: Record<string, unknown>[]): DataProfile {
     duplicateRows,
     issuesFound,
     columns,
+    memoryEstimateKB,
+    firstFiveRows,
+    lastFiveRows,
   };
 }

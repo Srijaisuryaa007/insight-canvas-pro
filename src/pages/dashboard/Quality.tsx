@@ -952,7 +952,7 @@ export default function Quality() {
                         {/* Column Name Issues */}
                         {vr.columnNameIssues.length > 0 && (
                           <Card className="bg-card border-border">
-                            <CardHeader className="pb-3"><CardTitle className="text-base">📝 Column Name Fixes</CardTitle></CardHeader>
+                            <CardHeader className="pb-3"><CardTitle className="text-base">Column Name Fixes</CardTitle></CardHeader>
                             <CardContent>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">

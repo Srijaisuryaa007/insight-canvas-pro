@@ -1079,10 +1079,14 @@ export default function Quality() {
                                     </td>
                                     <td className="p-2 text-right text-muted-foreground">{col.mean !== undefined ? col.mean : '—'}</td>
                                     <td className="p-2 text-right text-muted-foreground">{col.median !== undefined ? col.median : '—'}</td>
+                                    <td className="p-2 text-right text-muted-foreground">{col.stdDev !== undefined ? col.stdDev : '—'}</td>
                                     <td className="p-2 text-right">
                                       {col.outlierCount !== undefined && col.outlierCount > 0 ? (
                                         <span className="text-amber-500">{col.outlierCount}</span>
                                       ) : '—'}
+                                    </td>
+                                    <td className="p-2 text-muted-foreground text-xs max-w-32 truncate">
+                                      {col.sampleValues?.slice(0, 3).join(', ') || '—'}
                                     </td>
                                   </tr>
                                 ))}

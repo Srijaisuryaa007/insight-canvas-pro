@@ -1,4 +1,4 @@
-// DataPulse — PPTX Export with template-differentiated slide structures
+// DataVora — PPTX Export with template-differentiated slide structures
 import { saveAs } from 'file-saver';
 import { toast } from '@/hooks/use-toast';
 import { getTemplate, type TemplateId } from './reportTemplates';

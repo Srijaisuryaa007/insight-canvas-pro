@@ -12,7 +12,7 @@ import { useNotifications, AppNotification } from '@/contexts/NotificationContex
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 
-const PROJECTS_KEY = 'datapulse_projects';
+const PROJECTS_KEY = 'datavora_projects';
 function loadProjects(): Array<{ id: string; name: string; status: 'active' | 'archived'; createdAt: string; datasetCount: number }> {
   try { return JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]'); } catch { return []; }
 }
@@ -31,7 +31,7 @@ export default function Profile() {
 
   const filteredNotifs = filterByCategory(notifFilter);
 
-  const aiUsage = JSON.parse(localStorage.getItem('datapulse_ai_usage') || '{"total":0,"byModel":{}}');
+  const aiUsage = JSON.parse(localStorage.getItem('datavora_ai_usage') || '{"total":0,"byModel":{}}');
 
   return (
     <div className="space-y-6 max-w-5xl">

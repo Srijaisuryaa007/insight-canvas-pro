@@ -32,7 +32,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'datapulse_user';
+const STORAGE_KEY = 'datavora_user';
 const DEFAULT_FREE_CREDITS = 5000;
 
 // ── Supabase profile helper ──
@@ -79,7 +79,7 @@ function loadLocalUser(): AppUser | null {
 }
 function saveLocalUser(u: AppUser) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-  localStorage.setItem(`datapulse_users_${u.email}`, JSON.stringify(u));
+  localStorage.setItem(`datavora_users_${u.email}`, JSON.stringify(u));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return !error;
     }
-    const stored = localStorage.getItem(`datapulse_users_${email}`);
+    const stored = localStorage.getItem(`datavora_users_${email}`);
     if (stored) { const u = JSON.parse(stored); saveLocalUser(u); setUser(u); return true; }
     return false;
   };

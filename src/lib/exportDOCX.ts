@@ -1,4 +1,4 @@
-// DataPulse — Formal DOCX Export (no colors, clean typography)
+// DataVora — Formal DOCX Export (no colors, clean typography)
 import { saveAs } from 'file-saver';
 import { toast } from '@/hooks/use-toast';
 import { getTemplate, type TemplateId } from './reportTemplates';

@@ -1,4 +1,4 @@
-// DataPulse — Formal PDF Export (no colors, white background, legible text)
+// DataVora — Formal PDF Export (no colors, white background, legible text)
 import { toast } from '@/hooks/use-toast';
 import { getTemplate, type TemplateId } from './reportTemplates';
 import { buildReportStats, generateNarrative } from './reportNarrativeBuilder';

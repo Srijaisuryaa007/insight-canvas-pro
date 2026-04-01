@@ -46,8 +46,8 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const WORKSPACE_ID = 'default';
 const MAX_HISTORY = 20;
-const LS_KEY = 'datapulse_datasets';
-const LS_ACTIVE = 'datapulse_active_dataset';
+const LS_KEY = 'datavora_datasets';
+const LS_ACTIVE = 'datavora_active_dataset';
 
 function saveToLocalStorage(datasets: Dataset[]) {
   try {

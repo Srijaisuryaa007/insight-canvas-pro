@@ -1,4 +1,4 @@
-// DataPulse Analytics - API Service Layer
+// DataVora Analytics - API Service Layer
 // All frontend-backend communication goes through here
 
 const API_BASE = '/api';

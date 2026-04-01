@@ -33,7 +33,7 @@ const CRON_PRESETS: Record<string, { label: string; cron: string; description: s
   'monthly-15th': { label: 'Monthly on 15th', cron: '0 9 15 * *', description: '15th of every month at 9:00 AM' },
 };
 
-const STORAGE_KEY = 'datapulse_scheduled_reports';
+const STORAGE_KEY = 'datavora_scheduled_reports';
 
 function loadSchedules(): ScheduledReport[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }

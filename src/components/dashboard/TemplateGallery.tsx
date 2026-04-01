@@ -17,7 +17,7 @@ import {
 } from '@/lib/dashboardTemplates';
 import type { DashboardTemplate } from '@/types/dashboard';
 
-const RECENT_KEY = 'datapulse_recent_templates';
+const RECENT_KEY = 'datavora_recent_templates';
 
 function getRecentTemplates(): string[] {
   try {

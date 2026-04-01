@@ -29,7 +29,7 @@ export function TopBar() {
 
   // Dark mode state
   const [isDark, setIsDark] = useState(() => {
-    const stored = localStorage.getItem('datapulse_theme');
+    const stored = localStorage.getItem('datavora_theme');
     if (stored) return stored === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
@@ -41,7 +41,7 @@ export function TopBar() {
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('datapulse_theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('datavora_theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
   const handleLogout = async () => {

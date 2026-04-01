@@ -725,10 +725,10 @@ export default function SQLEngine() {
 
   // Pick up query from AI Copilot
   useEffect(() => {
-    const stored = sessionStorage.getItem('datapulse_sql_query');
+    const stored = sessionStorage.getItem('datavora_sql_query');
     if (stored) {
       setQuery(stored);
-      sessionStorage.removeItem('datapulse_sql_query');
+      sessionStorage.removeItem('datavora_sql_query');
     }
   }, []);
 

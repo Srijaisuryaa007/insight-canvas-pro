@@ -82,8 +82,14 @@ export default function Settings() {
                   <ul className="space-y-2">
                     {p.features.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
-                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-accent-green mt-0.5 shrink-0" />
                         <span>{f}</span>
+                      </li>
+                    ))}
+                    {(PLANS[p.id as PlanType]?.excludedFeatures || []).map((f, i) => (
+                      <li key={`ex-${i}`} className="flex items-start gap-2 text-sm">
+                        <X className="h-4 w-4 text-accent-red mt-0.5 shrink-0" />
+                        <span className="text-muted-foreground">{f}</span>
                       </li>
                     ))}
                   </ul>

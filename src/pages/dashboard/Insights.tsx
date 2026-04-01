@@ -477,7 +477,7 @@ export default function Insights() {
       sourceInsight: insight.description,
       fromInsight: true,
     };
-    sessionStorage.setItem('datapulse_viz_context', JSON.stringify(vizContext));
+    sessionStorage.setItem('datavora_viz_context', JSON.stringify(vizContext));
     navigate('/dashboard/visualizations');
     toast({ title: 'Opened from AI Insight', description: formatInsightTitle(insight.title) });
   };

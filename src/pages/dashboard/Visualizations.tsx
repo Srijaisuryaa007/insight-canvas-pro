@@ -883,14 +883,14 @@ export default function Visualizations() {
 
   // Pick up insight context from sessionStorage
   useEffect(() => {
-    const raw = sessionStorage.getItem('datapulse_viz_context');
+    const raw = sessionStorage.getItem('datavora_viz_context');
     if (raw) {
       try {
         const ctx = JSON.parse(raw);
         if (ctx.chartType && isChartAvailable(ctx.chartType)) {
           setSelectedChart(ctx.chartType);
         }
-        sessionStorage.removeItem('datapulse_viz_context');
+        sessionStorage.removeItem('datavora_viz_context');
         if (ctx.title) {
           toast({ title: 'Insight Visualization', description: ctx.title });
         }

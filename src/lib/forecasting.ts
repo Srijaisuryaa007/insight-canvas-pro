@@ -1,4 +1,4 @@
-// DataPulse Forecasting & Anomaly Detection Engine
+// DataVora Forecasting & Anomaly Detection Engine
 
 export interface ForecastPoint {
   period: string;

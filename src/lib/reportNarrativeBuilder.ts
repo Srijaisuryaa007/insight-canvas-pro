@@ -1,4 +1,4 @@
-// DataPulse — Rich narrative builder for reports (template-differentiated content)
+// DataVora — Rich narrative builder for reports (template-differentiated content)
 import type { TemplateTone } from './reportTemplates';
 
 export interface ReportStats {

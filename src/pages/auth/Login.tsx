@@ -69,7 +69,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-chart-1 to-chart-2">
             <Zap className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">DataPulse Analytics</h1>
+          <h1 className="text-2xl font-bold">DataVora Analytics</h1>
           <p className="text-muted-foreground">Enterprise-grade data analytics platform</p>
         </div>
 

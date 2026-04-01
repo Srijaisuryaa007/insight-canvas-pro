@@ -126,8 +126,8 @@ const CONNECTORS: ConnectorConfig[] = [
   },
 ];
 
-const CONNECTIONS_KEY = 'datapulse_connections';
-const CREDENTIALS_KEY = 'datapulse_credentials_enc';
+const CONNECTIONS_KEY = 'datavora_connections';
+const CREDENTIALS_KEY = 'datavora_credentials_enc';
 
 interface SavedConnection {
   id: string; connectorId: string; name: string; status: 'connected' | 'error'; createdAt: string;

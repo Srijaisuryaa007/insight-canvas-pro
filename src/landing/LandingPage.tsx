@@ -11,14 +11,8 @@ import { Footer } from './sections/Footer';
 export default function LandingPage() {
   const navigate = useNavigate();
 
-  // Apply persisted theme
   useEffect(() => {
-    const stored = localStorage.getItem('datapulse_theme');
-    if (stored === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (stored === 'light') {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.add('dark');
   }, []);
 
   const handleGetStarted = () => {

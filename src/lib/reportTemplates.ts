@@ -1,4 +1,4 @@
-// DataPulse Report Templates
+// DataVora Report Templates
 
 export type TemplateId = 'executive' | 'analyst' | 'storytelling' | 'operational' | 'investor' | 'academic';
 

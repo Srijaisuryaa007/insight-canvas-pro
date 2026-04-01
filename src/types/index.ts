@@ -1,4 +1,4 @@
-// Core Types for DataPulse Analytics
+// Core Types for DataVora Analytics
 
 export type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
 

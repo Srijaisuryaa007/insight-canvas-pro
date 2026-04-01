@@ -1,4 +1,4 @@
-// DataPulse Export Engine — PDF, PPTX, DOCX
+// DataVora Export Engine — PDF, PPTX, DOCX
 import { saveAs } from 'file-saver';
 import { toast } from '@/hooks/use-toast';
 

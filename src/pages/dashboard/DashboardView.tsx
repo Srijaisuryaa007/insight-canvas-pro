@@ -13,7 +13,7 @@ export default function DashboardView() {
   const [dashData, setDashData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('datapulse_dashboard_view');
+    const stored = localStorage.getItem('datavora_dashboard_view');
     if (stored) setDashData(JSON.parse(stored));
   }, []);
 

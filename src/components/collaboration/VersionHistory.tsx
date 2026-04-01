@@ -19,7 +19,7 @@ export interface VersionEntry {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'datapulse_versions';
+const STORAGE_KEY = 'datavora_versions';
 
 function loadVersions(): VersionEntry[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }

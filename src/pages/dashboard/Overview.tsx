@@ -36,12 +36,13 @@ const formatColumnName = (col: string) => {
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h >= 5 && h < 12) return 'Good morning';
+  if (h >= 12 && h < 17) return 'Good afternoon';
+  if (h >= 17 && h < 21) return 'Good evening';
+  return 'Working late';
 }
 
-const MEASURES_KEY = 'datapulse_measures';
+const MEASURES_KEY = 'datavora_measures';
 function loadMeasures(): Array<{ name: string; formula: string; createdAt: string }> {
   const stored = localStorage.getItem(MEASURES_KEY);
   return stored ? JSON.parse(stored) : [];

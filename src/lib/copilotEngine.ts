@@ -1,4 +1,4 @@
-// DataPulse AI Copilot Engine — General Chat + Data Analytics
+// DataVora AI Copilot Engine — General Chat + Data Analytics
 // Standalone: No external AI APIs required
 
 import { DatasetColumn } from '@/types';
@@ -96,7 +96,7 @@ const GREETINGS_WITH_DATA = [
   "Hi! I can help with data analysis, chart recommendations, business strategy, or general questions. What would you like? 😊",
 ];
 const GREETINGS_NO_DATA = [
-  "Hello! 👋 I'm DataPulse AI — your senior data science assistant. I can help with analytics concepts, chart selection, business strategy, or any general questions. What's on your mind?",
+  "Hello! 👋 I'm DataVora AI — your senior data science assistant. I can help with analytics concepts, chart selection, business strategy, or any general questions. What's on your mind?",
   "Hey! 🧑‍🔬 I'm here to help — from choosing the right visualization to explaining statistical concepts. Ask me anything!",
   "Hi there! Whether it's data strategy, chart types, machine learning concepts, or general chat — I've got you covered. 😊",
 ];
@@ -122,7 +122,7 @@ const JOKES = [
   "How does a statistician propose? 'With 95% confidence, will you marry me?' 💍",
 ];
 
-const HELP_RESPONSE = `I'm **DataPulse AI** — your expert Data Analyst assistant! 🧑‍🔬
+const HELP_RESPONSE = `I'm **DataVora AI** — your expert Data Analyst assistant! 🧑‍🔬
 
 I'm a senior Data Analyst + BI Developer with 10+ years experience. Here's what I do:
 
@@ -142,7 +142,7 @@ I'm a senior Data Analyst + BI Developer with 10+ years experience. Here's what 
 - *"Write a SQL query to get top 10 products"*
 - *"What KPIs should I track?"*`;
 
-const IDENTITY_RESPONSE = `I'm **DataPulse AI** — your expert Data Analyst + BI Developer! 🧑‍🔬
+const IDENTITY_RESPONSE = `I'm **DataVora AI** — your expert Data Analyst + BI Developer! 🧑‍🔬
 
 With 10+ years of experience in:
 - 📊 **DAX & Power BI** — Measures, time intelligence, data modeling
@@ -289,7 +289,7 @@ function handleConversation(intent: Intent, schema: DataSchema | null, question:
         answer += `- "Find patterns" — detect correlations and outliers\n`;
         answer += `- "Top 10 by ${schema.columns.find(c => c.type === 'number')?.name || 'value'}" — ranking analysis\n`;
       } else {
-        answer = `### 💬 About "${topic}"\n\nI'm DataPulse AI — a data science assistant! I can help you with:\n\n`;
+        answer = `### 💬 About "${topic}"\n\nI'm DataVora AI — a data science assistant! I can help you with:\n\n`;
         answer += `- 📊 **Chart Selection** — Ask "which chart should I use for comparing sales?"\n`;
         answer += `- 🔬 **Data Concepts** — Ask "explain regression" or "what is K-means clustering?"\n`;
         answer += `- 🎯 **Strategy** — Ask "dashboard design best practices"\n`;

@@ -60,7 +60,7 @@ export default function DashboardLayout() {
           <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}>
             {mobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <span className="font-semibold text-sm">DataPulse</span>
+          <span className="font-extrabold text-sm">DataVora</span>
         </div>
         <TopBar />
         <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">

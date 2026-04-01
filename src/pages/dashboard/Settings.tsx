@@ -1,5 +1,5 @@
 import { 
-  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, Sparkles, Loader2
+  Settings as SettingsIcon, User, CreditCard, Zap, Crown, CheckCircle, X, Sparkles, Loader2
 } from 'lucide-react';
 import { DataAlerts } from '@/components/dashboard/DataAlerts';
 import { Button } from '@/components/ui/button';

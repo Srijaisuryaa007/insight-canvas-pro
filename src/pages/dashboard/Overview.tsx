@@ -41,7 +41,7 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-const MEASURES_KEY = 'datapulse_measures';
+const MEASURES_KEY = 'datavora_measures';
 function loadMeasures(): Array<{ name: string; formula: string; createdAt: string }> {
   const stored = localStorage.getItem(MEASURES_KEY);
   return stored ? JSON.parse(stored) : [];

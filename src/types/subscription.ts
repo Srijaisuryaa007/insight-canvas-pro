@@ -6,17 +6,18 @@ export interface PlanConfig {
   id: PlanType;
   name: string;
   price: number;
-  priceINR: number; // Price in paise for Razorpay
+  priceINR: number;
   priceLabel: string;
   maxDatasets: number;
   chartTypes: number;
   credits: number;
   features: string[];
+  excludedFeatures?: string[];
   isUnlimited?: boolean;
   aiModels: string[];
   maxRows: number;
-  maxStorageMB: number; // Storage limit in MB (-1 = unlimited, 0 = no persistent storage)
-  hasPersistentStorage: boolean; // Whether data is saved to DB/storage
+  maxStorageMB: number;
+  hasPersistentStorage: boolean;
 }
 
 export const PLANS: Record<PlanType, PlanConfig> = {
@@ -25,22 +26,23 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     name: 'Free',
     price: 0,
     priceINR: 0,
-    priceLabel: '$0',
+    priceLabel: '₹0',
     maxDatasets: 1,
     chartTypes: 3,
     credits: 100,
     maxRows: 500,
     maxStorageMB: 5,
-    hasPersistentStorage: false, // Free users: data in session only, not saved
+    hasPersistentStorage: false,
     aiModels: [],
-    features: ['1 dataset', '3 basic charts', '5 credits', 'Data quality scan', 'Basic insights', '500 row limit', 'No AI assistant', '5MB upload limit', 'No persistent storage']
+    features: ['1 dataset', '3 basic charts', '5 credits', 'Data quality scan', 'Basic insights', '500 row limit'],
+    excludedFeatures: ['No AI assistant', 'No persistent storage', '5MB upload limit'],
   },
   basic: {
     id: 'basic',
     name: 'Basic',
-    price: 5,
+    price: 415,
     priceINR: 41500,
-    priceLabel: '$5/mo',
+    priceLabel: '₹415/mo',
     maxDatasets: 3,
     chartTypes: 8,
     credits: 100,
@@ -48,38 +50,38 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     maxStorageMB: 100,
     hasPersistentStorage: true,
     aiModels: ['grok'],
-    features: ['3 datasets', '8 chart types', '100 credits/mo', 'Grok AI assistant', 'CSV export', '5,000 row limit', '100MB storage']
+    features: ['3 datasets', '8 chart types', '100 credits/mo', 'Grok AI assistant', 'CSV export', '5,000 row limit', '100MB storage'],
   },
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 15,
+    price: 1245,
     priceINR: 124500,
-    priceLabel: '$15/mo',
+    priceLabel: '₹1,245/mo',
     maxDatasets: 10,
     chartTypes: 20,
     credits: 500,
     maxRows: 100000,
-    maxStorageMB: 3072, // 3GB
+    maxStorageMB: 3072,
     hasPersistentStorage: true,
     aiModels: ['grok', 'chatgpt'],
-    features: ['10 datasets', '20 chart types', '500 credits/mo', 'PDF export', 'Advanced Copilot', 'Forecasting', 'ChatGPT AI', '100K row limit', '3GB storage']
+    features: ['10 datasets', '20 chart types', '500 credits/mo', 'PDF export', 'Advanced Copilot', 'Web Scraping', 'ChatGPT AI', '100K row limit', '3GB storage'],
   },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 25,
+    price: 2075,
     priceINR: 207500,
-    priceLabel: '$25/mo',
+    priceLabel: '₹2,075/mo',
     maxDatasets: -1,
     chartTypes: 38,
     credits: -1,
     maxRows: -1,
-    maxStorageMB: -1, // Unlimited
+    maxStorageMB: -1,
     hasPersistentStorage: true,
     isUnlimited: true,
     aiModels: ['grok', 'chatgpt', 'claude'],
-    features: ['Unlimited datasets', 'ALL 38 charts', 'Unlimited credits', 'All exports', 'All AI models', 'Geo maps', 'Anomaly detection', 'Team sharing', 'Unlimited rows', 'Unlimited storage']
+    features: ['Unlimited datasets', 'ALL 38 charts', 'Unlimited credits', 'All exports', 'All AI models', 'Geo maps', 'Anomaly detection', 'Team sharing', 'Unlimited rows', 'Unlimited storage'],
   }
 };
 
@@ -98,20 +100,17 @@ export const CREDIT_COSTS = {
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
-// ALL chart types (50 total)
 const ALL_CHARTS = [
   'bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge',
   'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar',
   'geo', 'choropleth', 'network', 'force', 'tree', 'parallel', 'word-cloud', 'timeline', '3d-scatter', '3d-surface',
   'donut', 'stacked-bar', 'grouped-bar', 'stacked-area', 'pareto', 'bullet', 'progress', 'kpi-card',
-  // Advanced combinational / statistical charts
   'violin', 'density', 'stripplot', 'swarmplot', 'jointplot', 'rugplot', 'ridgeline',
   'lollipop', 'dumbbell', 'slope', 'marimekko', 'combo',
 ];
 
-// Chart types available per plan (STRICT)
 export const CHART_TYPES_BY_PLAN: Record<PlanType, string[]> = {
-  free: ['bar', 'line', 'pie'], // Only 3 basic charts
+  free: ['bar', 'line', 'pie'],
   basic: ['bar', 'line', 'pie', 'area', 'scatter', 'donut', 'radar', 'heatmap'],
   pro: ['bar', 'line', 'pie', 'area', 'scatter', 'radar', 'heatmap', 'treemap', 'funnel', 'gauge', 
         'boxplot', 'histogram', 'waterfall', 'bubble', 'candlestick', 'sankey', 'sunburst', 'polar', 'stream', 'calendar',
@@ -119,16 +118,14 @@ export const CHART_TYPES_BY_PLAN: Record<PlanType, string[]> = {
   enterprise: ALL_CHARTS,
 };
 
-// Features gated by plan (STRICT)
 export const FEATURES_BY_PLAN: Record<PlanType, string[]> = {
-  free: ['basic-quality', 'basic-insights'], // Very limited - no AI, no export, no copilot
+  free: ['basic-quality', 'basic-insights'],
   basic: ['basic-quality', 'advanced-quality', 'basic-insights', 'basic-charts', 'export-csv', 'copilot-basic'],
   pro: ['basic-quality', 'advanced-quality', 'basic-insights', 'advanced-insights', 'basic-charts', 'advanced-charts', 'export-csv', 'export-pdf', 'copilot', 'forecast'],
   enterprise: ['basic-quality', 'advanced-quality', 'basic-insights', 'advanced-insights', 'basic-charts', 'advanced-charts', 'export-csv', 'export-pdf', 'export-pptx', 'copilot', 'copilot-advanced', 'forecast', 
                'geo-maps', 'anomaly-detection', 'advanced-explainability', 'custom-dashboards', 'team-sharing', 'version-history']
 };
 
-// Actions that require specific plans
 export const PLAN_REQUIRED_FOR_ACTION: Record<string, PlanType> = {
   'copilot': 'basic',
   'copilot-query': 'basic',

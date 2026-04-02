@@ -928,7 +928,7 @@ export default function SQLEngine() {
                               <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
                                 {Object.values(row).map((v, j) => (
                                   <td key={j} className="px-3 py-1.5 text-xs">
-                                    {v === null || v === undefined ? <span className="text-muted-foreground italic">null</span> : typeof v === 'number' ? v.toLocaleString() : String(v)}
+                                    {v === null || v === undefined ? <span className="text-muted-foreground/50 italic">—</span> : typeof v === 'number' ? v.toLocaleString() : String(v)}
                                   </td>
                                 ))}
                               </tr>

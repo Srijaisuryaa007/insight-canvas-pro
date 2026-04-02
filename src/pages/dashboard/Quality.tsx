@@ -484,7 +484,7 @@ export default function Quality() {
                     { label: 'Rows', value: quickStats.rows.toLocaleString() },
                     { label: 'Columns', value: quickStats.cols.toLocaleString() },
                     { label: 'Total Cells', value: quickStats.totalCells.toLocaleString() },
-                    { label: 'Est. Issues', value: `~${quickStats.estIssues}`, highlight: quickStats.estIssues > 0 },
+                    { label: report ? 'Issues Found' : 'Est. Issues', value: report ? `${report.issues.length}` : `~${quickStats.estIssues}`, highlight: (report ? report.issues.length : quickStats.estIssues) > 0 },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{item.label}</span>

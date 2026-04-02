@@ -697,7 +697,7 @@ function RecommendedQueriesPanel({ onSelect }: { onSelect: (sql: string) => void
                     <button key={i} onClick={() => onSelect(q.sql)}
                       className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-muted/60 transition-colors flex items-center justify-between group">
                       <span className="text-muted-foreground group-hover:text-foreground">{q.label}</span>
-                      <Badge variant="outline" className={`text-[8px] h-4 ${q.level <= 1 ? 'text-emerald-400 border-emerald-500/30' : 'opacity-60'}`}>{q.level <= 1 ? 'Free' : `L${q.level}`}</Badge>
+                      <Badge variant="outline" className={`text-[8px] h-4 ${Number(q.level) <= 1 ? 'text-emerald-400 border-emerald-500/30' : 'opacity-60'}`}>{Number(q.level) <= 1 ? 'Free' : `L${q.level}`}</Badge>
                     </button>
                   ))}
                 </CollapsibleContent>

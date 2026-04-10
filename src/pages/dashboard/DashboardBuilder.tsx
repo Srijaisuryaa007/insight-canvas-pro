@@ -85,6 +85,23 @@ export default function DashboardBuilder() {
     return () => obs.disconnect();
   }, []);
 
+  // Auto-suggest best columns based on data types
+  const autoSuggestColumns = useCallback(() => {
+    if (!currentData.length) return { xAxis: undefined, yAxis: undefined };
+    const keys = Object.keys(currentData[0]);
+    const strCols = keys.filter(k => typeof currentData[0][k] === 'string');
+    const numCols = keys.filter(k => typeof currentData[0][k] === 'number');
+    const dateCols = keys.filter(k => {
+      const v = currentData[0][k];
+      return typeof v === 'string' && !isNaN(Date.parse(String(v))) && String(v).length > 6;
+    });
+    // Prefer date cols for X, then string cols; prefer revenue/sales/amount for Y
+    const priorityY = numCols.find(c => /revenue|sales|amount|price|total|profit/i.test(c)) || numCols[0];
+    const xAxis = dateCols[0] || strCols[0] || keys[0];
+    const yAxis = priorityY || numCols[0] || keys[1];
+    return { xAxis, yAxis };
+  }, [currentData]);
+
   const handleAddWidget = useCallback((type: any, config?: any) => {
     if (!canAddWidget) {
       toast({ title: 'Widget Limit Reached', description: `${plan} plan allows ${widgetLimit} widgets per page.`, variant: 'destructive' });
@@ -94,12 +111,21 @@ export default function DashboardBuilder() {
       toast({ title: 'Chart Locked', description: `${config.chartType} is not available on your ${plan} plan.`, variant: 'destructive' });
       return;
     }
-    // Auto-generate readable title for charts
+    // Auto-suggest columns if none provided
     if (type === 'chart' && config?.chartType) {
+      if (!config.xAxis || !config.yAxis) {
+        const suggested = autoSuggestColumns();
+        config.xAxis = config.xAxis || suggested.xAxis;
+        config.yAxis = config.yAxis || suggested.yAxis;
+      }
       config.title = config.title || generateWidgetTitle(config.chartType, config.xAxis, config.yAxis);
+      if (!config.aggregation) config.aggregation = 'sum';
     }
     addWidget(type, config);
-  }, [canAddWidget, plan, widgetLimit, isChartAvailable, addWidget]);
+    if (type === 'chart' && config?.xAxis && config?.yAxis) {
+      toast({ title: 'Chart Added', description: `Auto-mapped ${config.xAxis} → ${config.yAxis}` });
+    }
+  }, [canAddWidget, plan, widgetLimit, isChartAvailable, addWidget, autoSuggestColumns]);
 
   const handleCopyFromVisualization = useCallback(() => {
     if (!currentData.length) {

@@ -335,10 +335,24 @@ render();
               <Plus className="h-3.5 w-3.5" />Add Widget
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuItem onClick={() => handleAddWidget('chart', { chartType: 'bar' })}>
-              <BarChart3 className="h-4 w-4 mr-2" />Chart
+              <BarChart3 className="h-4 w-4 mr-2" />Bar Chart
+              {currentData.length > 0 && <Badge variant="secondary" className="ml-auto text-[9px]">Auto-mapped</Badge>}
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAddWidget('chart', { chartType: 'line' })}>
+              <TrendingUp className="h-4 w-4 mr-2" />Line Chart
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAddWidget('chart', { chartType: 'pie' })}>
+              <SlidersHorizontal className="h-4 w-4 mr-2" />Pie Chart
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAddWidget('chart', { chartType: 'area' })}>
+              <BarChart3 className="h-4 w-4 mr-2" />Area Chart
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleAddWidget('chart', { chartType: 'scatter' })}>
+              <BarChart3 className="h-4 w-4 mr-2" />Scatter Plot
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => handleAddWidget('kpi', { title: 'KPI' })}>
               <Hash className="h-4 w-4 mr-2" />KPI Card
             </DropdownMenuItem>
@@ -350,7 +364,7 @@ render();
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleCopyFromVisualization} disabled={!currentData.length}>
-              <Copy className="h-4 w-4 mr-2" />Auto-generate from Data
+              <Copy className="h-4 w-4 mr-2" />Auto-generate All Charts
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

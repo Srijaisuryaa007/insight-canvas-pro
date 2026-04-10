@@ -722,6 +722,7 @@ export default function SQLEngine() {
   const [activeTab, setActiveTab] = useState('results');
   const [manualChartType, setManualChartType] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(true);
+  const [topMode, setTopMode] = useState<'sql' | 'formulas'>('sql');
   const autoRunTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pick up query from AI Copilot

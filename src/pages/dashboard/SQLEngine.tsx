@@ -13,6 +13,7 @@ import { generateRecommendedQueries, RecommendedQuery } from '@/lib/copilotEngin
 import { toast } from '@/hooks/use-toast';
 import DataSyncBanner from '@/components/DataSyncBanner';
 import VisualQueryBuilder from '@/components/sql/VisualQueryBuilder';
+import { FormulaHub } from '@/components/sql/FormulaHub';
 
 const UNSAFE_KEYWORDS = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE', 'CREATE', 'GRANT', 'REVOKE'];
 

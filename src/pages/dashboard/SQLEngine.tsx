@@ -797,9 +797,29 @@ export default function SQLEngine() {
   return (
     <div className="space-y-4 h-[calc(100vh-7rem)] flex flex-col">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Database className="h-7 w-7 text-primary" />SQL Engine</h1>
-          <p className="text-muted-foreground text-sm">Query your data with SQL — supports CTEs, window functions, and more</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><Database className="h-7 w-7 text-primary" />Query & Formulas</h1>
+            <p className="text-muted-foreground text-sm">SQL queries, DAX measures, Excel formulas — all in one place</p>
+          </div>
+          <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
+            <Button
+              variant={topMode === 'sql' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-8 gap-1.5 rounded-md"
+              onClick={() => setTopMode('sql')}
+            >
+              <Database className="h-3.5 w-3.5" />SQL Engine
+            </Button>
+            <Button
+              variant={topMode === 'formulas' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-8 gap-1.5 rounded-md"
+              onClick={() => setTopMode('formulas')}
+            >
+              <BookOpen className="h-3.5 w-3.5" />Formula Hub
+            </Button>
+          </div>
         </div>
         <div className="flex gap-2 items-center">
           {datasets.length > 0 && (
@@ -810,13 +830,21 @@ export default function SQLEngine() {
             </select>
           )}
           <Badge variant="outline">{currentData.length} rows</Badge>
-          {columns.length > 0 && (
+          {topMode === 'sql' && columns.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => setShowBuilder(prev => !prev)} className="text-xs">
               {showBuilder ? 'Hide' : 'Show'} Builder
             </Button>
           )}
         </div>
       </div>
+
+      {/* Formula Hub Mode */}
+      {topMode === 'formulas' ? (
+        <div className="flex-1 overflow-hidden">
+          <FormulaHub />
+        </div>
+      ) : (
+      <>
 
       {/* Data Sync Banner */}
       <DataSyncBanner />

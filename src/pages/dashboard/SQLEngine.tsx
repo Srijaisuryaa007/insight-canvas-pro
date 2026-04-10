@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Database, Play, Download, AlertTriangle, Copy, Table2, BarChart3, Sparkles, ChevronDown, ChevronRight, Settings2 } from 'lucide-react';
+import { Database, Play, Download, AlertTriangle, Copy, Table2, BarChart3, Sparkles, ChevronDown, ChevronRight, Settings2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { generateRecommendedQueries, RecommendedQuery } from '@/lib/copilotEngin
 import { toast } from '@/hooks/use-toast';
 import DataSyncBanner from '@/components/DataSyncBanner';
 import VisualQueryBuilder from '@/components/sql/VisualQueryBuilder';
+import { FormulaHub } from '@/components/sql/FormulaHub';
 
 const UNSAFE_KEYWORDS = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE', 'CREATE', 'GRANT', 'REVOKE'];
 
@@ -721,6 +722,7 @@ export default function SQLEngine() {
   const [activeTab, setActiveTab] = useState('results');
   const [manualChartType, setManualChartType] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(true);
+  const [topMode, setTopMode] = useState<'sql' | 'formulas'>('sql');
   const autoRunTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pick up query from AI Copilot
@@ -795,9 +797,29 @@ export default function SQLEngine() {
   return (
     <div className="space-y-4 h-[calc(100vh-7rem)] flex flex-col">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Database className="h-7 w-7 text-primary" />SQL Engine</h1>
-          <p className="text-muted-foreground text-sm">Query your data with SQL — supports CTEs, window functions, and more</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><Database className="h-7 w-7 text-primary" />Query & Formulas</h1>
+            <p className="text-muted-foreground text-sm">SQL queries, DAX measures, Excel formulas — all in one place</p>
+          </div>
+          <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
+            <Button
+              variant={topMode === 'sql' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-8 gap-1.5 rounded-md"
+              onClick={() => setTopMode('sql')}
+            >
+              <Database className="h-3.5 w-3.5" />SQL Engine
+            </Button>
+            <Button
+              variant={topMode === 'formulas' ? 'default' : 'ghost'}
+              size="sm"
+              className="text-xs h-8 gap-1.5 rounded-md"
+              onClick={() => setTopMode('formulas')}
+            >
+              <BookOpen className="h-3.5 w-3.5" />Formula Hub
+            </Button>
+          </div>
         </div>
         <div className="flex gap-2 items-center">
           {datasets.length > 0 && (
@@ -808,13 +830,21 @@ export default function SQLEngine() {
             </select>
           )}
           <Badge variant="outline">{currentData.length} rows</Badge>
-          {columns.length > 0 && (
+          {topMode === 'sql' && columns.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => setShowBuilder(prev => !prev)} className="text-xs">
               {showBuilder ? 'Hide' : 'Show'} Builder
             </Button>
           )}
         </div>
       </div>
+
+      {/* Formula Hub Mode */}
+      {topMode === 'formulas' ? (
+        <div className="flex-1 overflow-hidden">
+          <FormulaHub />
+        </div>
+      ) : (
+      <>
 
       {/* Data Sync Banner */}
       <DataSyncBanner />
@@ -978,6 +1008,8 @@ export default function SQLEngine() {
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

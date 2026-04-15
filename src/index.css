@@ -202,6 +202,135 @@
   background: rgba(124, 58, 237, 0.6);
 }
 
+/* Apple-inspired landing styles */
+.apple-landing .cursor-dot {
+  position: fixed; width: 6px; height: 6px; background: #fff;
+  border-radius: 50%; pointer-events: none; z-index: 9999;
+  mix-blend-mode: difference; transition: none;
+}
+.apple-landing .cursor-follower {
+  position: fixed; width: 36px; height: 36px;
+  border: 1px solid rgba(255,255,255,0.4); border-radius: 50%;
+  pointer-events: none; z-index: 9998;
+  transition: width 0.3s ease, height 0.3s ease, opacity 0.3s ease;
+}
+@media (pointer: coarse) {
+  .apple-landing .cursor-dot, .apple-landing .cursor-follower { display: none; }
+}
+
+.orb {
+  position: absolute; border-radius: 50%;
+  animation: orbDrift 25s ease-in-out infinite;
+}
+
+@keyframes orbDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(40px, -30px) scale(1.05); }
+  50% { transform: translate(-30px, 20px) scale(0.95); }
+  75% { transform: translate(20px, 35px) scale(1.02); }
+}
+
+@keyframes meshGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes cardEntrance {
+  from { opacity: 0; transform: scale(0.94) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes appleFadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.hero-char {
+  display: inline-block; opacity: 0;
+  animation: appleFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.reveal {
+  opacity: 0; transform: translateY(40px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.revealed { opacity: 1; transform: translateY(0); }
+
+.feature-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+}
+.feature-span { grid-column: span 2; }
+@media (max-width: 768px) {
+  .feature-grid { grid-template-columns: 1fr; }
+  .feature-span { grid-column: span 1; }
+  .nav-links-desktop { display: none !important; }
+  .nav-hamburger { display: block !important; }
+}
+
+.apple-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 14px 32px; font-size: 16px; font-weight: 600;
+  background: #0071E3; color: #fff; border: none; border-radius: 12px;
+  cursor: pointer; transition: transform 0.12s, filter 0.12s, box-shadow 0.3s;
+  font-family: inherit;
+}
+.apple-btn-primary:hover { box-shadow: 0 0 30px rgba(0,113,227,0.3); }
+.apple-btn-primary:active { transform: scale(0.97); filter: brightness(0.9); }
+
+.apple-btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 14px 32px; font-size: 16px; font-weight: 600;
+  background: none; color: #fff; border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px; cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.apple-btn-ghost:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.3); }
+.apple-btn-ghost:active { transform: scale(0.97); }
+
+.apple-btn-sm {
+  padding: 8px 20px; font-size: 13px; font-weight: 600;
+  background: #0071E3; color: #fff; border: none; border-radius: 8px;
+  cursor: pointer; font-family: inherit; transition: all 0.2s;
+}
+.apple-btn-sm:hover { box-shadow: 0 0 20px rgba(0,113,227,0.3); }
+
+.shake-anim { animation: shakeIt 0.4s ease; }
+@keyframes shakeIt {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.shimmer-btn::after {
+  content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: left 0.5s ease;
+}
+.shimmer-btn:hover::after { left: 100%; }
+
+.underline-link::after {
+  content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 1px;
+  background: rgba(255,255,255,0.4); transform: scaleX(0); transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.underline-link:hover::after { transform: scaleX(1); }
+
+.apple-gradient-border {
+  position: relative;
+}
+.apple-gradient-border::before {
+  content: ''; position: absolute; inset: -2px; border-radius: 14px;
+  background: linear-gradient(135deg, #0071E3, #5e5ce6, #0071E3);
+  background-size: 200% 200%; animation: gradientShift 3s ease infinite;
+  z-index: -1; opacity: 0.5;
+}
+
 /* Utility classes */
 @layer utilities {
   .gradient-text {

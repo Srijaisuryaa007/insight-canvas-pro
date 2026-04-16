@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataVora – Turn messy data into clear decisions</title>
+<meta name="description" content="DataVora connects your raw data, cleans it automatically, and gives you AI-powered insights in minutes — not weeks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#04040a;--bg2:#08080f;
+--surface:rgba(255,255,255,0.04);--surface2:rgba(255,255,255,0.038);
+--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.13);
+--text:#F2F2F7;--text2:rgba(242,242,247,0.52);--text3:rgba(242,242,247,0.28);
+--blue:#0A84FF;--purple:#BF5AF2;--green:#30D158;--amber:#FF9F0A;--red:#FF453A;--teal:#5AC8FA;
+--card-bg:rgba(255,255,255,0.038);--card-border:rgba(255,255,255,0.09);--card-radius:24px;
+--font-heading:'Syne',system-ui,sans-serif;--font-body:'DM Sans',system-ui,sans-serif;
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.75;overflow-x:hidden;cursor:none}
+a{color:inherit;text-decoration:none;cursor:none}
+button,input,textarea{font-family:inherit;cursor:none}
+h1,h2,h3,h4{font-family:var(--font-heading)}
+h1{font-weight:800;font-size:clamp(52px,8vw,96px);letter-spacing:-0.04em;line-height:1.05}
+h2{font-weight:700;font-size:clamp(36px,5vw,64px);letter-spacing:-0.03em;line-height:1.1}
+h3{font-weight:600;font-size:28px;letter-spacing:-0.02em;line-height:1.2}
+.caption{font-size:13px;color:var(--text2)}
+
+/* Loading Screen */
+#loader{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:32px;transition:opacity .6s,visibility .6s}
+#loader.hide{opacity:0;visibility:hidden}
+.loader-logo{width:64px;height:64px;position:relative}
+.loader-ring{width:64px;height:64px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--blue);animation:loaderSpin .8s linear infinite}
+.loader-dots{display:flex;gap:8px;margin-top:8px}
+.loader-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:loaderPulse 1.2s ease infinite}
+.loader-dot:nth-child(2){animation-delay:.2s}
+.loader-dot:nth-child(3){animation-delay:.4s}
+.loader-text{font-family:var(--font-heading);font-size:14px;color:var(--text2);letter-spacing:0.1em;text-transform:uppercase;animation:loaderFade 1.5s ease infinite}
+@keyframes loaderSpin{to{transform:rotate(360deg)}}
+@keyframes loaderPulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+@keyframes loaderFade{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* Custom Cursor */
+#cursor-dot{position:fixed;width:6px;height:6px;background:#fff;border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform .15s}
+#cursor-ring{position:fixed;width:38px;height:38px;border:1px solid rgba(255,255,255,0.3);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .25s,height .25s,border-color .25s,background .25s}
+#cursor-ring.hover{width:58px;height:58px;border-color:var(--blue);background:rgba(10,132,255,0.08)}
+#cursor-dot.click{animation:cursorPulse .2s ease}
+@keyframes cursorPulse{50%{transform:translate(-50%,-50%) scale(2)}100%{transform:translate(-50%,-50%) scale(1)}}
+
+/* Orbs */
+.orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(80px)}
+.orb1{width:800px;height:800px;background:radial-gradient(circle,var(--blue),transparent 70%);top:-300px;left:-200px;opacity:.14;animation:drift1 26s ease-in-out infinite alternate}
+.orb2{width:700px;height:700px;background:radial-gradient(circle,var(--purple),transparent 70%);bottom:-200px;right:-100px;opacity:.13;animation:drift2 22s ease-in-out infinite alternate}
+.orb3{width:500px;height:500px;background:radial-gradient(circle,var(--teal),transparent 70%);top:40%;left:40%;opacity:.08;animation:drift3 30s ease-in-out infinite alternate}
+@keyframes drift1{0%{transform:translate(0,0) scale(1)}100%{transform:translate(80px,60px) scale(1.1)}}
+@keyframes drift2{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-60px,-80px) scale(1.15)}}
+@keyframes drift3{0%{transform:translate(0,0) scale(1)}100%{transform:translate(40px,-40px) scale(.9)}}
+
+/* Noise */
+.noise{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.025}
+
+/* Nav */
+nav{position:fixed;top:0;width:100%;z-index:100;padding:16px 48px;display:flex;align-items:center;justify-content:space-between;transition:all .35s ease}
+nav.scrolled{background:rgba(4,4,10,0.85);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border-bottom:1px solid rgba(255,255,255,0.07)}
+.nav-logo{display:flex;align-items:center;gap:10px;font-family:var(--font-heading);font-weight:700;font-size:20px}
+.nav-logo svg{width:32px;height:32px}
+.nav-links{display:flex;gap:32px;font-size:14px;font-weight:500}
+.nav-links a{color:var(--text2);transition:color .2s;position:relative}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+.nav-links a.active::after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:4px;height:4px;background:var(--blue);border-radius:50%}
+.nav-ctas{display:flex;gap:12px;align-items:center}
+.nav-hide{display:none}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;border:none;border-radius:12px;padding:14px 28px;cursor:none;transition:all .12s ease;position:relative;overflow:hidden}
+.btn:active{transform:scale(0.97);filter:brightness(0.9)}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);transition:left .5s}
+.btn-blue:hover::before{left:100%}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.btn-ghost:hover{background:var(--surface);border-color:rgba(255,255,255,0.2)}
+.btn-white{background:#fff;color:#000}
+.btn-white:hover{background:#e8e8ed}
+.btn-lg{font-size:18px;padding:18px 36px;border-radius:14px}
+.btn-sm{font-size:13px;padding:10px 20px;border-radius:10px}
+.btn-pill{border-radius:999px}
+
+/* Pages */
+.page{display:none;position:relative;z-index:2;min-height:100vh}
+.page.active{display:block;animation:pageIn .45s cubic-bezier(0.22,1,0.36,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* Sections */
+.section{padding:120px 48px;max-width:1280px;margin:0 auto}
+@media(max-width:1024px){.section{padding:72px 32px}}
+@media(max-width:640px){.section{padding:48px 20px}}
+
+/* Reveal */
+.reveal{opacity:0;transform:translateY(28px);transition:all .5s cubic-bezier(0.22,1,0.36,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* Glass Card */
+.glass{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--card-radius);backdrop-filter:blur(40px) saturate(160%);-webkit-backdrop-filter:blur(40px) saturate(160%)}
+.glass:hover{border-color:rgba(255,255,255,0.14)}
+
+/* Hero */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding-top:100px;position:relative}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:rgba(10,132,255,0.1);border:1px solid rgba(10,132,255,0.2);font-size:13px;font-weight:600;color:var(--blue);margin-bottom:28px}
+.hero-eyebrow .dot{width:6px;height:6px;background:var(--blue);border-radius:50%;animation:blink 2s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{margin-bottom:24px}
+.hero h1 .word{display:inline-block;opacity:0;transform:translateY(40px);animation:wordIn .7s cubic-bezier(0.16,1,0.3,1) forwards}
+@keyframes wordIn{to{opacity:1;transform:translateY(0)}}
+.hero-sub{color:var(--text2);font-size:18px;max-width:560px;margin:0 auto 40px}
+.hero-ctas{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.hero-social{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center}
+.hero-avatars{display:flex;margin-right:8px}
+.hero-avatars span{width:32px;height:32px;border-radius:50%;border:2px solid var(--bg);margin-left:-8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.hero-avatars span:nth-child(1){background:#6366f1}
+.hero-avatars span:nth-child(2){background:#0ea5e9}
+.hero-avatars span:nth-child(3){background:#8b5cf6}
+.hero-avatars span:nth-child(4){background:#f59e0b}
+.hero-avatars span:nth-child(5){background:#10b981}
+.hero-stars{display:flex;align-items:center;gap:6px;color:var(--amber);font-size:14px}
+.hero-proof-text{font-size:13px;color:var(--text2)}
+
+/* Dashboard mockup card */
+.hero-mockup{margin-top:48px;width:100%;max-width:680px;position:relative}
+.mock-card{padding:28px;animation:mockFloat 4s ease-in-out infinite}
+@keyframes mockFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.mock-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.mock-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600}
+.mock-badge.green{background:rgba(48,209,88,0.12);color:var(--green)}
+.mock-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.mock-stat{padding:12px;border-radius:12px;background:rgba(255,255,255,0.04)}
+.mock-stat .val{font-family:var(--font-heading);font-size:22px;font-weight:700}
+.mock-stat .lbl{font-size:11px;color:var(--text2)}
+.mock-bars{display:flex;align-items:flex-end;gap:6px;height:60px}
+.mock-bar{width:100%;border-radius:4px 4px 0 0;animation:barGrow .8s ease forwards}
+.mock-bar:nth-child(1){height:40%;background:var(--blue);animation-delay:.1s}
+.mock-bar:nth-child(2){height:70%;background:var(--purple);animation-delay:.2s}
+.mock-bar:nth-child(3){height:50%;background:var(--teal);animation-delay:.3s}
+.mock-bar:nth-child(4){height:90%;background:var(--blue);animation-delay:.4s}
+.mock-bar:nth-child(5){height:60%;background:var(--purple);animation-delay:.5s}
+.mock-bar:nth-child(6){height:80%;background:var(--teal);animation-delay:.6s}
+@keyframes barGrow{from{height:0}to{}}
+.dot-grid{position:absolute;inset:-40px;z-index:-1;background-image:radial-gradient(rgba(255,255,255,0.06) 1px,transparent 1px);background-size:20px 20px}
+
+/* Logo marquee */
+.marquee-section{padding:60px 0;overflow:hidden;position:relative}
+.marquee-section .fade-l,.marquee-section .fade-r{position:absolute;top:0;bottom:0;width:120px;z-index:2;pointer-events:none}
+.marquee-section .fade-l{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
+.marquee-section .fade-r{right:0;background:linear-gradient(270deg,var(--bg),transparent)}
+.marquee-track{display:flex;gap:64px;animation:marquee 30s linear infinite;width:max-content}
+.marquee-track span{font-family:var(--font-heading);font-size:18px;font-weight:700;color:var(--text3);white-space:nowrap}
+@keyframes marquee{to{transform:translateX(-50%)}}
+.marquee-label{text-align:center;font-size:13px;color:var(--text3);margin-bottom:24px;letter-spacing:.08em;text-transform:uppercase}
+
+/* Problem/Solution */
+.ps-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:32px;align-items:center}
+@media(max-width:768px){.ps-grid{grid-template-columns:1fr;gap:24px}}
+.ps-card{padding:36px;border-radius:20px}
+.ps-card.old{background:rgba(255,69,58,0.06);border:1px solid rgba(255,69,58,0.15)}
+.ps-card.new{background:rgba(48,209,88,0.06);border:1px solid rgba(48,209,88,0.15)}
+.ps-card h3{margin-bottom:20px;font-size:22px}
+.ps-item{display:flex;align-items:center;gap:12px;padding:10px 0;font-size:15px}
+.ps-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.ps-icon.red{background:rgba(255,69,58,0.15);color:var(--red)}
+.ps-icon.green{background:rgba(48,209,88,0.15);color:var(--green)}
+.ps-arrow{font-size:32px;color:var(--text3)}
+
+/* Bento */
+.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.bento-cell{padding:32px;transition:transform .25s,box-shadow .25s}
+.bento-cell:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.3)}
+.bento-cell.span2{grid-column:span 2}
+.bento-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px}
+.bento-cell h3{font-size:22px;margin-bottom:8px}
+.bento-cell p{color:var(--text2);font-size:14px}
+@media(max-width:768px){.bento{grid-template-columns:1fr}.bento-cell.span2{grid-column:span 1}}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:48px;text-align:center}
+@media(max-width:768px){.steps{grid-template-columns:1fr;gap:32px}}
+.step-num{font-family:var(--font-heading);font-size:72px;font-weight:800;color:rgba(255,255,255,0.04);line-height:1}
+.step h3{margin:8px 0}
+.step p{color:var(--text2);font-size:14px}
+
+/* Testimonials */
+.testimonials-track{display:flex;gap:24px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:8px 0;scrollbar-width:none}
+.testimonials-track::-webkit-scrollbar{display:none}
+.test-card{min-width:380px;max-width:420px;scroll-snap-align:start;padding:32px;flex-shrink:0}
+.test-quote{font-family:var(--font-heading);font-size:18px;font-style:italic;line-height:1.5;margin-bottom:20px}
+.test-author{display:flex;align-items:center;gap:12px}
+.test-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff}
+.test-name{font-weight:600;font-size:14px}
+.test-role{font-size:12px;color:var(--text2)}
+.dots{display:flex;gap:8px;justify-content:center;margin-top:20px}
+.dots span{width:8px;height:8px;border-radius:50%;background:var(--border2);transition:background .3s}
+.dots span.active{background:var(--blue)}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;text-align:center;padding:60px 0;position:relative}
+@media(max-width:768px){.stats-row{grid-template-columns:repeat(2,1fr);gap:32px}}
+.stat-item{padding:0 32px;border-right:1px solid var(--border)}
+.stat-item:last-child{border-right:none}
+@media(max-width:768px){.stat-item{border-right:none}}
+.stat-num{font-family:var(--font-heading);font-size:48px;font-weight:800;letter-spacing:-0.03em}
+.stat-label{font-size:14px;color:var(--text2);margin-top:4px}
+
+/* CTA Banner */
+.cta-banner{text-align:center;padding:80px 48px;border-radius:28px;background:linear-gradient(135deg,rgba(10,132,255,0.08),rgba(191,90,242,0.06));border:1px solid rgba(255,255,255,0.07);position:relative;overflow:hidden}
+.cta-banner h2{margin-bottom:16px}
+.cta-banner p{color:var(--text2);margin-bottom:32px}
+
+/* Footer */
+footer{padding:60px 48px 32px;max-width:1280px;margin:0 auto;border-top:1px solid rgba(255,255,255,0.06)}
+.footer-grid{display:grid;grid-template-columns:2fr repeat(4,1fr);gap:48px;margin-bottom:48px}
+@media(max-width:768px){.footer-grid{grid-template-columns:1fr 1fr;gap:32px}}
+.footer-grid h4{font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px}
+.footer-grid a{display:block;font-size:14px;color:var(--text2);padding:4px 0;transition:color .2s}
+.footer-grid a:hover{color:var(--text)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--text3);flex-wrap:wrap;gap:16px}
+.footer-social{display:flex;gap:16px}
+.footer-social a{color:var(--text3);transition:color .2s}
+.footer-social a:hover{color:var(--text)}
+
+/* Section headers */
+.sh{text-align:center;margin-bottom:64px}
+.sh p{color:var(--text2);font-size:18px;max-width:540px;margin:16px auto 0}
+
+/* Features page */
+.feat-row{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;padding:80px 0}
+.feat-row.reverse{direction:rtl}
+.feat-row.reverse>*{direction:ltr}
+.feat-row h3{font-size:32px;margin-bottom:16px}
+.feat-row p{color:var(--text2);font-size:15px;line-height:1.7}
+.feat-visual{height:280px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:48px}
+@media(max-width:768px){.feat-row,.feat-row.reverse{grid-template-columns:1fr;gap:32px}.feat-visual{height:200px}}
+
+/* Pricing */
+.pricing-toggle{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:48px}
+.toggle-pill{width:52px;height:28px;border-radius:999px;background:var(--border2);position:relative;cursor:none;transition:background .3s}
+.toggle-pill.active{background:var(--blue)}
+.toggle-pill::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .3s}
+.toggle-pill.active::after{transform:translateX(24px)}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1080px;margin:0 auto}
+@media(max-width:768px){.pricing-grid{grid-template-columns:1fr;max-width:400px}}
+.price-card{padding:36px;position:relative}
+.price-card.featured{border:2px solid var(--blue)}
+.price-card .badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;font-size:12px;font-weight:600;padding:4px 14px;border-radius:999px}
+.price-val{font-family:var(--font-heading);font-size:48px;font-weight:800;margin:16px 0 4px}
+.price-sub{font-size:14px;color:var(--text2);margin-bottom:24px}
+.price-features{list-style:none;margin-bottom:28px}
+.price-features li{padding:8px 0;font-size:14px;color:var(--text2);display:flex;align-items:center;gap:10px}
+.price-features li::before{content:'✓';color:var(--green);font-weight:700;font-size:13px}
+
+/* FAQ */
+.faq-item{border-bottom:1px solid var(--border);padding:20px 0}
+.faq-q{display:flex;justify-content:space-between;align-items:center;cursor:none;font-weight:600;font-size:16px}
+.faq-icon{transition:transform .3s;font-size:20px;color:var(--text2)}
+.faq-item.open .faq-icon{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .4s ease,padding .3s;padding-top:0}
+.faq-item.open .faq-a{max-height:200px;padding-top:12px}
+.faq-a p{color:var(--text2);font-size:14px;line-height:1.7}
+
+/* About */
+.values-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media(max-width:768px){.values-grid{grid-template-columns:1fr}}
+.value-card{padding:32px;text-align:center}
+.value-card h3{margin:16px 0 8px;font-size:20px}
+.value-card p{color:var(--text2);font-size:14px}
+.team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+@media(max-width:768px){.team-grid{grid-template-columns:repeat(2,1fr)}}
+.team-card{padding:28px;text-align:center;transition:transform .25s}
+.team-card:hover{transform:translateY(-4px)}
+.team-avatar{width:64px;height:64px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#fff}
+.team-card h4{font-size:16px;margin-bottom:2px}
+.team-card p{font-size:13px;color:var(--text2)}
+
+.timeline{position:relative;padding-left:32px;margin-top:48px}
+.timeline::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--border2)}
+.tl-item{position:relative;padding:0 0 48px 32px}
+.tl-item::before{content:'';position:absolute;left:-36px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)}
+.tl-year{font-family:var(--font-heading);font-weight:700;color:var(--blue);font-size:14px}
+.tl-text{color:var(--text2);font-size:14px;margin-top:4px}
+
+/* Blog */
+.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media(max-width:768px){.blog-grid{grid-template-columns:1fr}}
+.blog-card{overflow:hidden;transition:transform .25s}
+.blog-card:hover{transform:translateY(-4px)}
+.blog-strip{height:6px;border-radius:24px 24px 0 0}
+.blog-card-body{padding:28px}
+.blog-card h3{font-size:18px;margin-bottom:8px}
+.blog-card p{font-size:13px;color:var(--text2);margin-bottom:16px}
+.blog-meta{display:flex;gap:16px;font-size:12px;color:var(--text3)}
+.blog-featured{grid-column:span 3;padding:48px}
+@media(max-width:768px){.blog-featured{grid-column:span 1}}
+.filter-pills{display:flex;gap:8px;justify-content:center;margin-bottom:48px;flex-wrap:wrap}
+.filter-pill{padding:8px 20px;border-radius:999px;font-size:13px;font-weight:600;background:var(--surface);border:1px solid var(--border);cursor:none;transition:all .2s;color:var(--text2)}
+.filter-pill.active,.filter-pill:hover{background:rgba(10,132,255,0.12);color:var(--blue);border-color:rgba(10,132,255,0.3)}
+
+/* Docs */
+.docs-layout{display:grid;grid-template-columns:260px 1fr;gap:48px;min-height:80vh}
+@media(max-width:768px){.docs-layout{grid-template-columns:1fr}}
+.docs-sidebar{position:sticky;top:100px;align-self:start}
+.docs-search{width:100%;padding:10px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;margin-bottom:20px;outline:none}
+.docs-search:focus{border-color:var(--blue)}
+.docs-nav a{display:block;padding:8px 14px;font-size:14px;color:var(--text2);border-radius:8px;transition:all .2s}
+.docs-nav a:hover,.docs-nav a.active{background:rgba(10,132,255,0.08);color:var(--blue)}
+.docs-nav .section-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);padding:16px 14px 6px;font-weight:600}
+.docs-content h2{font-size:28px;margin-bottom:16px}
+.docs-content p{color:var(--text2);margin-bottom:16px;font-size:15px}
+.code-block{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:20px;font-family:ui-monospace,monospace;font-size:13px;color:var(--teal);margin:16px 0;overflow-x:auto;position:relative}
+.code-copy{position:absolute;top:8px;right:8px;background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:6px;font-size:11px;cursor:none;transition:all .2s}
+.code-copy:hover{background:rgba(255,255,255,0.08);color:var(--text)}
+.breadcrumb{font-size:13px;color:var(--text3);margin-bottom:24px}
+.breadcrumb span{color:var(--text2)}
+
+/* Auth pages */
+.auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px 20px;position:relative}
+.auth-card{width:100%;max-width:420px;padding:40px;animation:authIn .7s cubic-bezier(0.22,1,0.36,1);position:relative;z-index:2}
+@keyframes authIn{from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}
+.auth-logo{display:flex;justify-content:center;margin-bottom:28px}
+.auth-card h2{font-size:28px;text-align:center;margin-bottom:6px}
+.auth-card .sub{text-align:center;color:var(--text2);font-size:14px;margin-bottom:32px}
+.input-group{position:relative;margin-bottom:24px}
+.input-group input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border2);padding:14px 0 10px;font-size:15px;color:var(--text);outline:none;transition:border-color .3s}
+.input-group input:focus{border-color:var(--blue)}
+.input-group label{position:absolute;top:14px;left:0;font-size:15px;color:var(--text3);pointer-events:none;transition:all .25s ease}
+.input-group input:focus~label,.input-group input:not(:placeholder-shown)~label{top:-8px;font-size:11px;color:var(--blue)}
+.input-group .underline{position:absolute;bottom:0;left:0;width:100%;height:2px;background:var(--blue);transform:scaleX(0);transition:transform .3s}
+.input-group input:focus~.underline{transform:scaleX(1)}
+.input-group .eye-toggle{position:absolute;right:0;top:12px;background:none;border:none;color:var(--text3);font-size:18px;cursor:none}
+.auth-divider{display:flex;align-items:center;gap:16px;margin:24px 0;font-size:13px;color:var(--text3)}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.auth-footer{text-align:center;margin-top:24px;font-size:14px;color:var(--text2)}
+.auth-footer a{color:var(--blue);font-weight:600}
+
+.strength-meter{display:flex;gap:4px;margin-top:8px;margin-bottom:4px}
+.strength-bar{height:3px;flex:1;border-radius:2px;background:var(--border);transition:background .3s}
+.strength-label{font-size:11px;color:var(--text3);margin-bottom:16px}
+
+.perks-box{margin-top:24px;padding:20px;border-radius:16px;background:rgba(48,209,88,0.06);border:1px solid rgba(48,209,88,0.15)}
+.perks-box h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--green);margin-bottom:12px}
+.perk-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;color:var(--text2)}
+.perk-check{width:20px;height:20px;border-radius:50%;background:rgba(48,209,88,0.15);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--green);flex-shrink:0}
+
+/* Dashboard */
+.dash-layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+@media(max-width:768px){.dash-layout{grid-template-columns:1fr}}
+.dash-sidebar{background:rgba(255,255,255,0.025);border-right:1px solid rgba(255,255,255,0.06);padding:24px 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+@media(max-width:768px){.dash-sidebar{display:none}}
+.dash-sidebar .logo{display:flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:700;font-size:18px;margin-bottom:32px}
+.dash-nav a{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;font-size:14px;color:var(--text2);transition:all .2s;margin-bottom:2px;position:relative}
+.dash-nav a:hover{background:rgba(255,255,255,0.04);transform:translateX(2px)}
+.dash-nav a.active{color:var(--text);background:rgba(10,132,255,0.08)}
+.dash-nav a.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;background:var(--blue);border-radius:1px}
+.dash-user{margin-top:auto;padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--border)}
+.dash-user-info{display:flex;align-items:center;gap:10px}
+.dash-user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.dash-user-name{font-size:13px;font-weight:600}
+.dash-user-role{font-size:11px;color:var(--text2)}
+.dash-upgrade{margin-top:12px;width:100%;padding:8px;border-radius:8px;background:rgba(10,132,255,0.1);border:1px solid rgba(10,132,255,0.2);color:var(--blue);font-size:12px;font-weight:600;text-align:center;cursor:none;transition:background .2s}
+.dash-upgrade:hover{background:rgba(10,132,255,0.2)}
+
+.dash-main{padding:32px}
+.dash-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;flex-wrap:wrap;gap:16px}
+.dash-greeting h2{font-size:22px;margin-bottom:2px}
+.dash-greeting p{font-size:14px;color:var(--text2)}
+.dash-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+@media(max-width:1024px){.dash-stats{grid-template-columns:repeat(2,1fr)}}
+.dash-stat{padding:20px;border-radius:16px;background:var(--surface);border:1px solid var(--border);position:relative}
+.dash-stat-icon{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.dash-stat .lbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.dash-stat .val{font-family:var(--font-heading);font-size:28px;font-weight:700;margin:4px 0}
+.dash-stat .trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px}
+.dash-stat .trend.up{color:var(--green);background:rgba(48,209,88,0.1)}
+.sparkline{margin-top:8px}
+
+.dash-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+@media(max-width:1024px){.dash-grid{grid-template-columns:1fr}}
+.dash-card{padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--border)}
+.dash-card h3{font-size:16px;margin-bottom:16px}
+
+.health-ring{width:120px;height:120px;margin:0 auto 16px}
+.health-score{text-align:center;font-family:var(--font-heading);font-size:32px;font-weight:800}
+.health-grade{text-align:center;display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(48,209,88,0.12);color:var(--green)}
+.progress-row{display:flex;align-items:center;gap:10px;padding:6px 0}
+.progress-row .prlbl{font-size:12px;color:var(--text2);width:90px}
+.progress-row .prbar{flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden}
+.progress-row .prfill{height:100%;border-radius:2px;transition:width 1.2s ease}
+.progress-row .prval{font-size:12px;font-weight:600;width:40px;text-align:right}
+
+.activity-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.activity-text{font-size:13px;color:var(--text2)}
+
+.formula-pill{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);margin-bottom:6px;font-family:ui-monospace,monospace;font-size:12px;color:var(--teal);transition:all .2s}
+.formula-pill:hover{background:rgba(255,255,255,0.06);transform:scale(1.01)}
+
+.quick-action{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;cursor:none;transition:all .2s}
+.quick-action:hover{background:rgba(255,255,255,0.04);transform:translateX(4px)}
+.qa-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.qa-text{font-size:14px;font-weight:500}
+.qa-arrow{margin-left:auto;opacity:0;transition:opacity .2s;font-size:14px;color:var(--text3)}
+.quick-action:hover .qa-arrow{opacity:1}
+
+.credits-card{padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--border);margin-top:16px}
+.credits-val{font-family:var(--font-heading);font-size:36px;font-weight:700}
+.credits-bar{height:6px;border-radius:3px;background:var(--border);margin:12px 0;overflow:hidden}
+.credits-fill{height:100%;background:var(--blue);border-radius:3px;width:100%}
+
+/* Settings */
+.settings-layout{display:grid;grid-template-columns:200px 1fr;gap:48px}
+@media(max-width:768px){.settings-layout{grid-template-columns:1fr}}
+.settings-tabs{display:flex;flex-direction:column;gap:4px}
+.settings-tab{padding:10px 16px;border-radius:10px;font-size:14px;color:var(--text2);cursor:none;transition:all .2s;text-align:left;background:none;border:none}
+.settings-tab:hover,.settings-tab.active{background:rgba(10,132,255,0.08);color:var(--blue)}
+.settings-content{max-width:600px}
+.settings-content h3{font-size:22px;margin-bottom:24px}
+.settings-field{margin-bottom:20px}
+.settings-field label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px}
+.settings-field input{width:100%;padding:12px 16px;border-radius:10px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;outline:none}
+.settings-field input:focus{border-color:var(--blue)}
+.toggle-switch{width:44px;height:24px;border-radius:999px;background:var(--border2);position:relative;cursor:none;transition:background .3s}
+.toggle-switch.on{background:var(--green)}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .3s}
+.toggle-switch.on::after{transform:translateX(20px)}
+.danger-zone{padding:24px;border-radius:16px;background:rgba(255,69,58,0.06);border:1px solid rgba(255,69,58,0.15)}
+.danger-zone h4{color:var(--red);margin-bottom:8px}
+.danger-zone p{font-size:13px;color:var(--text2);margin-bottom:16px}
+
+/* 404 */
+.four04{text-align:center;padding-top:20vh}
+.four04 h1{font-size:clamp(96px,20vw,200px);background:linear-gradient(135deg,var(--blue),var(--purple),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.four04 h2{font-size:24px;margin:16px 0 8px}
+.four04 p{color:var(--text2);margin-bottom:32px}
+
+/* Toast */
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(255,255,255,0.1);backdrop-filter:blur(20px);border:1px solid var(--border2);border-radius:14px;padding:14px 24px;font-size:14px;color:var(--text);z-index:9000;opacity:0;transition:all .4s ease;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Hamburger */
+.hamburger{display:none;background:none;border:none;color:var(--text);font-size:24px;cursor:none}
+@media(max-width:768px){.hamburger{display:block}.nav-links,.nav-ctas{display:none}}
+.mobile-menu{position:fixed;inset:0;z-index:200;background:rgba(4,4,10,0.96);backdrop-filter:blur(24px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;opacity:0;visibility:hidden;transition:all .35s}
+.mobile-menu.open{opacity:1;visibility:visible}
+.mobile-menu a{font-family:var(--font-heading);font-size:28px;font-weight:700;opacity:0;transform:translateY(20px);transition:all .4s}
+.mobile-menu.open a{opacity:1;transform:translateY(0)}
+.mobile-close{position:absolute;top:24px;right:24px;background:none;border:none;color:var(--text);font-size:28px;cursor:none}
+
+/* Spinner */
+.spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:loaderSpin .6s linear infinite;display:inline-block}
+</style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader">
+  <div class="loader-logo"><div class="loader-ring"></div></div>
+  <div class="loader-dots"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>
+  <div class="loader-text">Loading DataVora</div>
+</div>
+
+<!-- Cursor -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- Orbs -->
+<div class="orbs"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+
+<!-- Noise -->
+<svg class="noise" width="100%" height="100%"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#noise)" opacity="0.025"/></svg>
+
+<!-- Nav -->
+<nav id="main-nav">
+  <div class="nav-logo" onclick="navigate('home')" style="cursor:none">
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#0A84FF"/><stop offset="1" stop-color="#BF5AF2"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg)" opacity="0.15"/><path d="M8 24C8 15.2 13 8 20 8" stroke="url(#lg)" stroke-width="3" stroke-linecap="round"/><path d="M12 24C12 17.4 15.5 12 21 12" stroke="url(#lg)" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/></svg>
+    DataVora
+  </div>
+  <div class="nav-links" id="nav-links">
+    <a onclick="navigate('home')" class="active" data-page="home">Home</a>
+    <a onclick="navigate('features')" data-page="features">Features</a>
+    <a onclick="navigate('pricing')" data-page="pricing">Pricing</a>
+    <a onclick="navigate('about')" data-page="about">About</a>
+    <a onclick="navigate('blog')" data-page="blog">Blog</a>
+    <a onclick="navigate('docs')" data-page="docs">Docs</a>
+  </div>
+  <div class="nav-ctas" id="nav-ctas">
+    <a class="btn btn-ghost btn-sm" onclick="navigate('login')">Sign in</a>
+    <a class="btn btn-blue btn-sm btn-pill" onclick="navigate('signup')">Get started free</a>
+  </div>
+  <button class="hamburger" onclick="toggleMobile()">☰</button>
+</nav>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobile-menu">
+  <button class="mobile-close" onclick="toggleMobile()">✕</button>
+  <a onclick="navigate('home');toggleMobile()">Home</a>
+  <a onclick="navigate('features');toggleMobile()">Features</a>
+  <a onclick="navigate('pricing');toggleMobile()">Pricing</a>
+  <a onclick="navigate('about');toggleMobile()">About</a>
+  <a onclick="navigate('blog');toggleMobile()">Blog</a>
+  <a onclick="navigate('docs');toggleMobile()">Docs</a>
+  <a onclick="navigate('login');toggleMobile()">Sign in</a>
+  <a onclick="navigate('signup');toggleMobile()" style="color:var(--blue)">Get started free</a>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ========== PAGE: HOME ========== -->
+<div class="page active" id="page-home">
+  <div class="hero section">
+    <div class="hero-eyebrow reveal"><span class="dot"></span>Now with AI Copilot</div>
+    <h1 id="hero-h1"></h1>
+    <p class="hero-sub reveal">DataVora connects your raw data, cleans it automatically, and gives you AI-powered insights in minutes — not weeks.</p>
+    <div class="hero-ctas reveal">
+      <a class="btn btn-blue btn-lg btn-pill" onclick="navigate('signup')">Start for free</a>
+      <a class="btn btn-ghost btn-lg btn-pill" onclick="navigate('features')">See how it works →</a>
+    </div>
+    <div class="hero-social reveal">
+      <div class="hero-avatars">
+        <span>AK</span><span>MJ</span><span>SR</span><span>PL</span><span>RN</span>
+      </div>
+      <span class="hero-proof-text">Join 10,000+ analysts already using DataVora</span>
+      <span style="color:var(--text3)">·</span>
+      <span class="hero-stars">★★★★★ <span style="color:var(--text2);font-size:13px">4.9/5</span></span>
+    </div>
+    <div class="hero-mockup reveal">
+      <div class="mock-card glass" style="position:relative">
+        <div class="dot-grid"></div>
+        <div class="mock-header">
+          <span style="font-weight:600;font-size:14px">Dashboard Overview</span>
+          <span class="mock-badge green">● AI Analysis Complete</span>
+        </div>
+        <div class="mock-stats">
+          <div class="mock-stat"><div class="lbl">Total Rows</div><div class="val">67</div></div>
+          <div class="mock-stat"><div class="lbl">Health Score</div><div class="val" style="color:var(--green)">100</div></div>
+          <div class="mock-stat"><div class="lbl">Insights</div><div class="val" style="color:var(--purple)">12</div></div>
+        </div>
+        <div class="mock-bars"><div class="mock-bar"></div><div class="mock-bar"></div><div class="mock-bar"></div><div class="mock-bar"></div><div class="mock-bar"></div><div class="mock-bar"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marquee -->
+  <div class="marquee-section">
+    <div class="marquee-label reveal">Trusted by teams at</div>
+    <div class="fade-l"></div><div class="fade-r"></div>
+    <div class="marquee-track"><span>Airbnb</span><span>Stripe</span><span>Notion</span><span>Linear</span><span>Figma</span><span>Vercel</span><span>GitHub</span><span>Shopify</span><span>Airbnb</span><span>Stripe</span><span>Notion</span><span>Linear</span><span>Figma</span><span>Vercel</span><span>GitHub</span><span>Shopify</span></div>
+  </div>
+
+  <!-- Problem/Solution -->
+  <div class="section">
+    <div class="sh reveal"><h2>Before and after DataVora</h2></div>
+    <div class="ps-grid reveal">
+      <div class="ps-card old">
+        <h3 style="color:var(--red)">The old way</h3>
+        <div class="ps-item"><span class="ps-icon red">✗</span>Messy spreadsheets everywhere</div>
+        <div class="ps-item"><span class="ps-icon red">✗</span>Hours of manual cleaning</div>
+        <div class="ps-item"><span class="ps-icon red">✗</span>Wrong charts, wrong answers</div>
+        <div class="ps-item"><span class="ps-icon red">✗</span>No real insights</div>
+      </div>
+      <div class="ps-arrow" style="display:flex;align-items:center">→</div>
+      <div class="ps-card new">
+        <h3 style="color:var(--green)">The DataVora way</h3>
+        <div class="ps-item"><span class="ps-icon green">✓</span>Automatic cleanup</div>
+        <div class="ps-item"><span class="ps-icon green">✓</span>AI-powered charts</div>
+        <div class="ps-item"><span class="ps-icon green">✓</span>Instant insights</div>
+        <div class="ps-item"><span class="ps-icon green">✓</span>Semantic models built-in</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bento -->
+  <div class="section">
+    <div class="sh reveal"><h2>Everything in one place</h2><p>Upload, clean, analyze, visualize, and share — without switching tools.</p></div>
+    <div class="bento reveal">
+      <div class="bento-cell span2 glass">
+        <div class="bento-icon" style="background:rgba(10,132,255,0.12)">📂</div>
+        <h3>Upload anything.</h3>
+        <p>CSV, Excel, JSON, SQL — drag it in and we'll handle the rest. No file size drama.</p>
+      </div>
+      <div class="bento-cell glass">
+        <div class="bento-icon" style="background:rgba(191,90,242,0.12)">✦</div>
+        <h3>AI Copilot</h3>
+        <p>Ask questions in plain English. Get charts, formulas, and answers.</p>
+      </div>
+      <div class="bento-cell glass">
+        <div class="bento-icon" style="background:rgba(48,209,88,0.12)">◎</div>
+        <h3>Data Health Score</h3>
+        <p>Instant quality audit. Know exactly where your data needs work.</p>
+      </div>
+      <div class="bento-cell span2 glass">
+        <div class="bento-icon" style="background:rgba(90,200,250,0.12)">λ</div>
+        <h3>Semantic Models</h3>
+        <p>Auto-generated DAX, Excel, and SQL formulas tailored to your schema.</p>
+      </div>
+      <div class="bento-cell glass">
+        <div class="bento-icon" style="background:rgba(255,159,10,0.12)">◧</div>
+        <h3>Beautiful Charts</h3>
+        <p>38+ chart types. From simple bar charts to 3D particle visualizations.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="section">
+    <div class="sh reveal"><h2>Three steps. That's it.</h2></div>
+    <div class="steps reveal">
+      <div class="step"><div class="step-num">1</div><h3>Connect your data</h3><p>Upload a CSV or connect your database. We support everything.</p></div>
+      <div class="step"><div class="step-num">2</div><h3>AI cleans and models it</h3><p>Automatic quality checks, deduplication, and semantic layer generation.</p></div>
+      <div class="step"><div class="step-num">3</div><h3>Explore and share</h3><p>Interactive charts, AI copilot, and one-click reports for your team.</p></div>
+    </div>
+  </div>
+
+  <!-- Testimonials -->
+  <div class="section">
+    <div class="sh reveal"><h2>What people are saying</h2></div>
+    <div class="testimonials-track reveal" id="test-track">
+      <div class="test-card glass"><div class="test-quote">"DataVora replaced three tools we were paying for. The AI copilot alone is worth it."</div><div class="test-author"><div class="test-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">AK</div><div><div class="test-name">Ananya Krishnan</div><div class="test-role">Head of Analytics, Zeta</div></div></div></div>
+      <div class="test-card glass"><div class="test-quote">"I uploaded a messy CSV and had a board-ready report in under 5 minutes. Not kidding."</div><div class="test-author"><div class="test-avatar" style="background:linear-gradient(135deg,#0ea5e9,#06b6d4)">MJ</div><div><div class="test-name">Marcus Jensen</div><div class="test-role">Data Lead, Finstack</div></div></div></div>
+      <div class="test-card glass"><div class="test-quote">"The data quality engine caught issues we'd been ignoring for months. Game over for bad data."</div><div class="test-author"><div class="test-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">PL</div><div><div class="test-name">Priya Lakshmi</div><div class="test-role">BI Manager, Razorpay</div></div></div></div>
+      <div class="test-card glass"><div class="test-quote">"Finally, a tool that non-technical people on my team can actually use. And it's beautiful."</div><div class="test-author"><div class="test-avatar" style="background:linear-gradient(135deg,#10b981,#059669)">RN</div><div><div class="test-name">Raj Nair</div><div class="test-role">CEO, DataBridge</div></div></div></div>
+    </div>
+    <div class="dots" id="test-dots"><span class="active"></span><span></span><span></span><span></span></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="section">
+    <div class="stats-row reveal">
+      <div class="stat-item"><div class="stat-num" data-target="10000000" data-suffix="+">0</div><div class="stat-label">Rows processed</div></div>
+      <div class="stat-item"><div class="stat-num" data-target="99.9" data-suffix="%" data-decimal="1">0</div><div class="stat-label">Uptime</div></div>
+      <div class="stat-item"><div class="stat-num" data-target="2" data-suffix=" min">0</div><div class="stat-label">Average setup time</div></div>
+      <div class="stat-item"><div class="stat-num" data-target="4.9" data-suffix="★" data-decimal="1">0</div><div class="stat-label">User rating</div></div>
+    </div>
+  </div>
+
+  <!-- CTA Banner -->
+  <div class="section">
+    <div class="cta-banner reveal">
+      <h2>Ready to see your data clearly?</h2>
+      <p>Start free. No credit card. Cancel anytime.</p>
+      <a class="btn btn-white btn-lg btn-pill" onclick="navigate('signup')">Get started free →</a>
+      <div style="margin-top:16px"><a onclick="navigate('about')" style="font-size:14px;color:var(--text2);text-decoration:underline;text-underline-offset:4px">or book a demo</a></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-grid">
+      <div>
+        <div class="nav-logo" style="margin-bottom:12px;font-size:18px">
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none"><defs><linearGradient id="lg2" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#0A84FF"/><stop offset="1" stop-color="#BF5AF2"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg2)" opacity="0.15"/><path d="M8 24C8 15.2 13 8 20 8" stroke="url(#lg2)" stroke-width="3" stroke-linecap="round"/><path d="M12 24C12 17.4 15.5 12 21 12" stroke="url(#lg2)" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/></svg>
+          DataVora
+        </div>
+        <p style="font-size:14px;color:var(--text2);max-width:240px">Turn messy data into clear decisions. AI-powered analytics for everyone.</p>
+      </div>
+      <div><h4>Product</h4><a onclick="navigate('features')">Features</a><a onclick="navigate('pricing')">Pricing</a><a onclick="navigate('docs')">Documentation</a><a>Changelog</a></div>
+      <div><h4>Company</h4><a onclick="navigate('about')">About</a><a onclick="navigate('blog')">Blog</a><a>Careers</a><a>Press</a></div>
+      <div><h4>Resources</h4><a>Help Center</a><a>Community</a><a>API Reference</a><a>Status</a></div>
+      <div><h4>Legal</h4><a>Privacy</a><a>Terms</a><a>Security</a><a>GDPR</a></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 DataVora · Made with care in India</span>
+      <div class="footer-social">
+        <a title="Twitter/X">𝕏</a>
+        <a title="GitHub">⌂</a>
+        <a title="LinkedIn">in</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ========== PAGE: FEATURES ========== -->
+<div class="page" id="page-features">
+  <div class="section" style="padding-top:140px">
+    <div class="sh reveal"><h2>Everything you need to understand your data.</h2><p>From raw CSV to board-ready insights — all in one place.</p></div>
+    <div class="feat-row reveal"><div><h3>Any format. Any size.</h3><p>Drag in a CSV, Excel sheet, or JSON file. Connect a PostgreSQL, MySQL, or Snowflake database. DataVora handles the parsing, typing, and schema detection automatically.</p></div><div class="feat-visual glass" style="background:rgba(10,132,255,0.06)">📂</div></div>
+    <div class="feat-row reverse reveal"><div><h3>Your data, at its best.</h3><p>Our 11-step enterprise cleaning pipeline deduplicates, normalizes dates, fixes null values, and validates types — automatically. Before-and-after previews let you see every change.</p></div><div class="feat-visual glass" style="background:rgba(48,209,88,0.06)">◎</div></div>
+    <div class="feat-row reveal"><div><h3>Speak to your data in plain English.</h3><p>The semantic modeling engine auto-generates DAX, Excel, and SQL formulas based on your exact schema. Import them to your dashboard with one click.</p></div><div class="feat-visual glass" style="background:rgba(90,200,250,0.06)">λ</div></div>
+    <div class="feat-row reverse reveal"><div><h3>Ask. Explore. Discover.</h3><p>The AI Copilot acts as your senior data analyst. Ask questions like "what drove revenue this quarter?" and get structured answers with confidence scores.</p></div><div class="feat-visual glass" style="background:rgba(191,90,242,0.06)">✦</div></div>
+    <div class="feat-row reveal"><div><h3>Charts that actually explain things.</h3><p>38+ chart types from simple bar charts to 3D particle visualizations. Auto-suggested axis mappings. Full customization via side panels. Power BI-style cross-filtering.</p></div><div class="feat-visual glass" style="background:rgba(255,159,10,0.06)">◧</div></div>
+    <div class="feat-row reverse reveal"><div><h3>Share insights, not spreadsheets.</h3><p>Generate premium PDF, PPTX, and DOCX reports with AI-written narratives. Schedule recurring exports. Pin charts to drag-and-drop dashboard canvases.</p></div><div class="feat-visual glass" style="background:rgba(10,132,255,0.06)">⊞</div></div>
+  </div>
+</div>
+
+<!-- ========== PAGE: PRICING ========== -->
+<div class="page" id="page-pricing">
+  <div class="section" style="padding-top:140px">
+    <div class="sh reveal"><h2>Simple, honest pricing.</h2><p>Start free. Upgrade when you're ready. No surprises.</p></div>
+    <div class="pricing-toggle reveal"><span style="font-size:14px;color:var(--text2)">Monthly</span><div class="toggle-pill" id="billing-toggle" onclick="toggleBilling()"></div><span style="font-size:14px;color:var(--text2)">Annual</span><span style="font-size:12px;color:var(--green);font-weight:600;background:rgba(48,209,88,0.12);padding:2px 10px;border-radius:999px">Save 30%</span></div>
+    <div class="pricing-grid reveal">
+      <div class="price-card glass">
+        <h3>Free</h3>
+        <div class="price-val">$0</div>
+        <div class="price-sub">For individuals getting started</div>
+        <ul class="price-features"><li>100 credits/month</li><li>1 dataset</li><li>Basic charts</li><li>Community support</li></ul>
+        <a class="btn btn-ghost" style="width:100%;justify-content:center" onclick="navigate('signup')">Start free</a>
+      </div>
+      <div class="price-card glass featured">
+        <span class="badge">Most popular</span>
+        <h3>Pro</h3>
+        <div class="price-val" id="pro-price">$29</div>
+        <div class="price-sub" id="pro-sub">per month</div>
+        <ul class="price-features"><li>5,000 credits/month</li><li>Unlimited datasets</li><li>AI Copilot</li><li>All 38+ chart types</li><li>PDF &amp; PPTX reports</li><li>Priority support</li></ul>
+        <a class="btn btn-blue" style="width:100%;justify-content:center" onclick="navigate('signup')">Start Pro</a>
+      </div>
+      <div class="price-card glass">
+        <h3>Enterprise</h3>
+        <div class="price-val">Custom</div>
+        <div class="price-sub">For large organizations</div>
+        <ul class="price-features"><li>Everything in Pro</li><li>SSO &amp; SAML</li><li>Custom integrations</li><li>Dedicated support</li><li>SLA guarantee</li></ul>
+        <a class="btn btn-ghost" style="width:100%;justify-content:center">Contact sales</a>
+      </div>
+    </div>
+
+    <div style="max-width:700px;margin:80px auto 0" class="reveal">
+      <h3 style="text-align:center;margin-bottom:32px">Common questions</h3>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-q">Can I change plans anytime?<span class="faq-icon">+</span></div><div class="faq-a"><p>Yes. Upgrade, downgrade, or cancel anytime. Changes take effect at the end of your current billing cycle. No penalties.</p></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-q">What counts as a credit?<span class="faq-icon">+</span></div><div class="faq-a"><p>Each AI operation uses credits — copilot queries, insight generation, report creation. Simple uploads and chart creation are free.</p></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-q">Is my data secure?<span class="faq-icon">+</span></div><div class="faq-a"><p>Absolutely. We use AES-256 encryption at rest, TLS in transit, and row-level security. Your data is never shared or used for training.</p></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-q">Do you offer a free trial of Pro?<span class="faq-icon">+</span></div><div class="faq-a"><p>The free plan is your trial — no time limit. When you need more credits or features, upgrade to Pro. We also offer 14-day money-back guarantee.</p></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-q">Can I export my data if I leave?<span class="faq-icon">+</span></div><div class="faq-a"><p>Yes. You always own your data. Export everything as CSV, JSON, or via our API at any time.</p></div></div>
+      <div class="faq-item" onclick="toggleFaq(this)"><div class="faq-q">What databases do you connect to?<span class="faq-icon">+</span></div><div class="faq-a"><p>PostgreSQL, MySQL, Snowflake, Databricks, and more. We're adding new connectors regularly. Enterprise plans get custom integrations.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: ABOUT ========== -->
+<div class="page" id="page-about">
+  <div class="section" style="padding-top:140px">
+    <div class="sh reveal"><h2>We believe everyone deserves to understand their data.</h2><p>DataVora started with a frustration: data tools were built for engineers, not for the people who actually need the answers.</p></div>
+    <div style="max-width:640px;margin:0 auto;text-align:center" class="reveal">
+      <p style="color:var(--text2);font-size:16px;line-height:1.8;margin-bottom:16px">We're building the analytics platform we always wished existed — one that's powerful enough for data engineers, simple enough for business owners, and beautiful enough that you actually want to use it every day.</p>
+      <p style="color:var(--text2);font-size:16px;line-height:1.8">No jargon. No 6-month implementations. Just connect your data and start getting answers.</p>
+    </div>
+
+    <div style="margin-top:80px" class="reveal">
+      <div class="sh"><h3>What we stand for</h3></div>
+      <div class="values-grid">
+        <div class="value-card glass"><div style="font-size:32px;margin-bottom:8px">◎</div><h3>Clarity</h3><p>We cut through noise. Every feature exists to make data easier to understand, not harder.</p></div>
+        <div class="value-card glass"><div style="font-size:32px;margin-bottom:8px">⚡</div><h3>Speed</h3><p>Insights in minutes, not weeks. We obsess over performance so you don't wait.</p></div>
+        <div class="value-card glass"><div style="font-size:32px;margin-bottom:8px">⊘</div><h3>Trust</h3><p>Your data is yours. Always encrypted, never shared, never used for training AI models.</p></div>
+      </div>
+    </div>
+
+    <div style="margin-top:80px" class="reveal">
+      <div class="sh"><h3>The team</h3></div>
+      <div class="team-grid">
+        <div class="team-card glass"><div class="team-avatar" style="background:linear-gradient(135deg,var(--blue),var(--purple))">ST</div><h4>Srijai Suryaa TN</h4><p>Founder &amp; CEO</p></div>
+        <div class="team-card glass"><div class="team-avatar" style="background:linear-gradient(135deg,var(--teal),var(--blue))">AK</div><h4>Arjun Kumar</h4><p>CTO</p></div>
+        <div class="team-card glass"><div class="team-avatar" style="background:linear-gradient(135deg,var(--purple),var(--red))">NP</div><h4>Nisha Patel</h4><p>Head of Design</p></div>
+        <div class="team-card glass"><div class="team-avatar" style="background:linear-gradient(135deg,var(--green),var(--teal))">RD</div><h4>Ravi Desai</h4><p>Lead Engineer</p></div>
+      </div>
+    </div>
+
+    <div style="margin-top:80px" class="reveal">
+      <div class="sh"><h3>Our story so far</h3></div>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-year">2023</div><div class="tl-text">Founded in Chennai. First prototype built in a weekend.</div></div>
+        <div class="tl-item"><div class="tl-year">Early 2024</div><div class="tl-text">Launched beta. 500 users in the first month.</div></div>
+        <div class="tl-item"><div class="tl-year">Mid 2024</div><div class="tl-text">AI Copilot shipped. 38+ chart types. Enterprise data quality engine.</div></div>
+        <div class="tl-item"><div class="tl-year">2025</div><div class="tl-text">10,000+ users. 3D visualization lab. Multi-agent AI system.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: BLOG ========== -->
+<div class="page" id="page-blog">
+  <div class="section" style="padding-top:140px">
+    <div class="sh reveal"><h2>Thoughts on data, AI, and analytics.</h2></div>
+    <div class="filter-pills reveal">
+      <span class="filter-pill active" onclick="filterBlog(this,'all')">All</span>
+      <span class="filter-pill" onclick="filterBlog(this,'analytics')">Analytics</span>
+      <span class="filter-pill" onclick="filterBlog(this,'ai')">AI</span>
+      <span class="filter-pill" onclick="filterBlog(this,'product')">Product</span>
+      <span class="filter-pill" onclick="filterBlog(this,'tutorials')">Tutorials</span>
+    </div>
+    <div class="blog-grid reveal">
+      <div class="blog-card blog-featured glass" data-cat="product"><h3 style="font-size:28px;margin-bottom:12px">Introducing the AI Copilot: your data analyst that never sleeps</h3><p style="font-size:15px;color:var(--text2);max-width:640px">We've shipped the most requested feature in DataVora history. Ask questions in plain English, get structured answers with confidence scores.</p><div class="blog-meta"><span>DataVora Team</span><span>April 12, 2025</span><span>6 min read</span></div></div>
+      <div class="blog-card glass" data-cat="analytics"><div class="blog-strip" style="background:var(--blue)"></div><div class="blog-card-body"><h3>5 data quality mistakes you're probably making</h3><p>Most teams don't realize their insights are built on dirty data. Here's how to fix that.</p><div class="blog-meta"><span>Apr 8</span><span>4 min</span></div></div></div>
+      <div class="blog-card glass" data-cat="ai"><div class="blog-strip" style="background:var(--purple)"></div><div class="blog-card-body"><h3>How we built a multi-agent AI system</h3><p>Behind the scenes of DataVora's Planner, Engineer, and Critic agents.</p><div class="blog-meta"><span>Mar 28</span><span>8 min</span></div></div></div>
+      <div class="blog-card glass" data-cat="tutorials"><div class="blog-strip" style="background:var(--teal)"></div><div class="blog-card-body"><h3>From CSV to dashboard in 3 minutes</h3><p>A step-by-step walkthrough of DataVora's fastest workflow.</p><div class="blog-meta"><span>Mar 15</span><span>3 min</span></div></div></div>
+      <div class="blog-card glass" data-cat="product"><div class="blog-strip" style="background:var(--green)"></div><div class="blog-card-body"><h3>What's new in DataVora 2.0</h3><p>3D visualizations, enterprise cleaning pipeline, and more.</p><div class="blog-meta"><span>Feb 20</span><span>5 min</span></div></div></div>
+      <div class="blog-card glass" data-cat="analytics"><div class="blog-strip" style="background:var(--amber)"></div><div class="blog-card-body"><h3>DAX vs SQL: when to use what</h3><p>A practical guide for analysts choosing the right formula language.</p><div class="blog-meta"><span>Feb 5</span><span>6 min</span></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: DOCS ========== -->
+<div class="page" id="page-docs">
+  <div class="section" style="padding-top:140px">
+    <div class="breadcrumb reveal">Docs <span>/ Getting Started</span></div>
+    <div class="docs-layout reveal">
+      <div class="docs-sidebar">
+        <input class="docs-search" placeholder="Search docs...">
+        <div class="docs-nav">
+          <div class="section-title">Getting Started</div>
+          <a class="active" onclick="showDoc('intro')">Introduction</a>
+          <a onclick="showDoc('quickstart')">Quick Start</a>
+          <a onclick="showDoc('upload')">Uploading Data</a>
+          <div class="section-title">Core Features</div>
+          <a onclick="showDoc('cleaning')">Data Cleaning</a>
+          <a onclick="showDoc('copilot')">AI Copilot</a>
+          <a onclick="showDoc('charts')">Visualizations</a>
+          <a onclick="showDoc('reports')">Reports</a>
+          <div class="section-title">API Reference</div>
+          <a onclick="showDoc('auth-api')">Authentication</a>
+          <a onclick="showDoc('data-api')">Data API</a>
+          <div class="section-title">Integrations</div>
+          <a onclick="showDoc('postgres')">PostgreSQL</a>
+          <a onclick="showDoc('snowflake')">Snowflake</a>
+        </div>
+      </div>
+      <div class="docs-content" id="docs-content">
+        <h2>Introduction</h2>
+        <p>Welcome to DataVora. This guide will help you get up and running in under 5 minutes.</p>
+        <p>DataVora is an AI-powered analytics platform that connects to your data sources, automatically cleans and profiles your data, and provides intelligent insights through natural language queries.</p>
+        <h3 style="margin-top:32px;margin-bottom:12px">Quick install</h3>
+        <div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>npm install datavora-sdk</div>
+        <h3 style="margin-top:32px;margin-bottom:12px">Initialize the client</h3>
+        <div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>import { DataVora } from 'datavora-sdk';<br><br>const dv = new DataVora({<br>  apiKey: 'your-api-key',<br>  project: 'my-project'<br>});<br><br>// Upload and analyze<br>const dataset = await dv.upload('./data.csv');<br>const insights = await dv.analyze(dataset.id);</div>
+        <h3 style="margin-top:32px;margin-bottom:12px">What's next?</h3>
+        <p>Check out the <a style="color:var(--blue);text-decoration:underline" onclick="showDoc('quickstart')">Quick Start guide</a> to upload your first dataset, or explore the <a style="color:var(--blue);text-decoration:underline" onclick="showDoc('copilot')">AI Copilot docs</a> to start asking questions.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: LOGIN ========== -->
+<div class="page" id="page-login">
+  <div class="auth-page">
+    <div class="auth-card glass">
+      <div class="auth-logo">
+        <svg width="40" height="40" viewBox="0 0 32 32" fill="none"><defs><linearGradient id="lg3" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#0A84FF"/><stop offset="1" stop-color="#BF5AF2"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg3)" opacity="0.15"/><path d="M8 24C8 15.2 13 8 20 8" stroke="url(#lg3)" stroke-width="3" stroke-linecap="round"/><path d="M12 24C12 17.4 15.5 12 21 12" stroke="url(#lg3)" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/></svg>
+      </div>
+      <h2>Welcome back.</h2>
+      <p class="sub">Good to see you again.</p>
+      <div class="input-group"><input type="email" id="login-email" placeholder=" " required><label>Email address</label><div class="underline"></div></div>
+      <div class="input-group"><input type="password" id="login-pass" placeholder=" " required><label>Password</label><div class="underline"></div><button class="eye-toggle" onclick="togglePass('login-pass',this)">◉</button></div>
+      <div style="text-align:right;margin-bottom:20px"><a style="font-size:13px;color:var(--text2);position:relative;display:inline-block" class="underline-link">Forgot password?</a></div>
+      <button class="btn btn-blue btn-pill" style="width:100%;justify-content:center;height:52px;font-size:16px" id="login-btn" onclick="handleLogin()">Continue →</button>
+      <div class="auth-divider">or</div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="navigate('dashboard')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <div class="auth-footer">Don't have an account? <a onclick="navigate('signup')">Sign up</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: SIGNUP ========== -->
+<div class="page" id="page-signup">
+  <div class="auth-page">
+    <div class="auth-card glass">
+      <div class="auth-logo">
+        <svg width="40" height="40" viewBox="0 0 32 32" fill="none"><use href="#lg3"/><rect width="32" height="32" rx="8" fill="url(#lg3)" opacity="0.15"/><path d="M8 24C8 15.2 13 8 20 8" stroke="url(#lg3)" stroke-width="3" stroke-linecap="round"/><path d="M12 24C12 17.4 15.5 12 21 12" stroke="url(#lg3)" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/></svg>
+      </div>
+      <h2>Start for free.</h2>
+      <p class="sub">No card needed. Just data.</p>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:4px" onclick="navigate('dashboard')">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Sign up with Google
+      </button>
+      <div class="auth-divider">or</div>
+      <div class="input-group"><input type="text" placeholder=" " required><label>Full name</label><div class="underline"></div></div>
+      <div class="input-group"><input type="email" placeholder=" " required><label>Email address</label><div class="underline"></div></div>
+      <div class="input-group"><input type="password" id="signup-pass" placeholder=" " required oninput="checkStrength(this.value)"><label>Password</label><div class="underline"></div><button class="eye-toggle" onclick="togglePass('signup-pass',this)">◉</button></div>
+      <div class="strength-meter"><div class="strength-bar" id="sb1"></div><div class="strength-bar" id="sb2"></div><div class="strength-bar" id="sb3"></div><div class="strength-bar" id="sb4"></div></div>
+      <div class="strength-label" id="strength-label"></div>
+      <button class="btn btn-blue btn-pill" style="width:100%;justify-content:center;height:52px;font-size:16px" id="signup-btn" onclick="handleSignup()">Create account</button>
+      <div class="perks-box">
+        <h4>What you get</h4>
+        <div class="perk-item"><span class="perk-check">✓</span>100 free credits every month</div>
+        <div class="perk-item"><span class="perk-check">✓</span>Upload and analyze datasets</div>
+        <div class="perk-item"><span class="perk-check">✓</span>AI-powered insights</div>
+        <div class="perk-item"><span class="perk-check">✓</span>Beautiful visualizations</div>
+      </div>
+      <div class="auth-footer">Already have an account? <a onclick="navigate('login')">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: DASHBOARD ========== -->
+<div class="page" id="page-dashboard">
+  <div class="dash-layout">
+    <div class="dash-sidebar">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="url(#lg)" opacity="0.15"/><path d="M8 24C8 15.2 13 8 20 8" stroke="url(#lg)" stroke-width="3" stroke-linecap="round"/><path d="M12 24C12 17.4 15.5 12 21 12" stroke="url(#lg)" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/></svg>
+        DataVora
+      </div>
+      <div class="dash-nav">
+        <a class="active">◉ Overview</a>
+        <a>◧ Datasets</a>
+        <a>✦ Analysis</a>
+        <a>◎ Visualizations</a>
+        <a>⊞ Reports</a>
+        <a>✦ AI Copilot</a>
+        <a>⚙ Settings</a>
+      </div>
+      <div class="dash-user">
+        <div class="dash-user-info">
+          <div class="dash-user-avatar">SR</div>
+          <div><div class="dash-user-name">Srijai Suryaa TN</div><div class="dash-user-role">Admin</div></div>
+        </div>
+        <button class="dash-upgrade" onclick="navigate('pricing')">Upgrade Now</button>
+      </div>
+    </div>
+    <div class="dash-main">
+      <div class="dash-topbar">
+        <div class="dash-greeting"><h2 id="greeting"></h2><p>Here's what's happening with your data today.</p></div>
+        <div class="dash-actions">
+          <button class="btn btn-ghost btn-sm">Connect Data</button>
+          <button class="btn btn-blue btn-sm">Upload Data</button>
+        </div>
+      </div>
+      <div class="dash-stats">
+        <div class="dash-stat"><div class="lbl">Total Rows</div><div class="val" id="ds1">0</div><div class="trend up">↑ 20.2%</div><div class="dash-stat-icon" style="background:rgba(10,132,255,0.12);color:var(--blue)">▦</div><svg class="sparkline" width="100" height="24" viewBox="0 0 100 24"><polyline points="0,20 15,16 30,18 45,12 60,14 75,8 90,10 100,4" fill="none" stroke="var(--blue)" stroke-width="1.5" opacity="0.5"/></svg></div>
+        <div class="dash-stat"><div class="lbl">Total Customer ID</div><div class="val" id="ds2">0</div><div class="trend up">↑ 6.4%</div><div class="dash-stat-icon" style="background:rgba(191,90,242,0.12);color:var(--purple)">◉</div><svg class="sparkline" width="100" height="24" viewBox="0 0 100 24"><polyline points="0,18 20,14 40,16 60,10 80,12 100,6" fill="none" stroke="var(--purple)" stroke-width="1.5" opacity="0.5"/></svg></div>
+        <div class="dash-stat"><div class="lbl">Total Phone</div><div class="val" id="ds3">0</div><div class="dash-stat-icon" style="background:rgba(90,200,250,0.12);color:var(--teal)">☎</div><svg class="sparkline" width="100" height="24" viewBox="0 0 100 24"><polyline points="0,16 25,12 50,14 75,8 100,10" fill="none" stroke="var(--teal)" stroke-width="1.5" opacity="0.5"/></svg></div>
+        <div class="dash-stat"><div class="lbl">Total Annual Revenue</div><div class="val" id="ds4">0</div><div class="trend up">↑ 107.8%</div><div class="dash-stat-icon" style="background:rgba(48,209,88,0.12);color:var(--green)">◧</div><svg class="sparkline" width="100" height="24" viewBox="0 0 100 24"><polyline points="0,22 15,18 30,20 45,10 60,14 75,6 90,8 100,2" fill="none" stroke="var(--green)" stroke-width="1.5" opacity="0.5"/></svg></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card">
+          <h3>Workspace Summary</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:20px">
+            <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)"><span style="color:var(--text2)">Datasets</span><br><strong>1</strong></div>
+            <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)"><span style="color:var(--text2)">Total Rows</span><br><strong>87</strong></div>
+            <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)"><span style="color:var(--text2)">Columns</span><br><strong>19</strong></div>
+            <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)"><span style="color:var(--text2)">Charts</span><br><strong>0</strong></div>
+          </div>
+          <h3>Data Health Score</h3>
+          <div class="health-ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="8"/>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--green)" stroke-width="8" stroke-linecap="round" stroke-dasharray="327" stroke-dashoffset="327" transform="rotate(-90 60 60)" id="health-circle"/>
+            </svg>
+          </div>
+          <div class="health-score">100<span style="font-size:16px;color:var(--text2)"> /100</span></div>
+          <div style="text-align:center;margin:8px 0 16px"><span class="health-grade">Grade A</span></div>
+          <div class="progress-row"><span class="prlbl">Completeness</span><div class="prbar"><div class="prfill" style="width:0%;background:var(--green)" data-width="100"></div></div><span class="prval">100%</span></div>
+          <div class="progress-row"><span class="prlbl">Uniqueness</span><div class="prbar"><div class="prfill" style="width:0%;background:var(--blue)" data-width="100"></div></div><span class="prval">100%</span></div>
+          <div class="progress-row"><span class="prlbl">Validity</span><div class="prbar"><div class="prfill" style="width:0%;background:var(--purple)" data-width="100"></div></div><span class="prval">100%</span></div>
+        </div>
+        <div>
+          <div class="dash-card" style="margin-bottom:20px">
+            <h3>Recent Activity</h3>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--blue)"></div><div class="activity-text">enterprise_dirty_data.csv uploaded</div></div>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--green)"></div><div class="activity-text">Data quality check completed</div></div>
+            <div class="activity-item"><div class="activity-dot" style="background:var(--purple)"></div><div class="activity-text">AI insights available</div></div>
+          </div>
+          <div class="dash-card">
+            <h3>Semantic Model</h3>
+            <div class="formula-pill">Total Customer Id = SUM(enterprise_dirty_data[customer_id])</div>
+            <div class="formula-pill">Total Phone = SUM(enterprise_dirty_data[phone])</div>
+            <div class="formula-pill">Total Annual Revenue = SUM(enterprise_dirty_data[annual_revenue])</div>
+            <div class="formula-pill">Total Cast Score = SUM(enterprise_dirty_data[cast_score])</div>
+          </div>
+        </div>
+        <div>
+          <div class="dash-card">
+            <h3>Quick Actions</h3>
+            <div class="quick-action"><div class="qa-icon" style="background:rgba(10,132,255,0.12);color:var(--blue)">📂</div><div class="qa-text">Upload Dataset</div><span class="qa-arrow">→</span></div>
+            <div class="quick-action"><div class="qa-icon" style="background:rgba(191,90,242,0.12);color:var(--purple)">✦</div><div class="qa-text">Ask AI Copilot</div><span class="qa-arrow">→</span></div>
+            <div class="quick-action"><div class="qa-icon" style="background:rgba(90,200,250,0.12);color:var(--teal)">◧</div><div class="qa-text">Create Visualization</div><span class="qa-arrow">→</span></div>
+            <div class="quick-action"><div class="qa-icon" style="background:rgba(255,159,10,0.12);color:var(--amber)">⊞</div><div class="qa-text">Generate Report</div><span class="qa-arrow">→</span></div>
+          </div>
+          <div class="credits-card">
+            <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Credits Remaining</div>
+            <div class="credits-val">5,000</div>
+            <div class="credits-bar"><div class="credits-fill"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2)"><span>Resets monthly</span><a style="color:var(--blue)" onclick="navigate('pricing')">Upgrade for unlimited →</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: SETTINGS ========== -->
+<div class="page" id="page-settings">
+  <div class="dash-layout">
+    <div class="dash-sidebar">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="url(#lg)" opacity="0.15"/><path d="M8 24C8 15.2 13 8 20 8" stroke="url(#lg)" stroke-width="3" stroke-linecap="round"/><path d="M12 24C12 17.4 15.5 12 21 12" stroke="url(#lg)" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/></svg>
+        DataVora
+      </div>
+      <div class="dash-nav">
+        <a onclick="navigate('dashboard')">◉ Overview</a>
+        <a>◧ Datasets</a>
+        <a>✦ Analysis</a>
+        <a>◎ Visualizations</a>
+        <a>⊞ Reports</a>
+        <a>✦ AI Copilot</a>
+        <a class="active" onclick="navigate('settings')">⚙ Settings</a>
+      </div>
+      <div class="dash-user">
+        <div class="dash-user-info"><div class="dash-user-avatar">SR</div><div><div class="dash-user-name">Srijai Suryaa TN</div><div class="dash-user-role">Admin</div></div></div>
+      </div>
+    </div>
+    <div class="dash-main">
+      <h2 style="margin-bottom:32px">Settings</h2>
+      <div class="settings-layout">
+        <div class="settings-tabs">
+          <button class="settings-tab active" onclick="showSettingsTab(this,'profile')">Profile</button>
+          <button class="settings-tab" onclick="showSettingsTab(this,'security')">Security</button>
+          <button class="settings-tab" onclick="showSettingsTab(this,'notifications')">Notifications</button>
+          <button class="settings-tab" onclick="showSettingsTab(this,'billing')">Billing</button>
+          <button class="settings-tab" onclick="showSettingsTab(this,'danger')">Danger Zone</button>
+        </div>
+        <div class="settings-content">
+          <div id="stab-profile">
+            <h3>Profile</h3>
+            <div style="width:80px;height:80px;border-radius:50%;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;margin-bottom:20px;cursor:none;color:var(--text3);font-size:13px">Upload</div>
+            <div class="settings-field"><label>Full Name</label><input value="Srijai Suryaa TN"></div>
+            <div class="settings-field"><label>Email</label><input value="srijai@datavora.com"></div>
+            <button class="btn btn-blue btn-sm">Save changes</button>
+          </div>
+          <div id="stab-security" style="display:none">
+            <h3>Security</h3>
+            <div class="settings-field"><label>Current Password</label><input type="password" placeholder="Enter current password"></div>
+            <div class="settings-field"><label>New Password</label><input type="password" placeholder="Enter new password"></div>
+            <div class="settings-field"><label>Confirm Password</label><input type="password" placeholder="Confirm new password"></div>
+            <button class="btn btn-blue btn-sm" style="margin-bottom:32px">Update password</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid var(--border)">
+              <div><div style="font-weight:600;font-size:14px">Two-factor authentication</div><div style="font-size:13px;color:var(--text2)">Add an extra layer of security</div></div>
+              <div class="toggle-switch" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div id="stab-notifications" style="display:none"><h3>Notifications</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--border)"><div><div style="font-weight:600;font-size:14px">Email notifications</div><div style="font-size:13px;color:var(--text2)">Receive updates about your account</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--border)"><div><div style="font-weight:600;font-size:14px">Weekly digest</div><div style="font-size:13px;color:var(--text2)">Summary of your data activity</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0"><div><div style="font-weight:600;font-size:14px">Marketing emails</div><div style="font-size:13px;color:var(--text2)">Product updates and tips</div></div><div class="toggle-switch" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+          <div id="stab-billing" style="display:none"><h3>Billing</h3>
+            <div class="glass" style="padding:24px;margin-bottom:24px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;color:var(--text2)">Current Plan</div><div style="font-family:var(--font-heading);font-size:24px;font-weight:700">Standard Pro</div></div><span style="color:var(--green);font-size:13px;font-weight:600">Active</span></div><div style="margin-top:16px;height:6px;border-radius:3px;background:var(--border);overflow:hidden"><div style="width:42%;height:100%;background:var(--blue);border-radius:3px"></div></div><div style="font-size:12px;color:var(--text2);margin-top:6px">2,100 / 5,000 credits used this month</div></div>
+            <div style="display:flex;gap:12px"><button class="btn btn-blue btn-sm" onclick="navigate('pricing')">Upgrade</button><button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:rgba(255,69,58,0.3)">Cancel plan</button></div>
+          </div>
+          <div id="stab-danger" style="display:none"><h3>Danger Zone</h3>
+            <div class="danger-zone"><h4>Delete your account</h4><p>This action is permanent and cannot be undone. All your data, dashboards, and reports will be deleted.</p><div class="settings-field"><label>Type DELETE to confirm</label><input id="delete-input" placeholder="DELETE" oninput="document.getElementById('delete-btn').disabled=this.value!=='DELETE'"></div><button class="btn btn-sm" id="delete-btn" disabled style="background:var(--red);color:#fff;opacity:0.5">Delete account permanently</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: 404 ========== -->
+<div class="page" id="page-404">
+  <div class="section four04">
+    <h1>404</h1>
+    <h2>Looks like this page wandered off.</h2>
+    <p>Let's get you back somewhere useful.</p>
+    <div style="display:flex;gap:16px;justify-content:center">
+      <a class="btn btn-ghost" onclick="navigate('home')">← Go home</a>
+      <a class="btn btn-blue" onclick="navigate('dashboard')">Open dashboard</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== LOADER =====
+window.addEventListener('load',()=>{setTimeout(()=>{document.getElementById('loader').classList.add('hide')},1200)});
+
+// ===== CUSTOM CURSOR =====
+const dot=document.getElementById('cursor-dot'),ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+const lerp=(a,b,t)=>a+(b-a)*t;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px'});
+document.addEventListener('mousedown',()=>{dot.classList.add('click');setTimeout(()=>dot.classList.remove('click'),200)});
+(function cursorLoop(){rx=lerp(rx,mx,0.12);ry=lerp(ry,my,0.12);ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(cursorLoop)})();
+document.addEventListener('mouseover',e=>{if(e.target.closest('a,button,.quick-action,.blog-card,.bento-cell,.team-card,.filter-pill,.faq-item,.settings-tab,.toggle-switch,.toggle-pill'))ring.classList.add('hover');else ring.classList.remove('hover')});
+document.addEventListener('mouseout',e=>{if(e.target.closest('a,button'))ring.classList.remove('hover')});
+
+// ===== NAV SCROLL =====
+window.addEventListener('scroll',()=>{document.getElementById('main-nav').classList.toggle('scrolled',window.scrollY>60)});
+
+// ===== ROUTER =====
+const pages=['home','features','pricing','about','blog','docs','login','signup','dashboard','settings','404'];
+const noNavPages=['login','signup','dashboard','settings'];
+function navigate(id){
+  if(!pages.includes(id))id='404';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const page=document.getElementById('page-'+id);
+  if(page)page.classList.add('active');
+  document.getElementById('main-nav').style.display=noNavPages.includes(id)?'none':'flex';
+  document.querySelectorAll('.nav-links a').forEach(a=>{a.classList.toggle('active',a.dataset.page===id)});
+  window.scrollTo(0,0);
+  initReveals();
+  if(id==='home')initHeroWords();
+  if(id==='dashboard')initDashboard();
+}
+
+// ===== HERO WORDS =====
+function initHeroWords(){
+  const h1=document.getElementById('hero-h1');
+  if(!h1||h1.dataset.done)return;
+  h1.dataset.done='1';
+  const lines=['Your data,','finally making','sense.'];
+  let delay=0;
+  h1.innerHTML=lines.map(line=>{
+    const words=line.split(' ').map(w=>{const d=delay;delay+=80;return`<span class="word" style="animation-delay:${d}ms">${w}</span>`}).join(' ');
+    return words+'<br>';
+  }).join('');
+}
+
+// ===== SCROLL REVEALS =====
+function initReveals(){
+  const obs=new IntersectionObserver((entries)=>{entries.forEach((e,i)=>{if(e.isIntersecting){setTimeout(()=>e.target.classList.add('visible'),i*60);obs.unobserve(e.target)}})},{threshold:0.1});
+  document.querySelectorAll('.page.active .reveal:not(.visible)').forEach(el=>obs.observe(el));
+}
+
+// ===== NUMBER COUNTUP =====
+const counted=new Set();
+function countUp(el){
+  if(counted.has(el))return;counted.add(el);
+  const target=parseFloat(el.dataset.target),suffix=el.dataset.suffix||'',decimal=parseInt(el.dataset.decimal)||0;
+  const duration=1200;let start=null;
+  function step(ts){
+    if(!start)start=ts;
+    const p=Math.min((ts-start)/duration,1);
+    const ease=1-Math.pow(1-p,4);
+    const val=ease*target;
+    if(target>=1000000)el.textContent=Math.round(val).toLocaleString('en-IN')+suffix;
+    else if(decimal)el.textContent=val.toFixed(decimal)+suffix;
+    else el.textContent=Math.round(val)+suffix;
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const statObs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)countUp(e.target)})},{threshold:0.3});
+document.querySelectorAll('.stat-num[data-target]').forEach(el=>statObs.observe(el));
+
+// ===== TESTIMONIALS AUTO =====
+let testIdx=0;
+const track=document.getElementById('test-track');
+function scrollTest(){
+  if(!track)return;
+  const cards=track.children;
+  if(!cards.length)return;
+  testIdx=(testIdx+1)%cards.length;
+  track.scrollTo({left:cards[testIdx].offsetLeft-32,behavior:'smooth'});
+  document.querySelectorAll('#test-dots span').forEach((d,i)=>d.classList.toggle('active',i===testIdx));
+}
+let testInterval=setInterval(scrollTest,4000);
+if(track){track.addEventListener('mouseenter',()=>clearInterval(testInterval));track.addEventListener('mouseleave',()=>{testInterval=setInterval(scrollTest,4000)})}
+
+// ===== MOBILE MENU =====
+function toggleMobile(){document.getElementById('mobile-menu').classList.toggle('open')}
+
+// ===== FAQ =====
+function toggleFaq(el){el.classList.toggle('open')}
+
+// ===== PRICING TOGGLE =====
+let annual=false;
+function toggleBilling(){
+  annual=!annual;
+  document.getElementById('billing-toggle').classList.toggle('active',annual);
+  document.getElementById('pro-price').textContent=annual?'$19':'$29';
+  document.getElementById('pro-sub').textContent=annual?'per month, billed annually':'per month';
+}
+
+// ===== BLOG FILTER =====
+function filterBlog(pill,cat){
+  document.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('active'));
+  pill.classList.add('active');
+  document.querySelectorAll('.blog-card').forEach(c=>{c.style.display=(cat==='all'||c.dataset.cat===cat)?'':'none'});
+}
+
+// ===== DOCS =====
+const docsData={
+  intro:'<h2>Introduction</h2><p>Welcome to DataVora. This guide will help you get up and running in under 5 minutes.</p><p>DataVora is an AI-powered analytics platform that connects to your data sources, automatically cleans and profiles your data, and provides intelligent insights.</p>',
+  quickstart:'<h2>Quick Start</h2><p>1. Create an account at datavora.com</p><p>2. Upload your first CSV or connect a database</p><p>3. DataVora automatically profiles your data and generates a health score</p><p>4. Ask the AI Copilot any question about your data</p>',
+  upload:'<h2>Uploading Data</h2><p>DataVora accepts CSV, Excel (.xlsx), and JSON files. Simply drag and drop into the upload zone or click to browse.</p><div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>// Supported formats<br>CSV (.csv) — up to 100MB<br>Excel (.xlsx) — up to 50MB<br>JSON (.json) — up to 100MB</div>',
+  cleaning:'<h2>Data Cleaning</h2><p>Our 11-step enterprise cleaning pipeline runs automatically on every upload:</p><p>1. Duplicate detection and removal<br>2. Null value analysis and imputation<br>3. Date standardization (ISO 8601)<br>4. Type inference and casting<br>5. Outlier detection<br>6. Whitespace trimming<br>7. Case normalization<br>8. Format validation<br>9. Referential integrity checks<br>10. Statistical profiling<br>11. Quality scoring</p>',
+  copilot:'<h2>AI Copilot</h2><p>The AI Copilot understands your data schema and can answer natural language questions.</p><div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>// Example queries:<br>"What drove revenue this quarter?"<br>"Show me the top 10 customers by spend"<br>"Are there any anomalies in the sales data?"<br>"Create a DAX measure for year-over-year growth"</div>',
+  charts:'<h2>Visualizations</h2><p>38+ chart types available, from basic bar charts to 3D particle visualizations. DataVora auto-suggests the best chart type based on your data columns.</p>',
+  reports:'<h2>Reports</h2><p>Generate premium business reports in PDF, PPTX, and DOCX formats with AI-written narratives tailored to your audience.</p>',
+  'auth-api':'<h2>Authentication API</h2><div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>POST /api/auth/login<br>Content-Type: application/json<br><br>{ "email": "user@example.com", "password": "..." }</div>',
+  'data-api':'<h2>Data API</h2><div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>GET /api/datasets<br>Authorization: Bearer &lt;token&gt;<br><br>// Returns list of user datasets</div>',
+  postgres:'<h2>PostgreSQL</h2><p>Connect to any PostgreSQL database using a connection string. DataVora will read your schema and allow querying directly.</p>',
+  snowflake:'<h2>Snowflake</h2><p>Connect using your Snowflake account identifier, warehouse, database, and schema credentials.</p>'
+};
+function showDoc(key){
+  const content=document.getElementById('docs-content');
+  if(content&&docsData[key])content.innerHTML=docsData[key];
+  document.querySelectorAll('.docs-nav a').forEach(a=>a.classList.remove('active'));
+  event.target.classList.add('active');
+}
+function copyCode(btn){btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',2000)}
+
+// ===== AUTH =====
+function togglePass(id,btn){
+  const input=document.getElementById(id);
+  if(input.type==='password'){input.type='text';btn.textContent='◌'}else{input.type='password';btn.textContent='◉'}
+}
+function handleLogin(){
+  const btn=document.getElementById('login-btn');
+  btn.innerHTML='<span class="spinner"></span>';
+  setTimeout(()=>{btn.innerHTML='✓ Welcome';setTimeout(()=>navigate('dashboard'),600)},1500);
+}
+function handleSignup(){
+  const btn=document.getElementById('signup-btn');
+  btn.innerHTML='<span class="spinner"></span>';
+  setTimeout(()=>{btn.innerHTML='✓ Account created';setTimeout(()=>navigate('dashboard'),600)},1500);
+}
+function checkStrength(val){
+  let score=0;
+  if(val.length>=6)score++;if(val.length>=10)score++;if(/[A-Z]/.test(val)&&/[0-9]/.test(val))score++;if(/[^A-Za-z0-9]/.test(val))score++;
+  const colors=['var(--red)','var(--amber)','var(--blue)','var(--green)'];
+  const labels=['Weak','Fair','Good','Strong'];
+  for(let i=1;i<=4;i++){document.getElementById('sb'+i).style.background=i<=score?colors[score-1]:'var(--border)'}
+  document.getElementById('strength-label').textContent=score?labels[score-1]:'';
+  document.getElementById('strength-label').style.color=score?colors[score-1]:'';
+}
+
+// ===== DASHBOARD =====
+function initDashboard(){
+  const h=new Date().getHours();
+  const g=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  document.getElementById('greeting').textContent=g+', Srijai';
+  // Countup stats
+  animateVal('ds1',67,0);animateVal('ds2',81533,0);animateVal('ds3',5306936349930,0);animateVal('ds4',6827700042,0,'₹');
+  // Health ring
+  setTimeout(()=>{const c=document.getElementById('health-circle');if(c)c.style.strokeDashoffset='0';c.style.transition='stroke-dashoffset 1.2s ease'},300);
+  // Progress bars
+  setTimeout(()=>{document.querySelectorAll('.prfill[data-width]').forEach((b,i)=>{setTimeout(()=>{b.style.width=b.dataset.width+'%'},i*150)})},500);
+  // Toast
+  showToast('Welcome back! Successfully logged in.');
+}
+function animateVal(id,target,decimal,prefix=''){
+  const el=document.getElementById(id);if(!el)return;
+  const duration=1200;let start=null;
+  function step(ts){
+    if(!start)start=ts;const p=Math.min((ts-start)/duration,1);const ease=1-Math.pow(1-p,4);
+    const val=ease*target;
+    if(target>99999)el.textContent=prefix+Math.round(val).toLocaleString('en-IN');
+    else if(decimal)el.textContent=prefix+val.toFixed(decimal);
+    else el.textContent=prefix+Math.round(val).toLocaleString('en-IN');
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ===== SETTINGS TABS =====
+function showSettingsTab(btn,tab){
+  document.querySelectorAll('.settings-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  ['profile','security','notifications','billing','danger'].forEach(t=>{
+    const el=document.getElementById('stab-'+t);if(el)el.style.display=t===tab?'':'none';
+  });
+}
+
+// ===== TOAST =====
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ===== CARD 3D TILT =====
+document.addEventListener('mousemove',e=>{
+  document.querySelectorAll('.bento-cell,.test-card,.team-card').forEach(card=>{
+    const r=card.getBoundingClientRect();
+    if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+      const x=(e.clientX-r.left)/r.width-.5;
+      const y=(e.clientY-r.top)/r.height-.5;
+      card.style.transform=`perspective(800px) rotateY(${x*5}deg) rotateX(${-y*5}deg) translateY(-4px)`;
+    }else{card.style.transform=''}
+  });
+});
+
+// ===== INIT =====
+initHeroWords();
+initReveals();
+</script>
+</body>
+</html>

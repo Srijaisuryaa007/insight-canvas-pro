@@ -18,13 +18,14 @@ import {
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
   ChevronLeft, ChevronRight, Download, FolderOpen, Lock, Copy, FileText, Presentation, File,
   PanelLeft, Eye, RefreshCw, Database, X, Pencil, Check,
-  TrendingUp, SlidersHorizontal
+  TrendingUp, SlidersHorizontal, Sparkles
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { FormulaForgePanel } from '@/components/dashboard/FormulaForgePanel';
 
 const WIDGET_LIMITS: Record<string, number> = {
   free: 6, basic: 15, pro: 40, enterprise: Infinity,
@@ -67,6 +68,7 @@ export default function DashboardBuilder() {
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [pageNameValue, setPageNameValue] = useState('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [forgeOpen, setForgeOpen] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
@@ -397,6 +399,18 @@ render();
           <FilterIcon className="h-3.5 w-3.5" />Filters
         </Button>
 
+        <Button
+          variant={forgeOpen ? 'default' : 'outline'}
+          size="sm"
+          className={cn("gap-1.5 text-xs", forgeOpen && "bg-gradient-to-r from-primary to-purple-500 text-white border-0")}
+          onClick={() => setForgeOpen(!forgeOpen)}
+          disabled={!currentData.length}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Formula Forge
+          {currentData.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">AI</Badge>}
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={!currentData.length}>
@@ -520,7 +534,7 @@ render();
         {/* Main canvas */}
         <div className="flex-1 flex gap-0 overflow-hidden min-w-0">
           <DashboardCanvas
-            width={containerWidth - (filterPanelOpen ? 256 : 0) - (selectedWidgetId ? 288 : 0)}
+            width={containerWidth - (filterPanelOpen ? 256 : 0) - (selectedWidgetId ? 288 : 0) - (forgeOpen ? 380 : 0)}
             onAddWidget={handleAddWidget}
           />
 
@@ -528,6 +542,13 @@ render();
           {selectedWidgetId && (
             <div className="w-72 shrink-0 border-l border-border bg-card overflow-y-auto">
               <WidgetConfigPanel />
+            </div>
+          )}
+
+          {/* Formula Forge panel (right side) */}
+          {forgeOpen && (
+            <div className="w-[380px] shrink-0 overflow-hidden">
+              <FormulaForgePanel onClose={() => setForgeOpen(false)} />
             </div>
           )}
         </div>

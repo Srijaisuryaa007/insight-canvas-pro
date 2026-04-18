@@ -91,13 +91,11 @@ export function FormulaForgePanel({ onClose }: FormulaForgePanelProps) {
   };
 
   const handleApply = (f: ForgeFormula) => {
-    if (typeof f.resultRaw === 'number') {
+    if (typeof f.resultRaw === 'number' && f.columns.length >= 1) {
       addWidget('kpi', {
         title: f.name,
         kpiColumn: f.columns[0],
         aggregation: 'sum',
-        kpiValue: f.resultRaw,
-        kpiUnit: f.lang === 'excel' ? '' : '',
       });
       toast({ title: 'KPI added to dashboard', description: f.name });
     } else if (f.columns.length >= 2) {

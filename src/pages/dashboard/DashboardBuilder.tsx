@@ -18,13 +18,14 @@ import {
   BarChart3, Hash, Table2, Type, Filter as FilterIcon, Trash2,
   ChevronLeft, ChevronRight, Download, FolderOpen, Lock, Copy, FileText, Presentation, File,
   PanelLeft, Eye, RefreshCw, Database, X, Pencil, Check,
-  TrendingUp, SlidersHorizontal
+  TrendingUp, SlidersHorizontal, Sparkles
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { buildReportData, exportPDF, exportPPTX, exportDOCX } from '@/lib/exportEngine';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { FormulaForgePanel } from '@/components/dashboard/FormulaForgePanel';
 
 const WIDGET_LIMITS: Record<string, number> = {
   free: 6, basic: 15, pro: 40, enterprise: Infinity,

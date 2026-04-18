@@ -68,6 +68,7 @@ export default function DashboardBuilder() {
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [pageNameValue, setPageNameValue] = useState('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [forgeOpen, setForgeOpen] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(900);
@@ -396,6 +397,18 @@ render();
 
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setFilterPanelOpen(!filterPanelOpen)}>
           <FilterIcon className="h-3.5 w-3.5" />Filters
+        </Button>
+
+        <Button
+          variant={forgeOpen ? 'default' : 'outline'}
+          size="sm"
+          className={cn("gap-1.5 text-xs", forgeOpen && "bg-gradient-to-r from-primary to-purple-500 text-white border-0")}
+          onClick={() => setForgeOpen(!forgeOpen)}
+          disabled={!currentData.length}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Formula Forge
+          {currentData.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[9px]">AI</Badge>}
         </Button>
 
         <DropdownMenu>

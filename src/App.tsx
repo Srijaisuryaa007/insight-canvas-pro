@@ -8,6 +8,7 @@ import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { FormulaProvider } from "@/contexts/FormulaContext";
 
 // Landing Page
 import LandingPage from "./landing/LandingPage";
@@ -41,6 +42,7 @@ const App = () => (
         <DataProvider>
           <DashboardProvider>
           <NotificationProvider>
+          <FormulaProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -69,6 +71,7 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
+          </FormulaProvider>
           </NotificationProvider>
           </DashboardProvider>
         </DataProvider>

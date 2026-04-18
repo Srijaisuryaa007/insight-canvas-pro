@@ -534,7 +534,7 @@ render();
         {/* Main canvas */}
         <div className="flex-1 flex gap-0 overflow-hidden min-w-0">
           <DashboardCanvas
-            width={containerWidth - (filterPanelOpen ? 256 : 0) - (selectedWidgetId ? 288 : 0)}
+            width={containerWidth - (filterPanelOpen ? 256 : 0) - (selectedWidgetId ? 288 : 0) - (forgeOpen ? 380 : 0)}
             onAddWidget={handleAddWidget}
           />
 
@@ -542,6 +542,13 @@ render();
           {selectedWidgetId && (
             <div className="w-72 shrink-0 border-l border-border bg-card overflow-y-auto">
               <WidgetConfigPanel />
+            </div>
+          )}
+
+          {/* Formula Forge panel (right side) */}
+          {forgeOpen && (
+            <div className="w-[380px] shrink-0 overflow-hidden">
+              <FormulaForgePanel onClose={() => setForgeOpen(false)} />
             </div>
           )}
         </div>

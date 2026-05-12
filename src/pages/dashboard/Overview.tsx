@@ -450,30 +450,66 @@ export default function Overview() {
                   </CardContent>
                 </Card>
 
-                {/* Semantic Model Measures */}
-                {generatedMeasures.length > 0 && (
-                  <Card className="bg-card border-border">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-muted-foreground" />
-                          Semantic Model
-                        </CardTitle>
-                        <Badge variant="outline" className="text-[10px]">{generatedMeasures.length} measures</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {generatedMeasures.map((m, i) => (
-                          <div key={i} className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
-                            <p className="text-xs font-medium text-foreground">{m.name}</p>
-                            <p className="text-[11px] font-mono text-muted-foreground mt-1">{m.formula}</p>
+                {/* Recent Insights */}
+                <Card className="bg-card border-border">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-muted-foreground" />
+                        Recent Insights
+                      </CardTitle>
+                      <Button variant="ghost" size="sm" className="text-xs text-primary h-7" onClick={() => navigate('/dashboard/insights')}>
+                        View all <ChevronRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      try {
+                        const cached = JSON.parse(localStorage.getItem('datavora_insights_cache') || '[]');
+                        const recent = Array.isArray(cached) ? cached.slice(0, 3) : [];
+                        if (recent.length === 0) {
+                          return (
+                            <div className="py-6 text-center space-y-3">
+                              <div className="w-10 h-10 mx-auto rounded-full bg-purple-500/10 flex items-center justify-center">
+                                <Sparkles className="h-5 w-5 text-purple-500" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">No insights yet</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Run AI Insights to see discoveries here</p>
+                              </div>
+                              <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate('/dashboard/insights')}>
+                                Go to Insights <ArrowRight className="h-3 w-3 ml-1.5" />
+                              </Button>
+                            </div>
+                          );
+                        }
+                        const dotColor = (t: string) => {
+                          if (t === 'anomaly' || t === 'risk') return 'bg-destructive';
+                          if (t === 'trend') return 'bg-blue-500';
+                          if (t === 'correlation') return 'bg-purple-500';
+                          return 'bg-emerald-500';
+                        };
+                        return (
+                          <div className="space-y-3">
+                            {recent.map((ins: any, i: number) => (
+                              <button key={i} onClick={() => navigate('/dashboard/insights')}
+                                className="w-full flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left">
+                                <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", dotColor(ins.type))} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground line-clamp-2">{ins.title || ins.summary || 'Insight'}</p>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">Recent · View →</p>
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </CardContent>
+                </Card>
               </div>
 
               {/* RIGHT COLUMN (25%) */}

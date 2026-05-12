@@ -849,17 +849,7 @@ export default function Reports() {
 
 
 
-      {/* ── Share Your Report ── */}
-      <Separator />
-      <ShareReportSection
-        onExport={handleExport}
-        isExporting={isExporting}
-        hasData={currentData.length > 0}
-        reportTitle={title}
-        isProUser={isFeatureAvailable('scheduled-reports')}
-      />
-
-      {/* ── Scheduled Reports Pro Card ── */}
+      {/* Scheduled Reports Pro Card */}
       <ScheduledReportsProCard isProUser={isFeatureAvailable('scheduled-reports')} />
 
       {/* ── Activity Log + Notes ── */}

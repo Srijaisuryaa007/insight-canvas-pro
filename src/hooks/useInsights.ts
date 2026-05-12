@@ -15,6 +15,7 @@ export function useInsights() {
   const updateInsights = useCallback((newInsights: Insight[]) => {
     cachedInsights = newInsights;
     setInsights(newInsights);
+    try { localStorage.setItem('datavora_insights_cache', JSON.stringify(newInsights)); } catch { /* ignore */ }
   }, []);
 
   const generateInsights = async (datasetId: string, data?: Record<string, unknown>[]): Promise<Insight[]> => {

@@ -129,32 +129,25 @@ export default function DashboardBuilder() {
     }
   }, [canAddWidget, plan, widgetLimit, isChartAvailable, addWidget, autoSuggestColumns]);
 
-  const handleCopyFromVisualization = useCallback(() => {
+  const handleCopyFromVisualization = useCallback(async () => {
     if (!currentData.length) {
       toast({ title: 'No data available', variant: 'destructive' });
       return;
     }
-    const keys = Object.keys(currentData[0]);
-    const numCols = keys.filter(k => typeof currentData[0][k] === 'number');
-    const strCols = keys.filter(k => typeof currentData[0][k] === 'string');
+    const { buildAutoLayout } = await import('@/lib/autoDashboardBuilder');
+    const specs = buildAutoLayout(currentData);
 
-    const existingCharts = currentPage?.widgets.filter(w => w.type === 'chart') || [];
-    existingCharts.forEach(w => removeWidget(w.id));
+    // Clear all existing widgets on current page
+    (currentPage?.widgets || []).forEach(w => removeWidget(w.id));
 
-    const chartTypes = ['bar', 'line', 'pie', 'area', 'scatter'];
-    const added: string[] = [];
-    const nonChartCount = (currentPage?.widgets.length || 0) - existingCharts.length;
-    chartTypes.forEach((type, i) => {
-      if (nonChartCount + added.length >= widgetLimit) return;
-      if (!isChartAvailable(type)) return;
-      const xAxis = strCols[0] || keys[0];
-      const yAxis = numCols[i % numCols.length] || numCols[0] || keys[1];
-      if (xAxis && yAxis) {
-        addWidget('chart', { chartType: type, title: generateWidgetTitle(type, xAxis, yAxis), xAxis, yAxis, aggregation: 'sum' });
-        added.push(type);
-      }
+    let added = 0;
+    specs.forEach(s => {
+      if (added >= widgetLimit) return;
+      if (s.type === 'chart' && s.config.chartType && !isChartAvailable(String(s.config.chartType))) return;
+      addWidget(s.type as any, s.config as any, s.layout);
+      added++;
     });
-    toast({ title: 'Charts Replaced', description: `Replaced with ${added.length} recommended charts.` });
+    toast({ title: 'Dashboard auto-generated', description: `${added} widgets · KPIs, charts, and table built from your data.` });
   }, [currentData, currentPage, widgetLimit, isChartAvailable, addWidget, removeWidget]);
 
   const handleExportDashboard = useCallback(async (format: 'pdf' | 'pptx' | 'docx') => {

@@ -54,13 +54,14 @@ function formatNumber(val: number): string {
 }
 
 function KPIWidget({ widget, data }: { widget: DashboardWidget; data: Record<string, unknown>[] }) {
-  const col = widget.config.kpiColumn || widget.config.yAxis;
-  const vals = col ? data.map(r => Number(r[col]) || 0).filter(v => !isNaN(v)) : [];
+  const cfg = widget.config;
+  const col = cfg.kpiColumn || cfg.yAxis;
+  const vals = col ? data.map(r => Number(r[col])).filter(v => !isNaN(v)) : [];
   const hasData = vals.length > 0 && col;
 
   let value = 0;
   if (hasData) {
-    switch (widget.config.aggregation) {
+    switch (cfg.aggregation) {
       case 'avg': value = vals.reduce((a, b) => a + b, 0) / vals.length; break;
       case 'count': value = vals.length; break;
       case 'min': value = Math.min(...vals); break;
@@ -69,16 +70,34 @@ function KPIWidget({ widget, data }: { widget: DashboardWidget; data: Record<str
     }
   }
 
-  const label = widget.config.title || (col ? col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'KPI');
+  const display = hasData ? formatNumber(value) : (cfg.precomputedValue || '--');
+  const label = cfg.title || (col ? col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'KPI');
+  const trend = cfg.trend;
+  const formula = cfg.formula;
+  const isForge = cfg.isFormulaForge;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-1.5 px-3">
-      <span className={cn("text-3xl font-bold", hasData ? "text-foreground" : "text-muted-foreground")}>
-        {hasData ? formatNumber(value) : '--'}
+    <div className="relative flex flex-col items-center justify-center h-full gap-1 px-3 py-2">
+      {isForge && (
+        <span className="absolute top-1.5 right-1.5 text-[8px] font-bold tracking-wider text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded">fx</span>
+      )}
+      <span className={cn("text-3xl font-bold leading-tight", hasData ? "text-foreground" : "text-muted-foreground")}>
+        {display}
       </span>
-      <span className="text-xs text-muted-foreground text-center leading-tight">{label}</span>
-      {!hasData && (
-        <span className="text-[10px] text-muted-foreground/60">Connect data to see value</span>
+      {formula && (
+        <span className="text-[10px] font-mono text-muted-foreground/70 truncate max-w-full">fx {formula}</span>
+      )}
+      <span className="text-[11px] text-muted-foreground text-center leading-tight font-medium">{label}</span>
+      {typeof trend === 'number' && Math.abs(trend) > 0.1 && (
+        <span className={cn(
+          "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+          trend > 0 ? "text-emerald-500 bg-emerald-500/10" : "text-rose-500 bg-rose-500/10"
+        )}>
+          {trend > 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
+        </span>
+      )}
+      {!hasData && !cfg.precomputedValue && (
+        <span className="text-[9px] text-muted-foreground/60">Connect data to see value</span>
       )}
     </div>
   );
@@ -177,7 +196,7 @@ export function DashboardCanvas({ width, onAddWidget }: DashboardCanvasProps) {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-muted/20 rounded-lg p-2" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
+    <div className="flex-1 overflow-auto bg-muted/20 rounded-lg" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
       <GridLayout
         className="layout"
         layout={layout}
@@ -189,7 +208,8 @@ export function DashboardCanvas({ width, onAddWidget }: DashboardCanvasProps) {
         compactType="vertical"
         isResizable
         isDraggable
-        margin={[12, 12]}
+        margin={[16, 16]}
+        containerPadding={[20, 20]}
       >
         {currentPage.widgets.map(widget => {
           const isSelected = widget.id === selectedWidgetId;

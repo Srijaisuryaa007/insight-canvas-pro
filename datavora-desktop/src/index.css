@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { overflow: hidden; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+.markdown { line-height: 1.6; }
+.markdown p { margin: 0.5em 0; }
+.markdown h1, .markdown h2, .markdown h3 { font-weight: 600; margin: 1em 0 0.5em; }
+.markdown h1 { font-size: 1.5rem; }
+.markdown h2 { font-size: 1.25rem; }
+.markdown h3 { font-size: 1.1rem; }
+.markdown ul, .markdown ol { padding-left: 1.5em; margin: 0.5em 0; }
+.markdown li { margin: 0.25em 0; }
+.markdown code { background: rgba(255,255,255,0.08); padding: 0.1em 0.35em; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+.markdown pre { margin: 0.75em 0; border-radius: 8px; overflow: hidden; }
+.markdown pre code { background: transparent; padding: 0; }
+.markdown a { color: #A78BFA; text-decoration: underline; }
+.markdown blockquote { border-left: 3px solid #7C3AED; padding-left: 1em; color: #A1A1AA; margin: 0.5em 0; }
+.markdown table { border-collapse: collapse; margin: 0.75em 0; }
+.markdown th, .markdown td { border: 1px solid rgba(255,255,255,0.08); padding: 0.5em 0.75em; }
+.markdown th { background: rgba(255,255,255,0.04); }
+
+@keyframes bounce-dot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+.dot { animation: bounce-dot 1.2s infinite ease-in-out; }
+.dot:nth-child(2) { animation-delay: 0.15s; }
+.dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes blink { 50% { opacity: 0; } }
+.cursor::after { content: "▍"; margin-left: 2px; animation: blink 1s steps(2) infinite; color: #7C3AED; }

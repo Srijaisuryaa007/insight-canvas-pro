@@ -33,6 +33,11 @@ export interface WidgetConfig {
   // KPI
   kpiColumn?: string;
   kpiFormat?: 'number' | 'currency' | 'percent';
+  // Formula Forge metadata (auto-generated KPIs)
+  formula?: string;          // e.g. "SUM(revenue)"
+  trend?: number;            // % change vs first half
+  isFormulaForge?: boolean;
+  precomputedValue?: string; // pre-formatted value
   // Text
   textContent?: string;
   textSize?: 'sm' | 'md' | 'lg' | 'xl';

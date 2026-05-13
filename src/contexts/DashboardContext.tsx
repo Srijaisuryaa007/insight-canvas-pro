@@ -18,7 +18,7 @@ interface DashboardContextType {
   removePage: (id: string) => void;
   renamePage: (id: string, name: string) => void;
   setCurrentPage: (id: string) => void;
-  addWidget: (type: DashboardWidget['type'], config?: Partial<DashboardWidget['config']>) => void;
+  addWidget: (type: DashboardWidget['type'], config?: Partial<DashboardWidget['config']>, layout?: { x: number; y: number; w: number; h: number }) => void;
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<DashboardWidget>) => void;
   updateWidgetConfig: (id: string, config: Partial<DashboardWidget['config']>) => void;
@@ -165,9 +165,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     mutatePages(pages => pages.map(p => p.id === id ? { ...p, name } : p));
   }, [mutatePages]);
 
-  const addWidget = useCallback((type: DashboardWidget['type'], config?: Partial<DashboardWidget['config']>) => {
+  const addWidget = useCallback((type: DashboardWidget['type'], config?: Partial<DashboardWidget['config']>, layout?: { x: number; y: number; w: number; h: number }) => {
     if (!currentPageId) return;
-    const widget = createWidget(type, 0, 0, config);
+    const widget = createWidget(type, layout?.x ?? 0, layout?.y ?? 0, config);
+    if (layout) widget.layout = { ...widget.layout, ...layout };
     mutatePages(pages => pages.map(p => p.id === currentPageId ? { ...p, widgets: [...p.widgets, widget] } : p));
     setSelectedWidgetId(widget.id);
   }, [currentPageId, mutatePages]);

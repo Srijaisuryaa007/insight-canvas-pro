@@ -196,7 +196,7 @@ export function DashboardCanvas({ width, onAddWidget }: DashboardCanvasProps) {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-muted/20 rounded-lg p-2" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
+    <div className="flex-1 overflow-auto bg-muted/20 rounded-lg" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
       <GridLayout
         className="layout"
         layout={layout}
@@ -208,7 +208,8 @@ export function DashboardCanvas({ width, onAddWidget }: DashboardCanvasProps) {
         compactType="vertical"
         isResizable
         isDraggable
-        margin={[12, 12]}
+        margin={[16, 16]}
+        containerPadding={[20, 20]}
       >
         {currentPage.widgets.map(widget => {
           const isSelected = widget.id === selectedWidgetId;

@@ -31,6 +31,7 @@ import { toast } from '@/hooks/use-toast';
 import { applyFormulaColumn, FormulaColumn } from '@/lib/formulaEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CleaningPipeline } from '@/components/quality/pipeline/CleaningPipeline';
 
 // Module-level cache to persist across tab switches
 let cachedProfile: DataProfile | null = null;

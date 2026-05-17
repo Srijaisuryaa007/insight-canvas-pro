@@ -828,7 +828,10 @@ export default function Quality() {
 
               {/* ─── Tabs ─── */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full grid grid-cols-6">
+                <TabsList className="w-full grid grid-cols-7">
+                  <TabsTrigger value="pipeline" className="gap-1 text-xs">
+                    <Sparkles className="h-3 w-3" /> Pipeline
+                  </TabsTrigger>
                   <TabsTrigger value="profile" className="gap-1 text-xs">
                     <BarChart3 className="h-3 w-3" /> Profile
                   </TabsTrigger>
@@ -848,6 +851,11 @@ export default function Quality() {
                     <ClipboardCheck className="h-3 w-3" /> Report
                   </TabsTrigger>
                 </TabsList>
+
+                {/* ═══════════ 11-STEP PIPELINE TAB ═══════════ */}
+                <TabsContent value="pipeline">
+                  <CleaningPipeline />
+                </TabsContent>
 
                 {/* ═══════════ PROFILE TAB ═══════════ */}
                 <TabsContent value="profile">

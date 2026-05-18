@@ -1,68 +1,59 @@
 # DataVora Desktop
 
-Local-first AI desktop application powered by **Ollama**, **Tauri 2.0**, and **React 18**.
-All chat happens on your machine — no API keys, no cloud, no telemetry.
-
-## Features
-
-- Streaming chat with any installed Ollama model
-- Conversation memory persisted in SQLite (`conversations.db`)
-- Model manager: install, delete, browse popular models
-- Markdown + syntax-highlighted code in messages
-- File attachments (txt, md, csv, json, source code)
-- Dark, premium UI · Zustand state · keyboard shortcuts
-- Cross-platform builds: `.exe` / `.msi` / `.dmg` / `.app` / `.deb` / `.AppImage`
+Local AI assistant powered by Ollama. 100% private. No data leaves your machine.
 
 ## Prerequisites
 
 1. **Rust** — https://rustup.rs
-2. **Node.js 18+**
+2. **Node.js 18+** — https://nodejs.org
 3. **Ollama** — https://ollama.ai/download
-4. Pull at least one model:
-   ```bash
-   ollama serve            # starts the local API on :11434
-   ollama pull llama3.2:3b
-   ```
 
-## Develop
+## Quick Start
 
 ```bash
-cd datavora-desktop
+# Install Ollama, then start it
+ollama serve
+
+# Pull a model in another terminal
+ollama pull llama3.2:3b
+
+# Install Tauri CLI globally
+npm install -g @tauri-apps/cli
+
+# Inside this folder
 npm install
 npm run tauri:dev
 ```
 
-## Production build
+## Build for Production
 
 ```bash
 npm run tauri:build
 ```
 
-Artifacts land in `src-tauri/target/release/bundle/`.
+Bundles are written to `src-tauri/target/release/bundle/`:
 
-## Keyboard shortcuts
+- Windows: `bundle/msi/*.msi`
+- macOS:   `bundle/dmg/*.dmg`
+- Linux:   `bundle/deb/*.deb`, `bundle/appimage/*.AppImage`
 
-| Shortcut    | Action              |
-|-------------|---------------------|
-| `Ctrl+N`    | New conversation    |
-| `Ctrl+K`    | Search conversations|
-| `Ctrl+,`    | Open settings       |
-| `Ctrl+M`    | Model manager       |
-| `Esc`       | Cancel streaming    |
-| `Ctrl+L`    | Clear chat          |
+## Features
+
+- 💬 Chat with any Ollama model with streaming responses
+- 📁 Attach files (txt, pdf, csv, code, json, yaml, and many more)
+- 🗃 Full conversation history in SQLite (or localStorage fallback)
+- ⬇️ Built-in model download and management
+- ⚙️ Configurable temperature, context window, system prompt, threads
+- 🌙 Dark / Light / System theme
+- ⌨️ Full keyboard shortcuts (Ctrl+N, Ctrl+K, Ctrl+,, Ctrl+M, Esc, …)
 
 ## Architecture
 
-```
-datavora-desktop/
-├── src/                    React + TS frontend
-│   ├── components/         Sidebar, Chat, ModelManager, Settings
-│   ├── stores/             Zustand stores
-│   ├── utils/ollama.ts     Streaming Ollama client
-│   └── App.tsx
-├── src-tauri/              Rust backend
-│   ├── src/main.rs         Tauri entry + commands
-│   └── tauri.conf.json
-├── package.json
-└── vite.config.ts
-```
+- **Frontend**: React 18 + Vite 5 + TypeScript + Tailwind 3 + Zustand
+- **Backend**: Tauri 2 (Rust) with `tauri-plugin-sql`, `tauri-plugin-shell`, `tauri-plugin-fs`
+- **AI**: Ollama HTTP API at `http://localhost:11434`
+- **Persistence**: SQLite via Tauri plugin; transparent localStorage fallback when running outside the desktop shell or before the plugin loads.
+
+## License
+
+MIT

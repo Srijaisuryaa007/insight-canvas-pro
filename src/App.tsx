@@ -57,7 +57,7 @@ const App = () => (
                   <Route path="builder" element={<DashboardBuilder />} />
                   <Route path="datasets" element={<Datasets />} />
                   <Route path="quality" element={<Quality />} />
-                  <Route path="insights" element={<Insights />} />
+                  <Route path="insights" element={<InsightsPage />} />
                   <Route path="visualizations" element={<Visualizations />} />
                   <Route path="copilot" element={<Copilot />} />
                   <Route path="reports" element={<Reports />} />

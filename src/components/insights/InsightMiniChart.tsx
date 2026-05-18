@@ -85,7 +85,7 @@ export default function InsightMiniChart({ finding, data }: Props) {
           <ReferenceLine y={finding.mean + 3 * finding.stdDev} stroke="#EF4444" strokeDasharray="3 3" />
           <ReferenceLine y={finding.mean - 2 * finding.stdDev} stroke="#F59E0B" strokeDasharray="3 3" />
           <Scatter data={chartData as { i: number; v: number; isOut: boolean }[]}>
-            {(chartData as { isOut: boolean }[]).map((p, i) => (
+            {(chartData as unknown as { isOut: boolean }[]).map((p, i) => (
               <Cell key={i} fill={p.isOut ? '#EF4444' : '#3B82F6'} />
             ))}
           </Scatter>

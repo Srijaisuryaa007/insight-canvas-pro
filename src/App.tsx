@@ -22,7 +22,7 @@ import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import Overview from "./pages/dashboard/Overview";
 import Datasets from "./pages/dashboard/Datasets";
 import Quality from "./pages/dashboard/Quality";
-import Insights from "./pages/dashboard/Insights";
+import InsightsPage from "./components/insights/InsightsPage";
 import Visualizations from "./pages/dashboard/Visualizations";
 import Copilot from "./pages/dashboard/Copilot";
 import Reports from "./pages/dashboard/Reports";

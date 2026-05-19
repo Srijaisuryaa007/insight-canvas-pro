@@ -57,14 +57,15 @@ export function classifyColumns(data: Record<string, unknown>[]) {
   return { numCols, strCols, dateCols };
 }
 
-export function buildKPI(col: string, data: Record<string, unknown>[]): KPISpec {
+export function buildKPI(col: string, data: Record<string, unknown>[]): KPISpec | null {
   const lower = col.toLowerCase();
   const isAvg = AVG_KEYWORDS.some(k => lower.includes(k));
   const isSum = SUM_KEYWORDS.some(k => lower.includes(k));
   const aggregation: KPISpec['aggregation'] = isAvg ? 'avg' : (isSum ? 'sum' : 'sum');
   const values = data.map(r => parseFloat(String(r[col]))).filter(v => !isNaN(v));
+  if (!values.length) return null;
   const sum = values.reduce((a, b) => a + b, 0);
-  const avg = values.length ? sum / values.length : 0;
+  const avg = sum / values.length;
   const result = aggregation === 'avg' ? avg : sum;
 
   const mid = Math.max(1, Math.floor(values.length / 2));

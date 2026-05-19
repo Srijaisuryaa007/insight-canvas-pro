@@ -8,6 +8,7 @@ import { ChartRenderer } from '@/components/charts/ChartRenderer';
 import { Button } from '@/components/ui/button';
 import { GripVertical, X, Maximize2, MoreHorizontal, BarChart3, Hash, Table2, LayoutDashboard, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { KPIWidget } from './KPIWidget';
 
 function aggregateData(
   data: Record<string, unknown>[],
@@ -53,7 +54,7 @@ function formatNumber(val: number): string {
   return val.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function KPIWidget({ widget, data }: { widget: DashboardWidget; data: Record<string, unknown>[] }) {
+function KPIWidgetRenderer({ widget, data }: { widget: DashboardWidget; data: Record<string, unknown>[] }) {
   const cfg = widget.config;
   const col = cfg.kpiColumn || cfg.yAxis;
   const vals = col ? data.map(r => Number(r[col])).filter(v => !isNaN(v)) : [];
@@ -70,36 +71,17 @@ function KPIWidget({ widget, data }: { widget: DashboardWidget; data: Record<str
     }
   }
 
-  const display = hasData ? formatNumber(value) : (cfg.precomputedValue || '--');
+  const display = hasData ? formatNumber(value) : (cfg.precomputedValue || '—');
   const label = cfg.title || (col ? col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'KPI');
-  const trend = cfg.trend;
-  const formula = cfg.formula;
-  const isForge = cfg.isFormulaForge;
 
   return (
-    <div className="relative flex flex-col items-center justify-center h-full gap-1 px-3 py-2">
-      {isForge && (
-        <span className="absolute top-1.5 right-1.5 text-[8px] font-bold tracking-wider text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded">fx</span>
-      )}
-      <span className={cn("text-3xl font-bold leading-tight", hasData ? "text-foreground" : "text-muted-foreground")}>
-        {display}
-      </span>
-      {formula && (
-        <span className="text-[10px] font-mono text-muted-foreground/70 truncate max-w-full">fx {formula}</span>
-      )}
-      <span className="text-[11px] text-muted-foreground text-center leading-tight font-medium">{label}</span>
-      {typeof trend === 'number' && Math.abs(trend) > 0.1 && (
-        <span className={cn(
-          "text-[10px] font-semibold px-1.5 py-0.5 rounded",
-          trend > 0 ? "text-emerald-500 bg-emerald-500/10" : "text-rose-500 bg-rose-500/10"
-        )}>
-          {trend > 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
-        </span>
-      )}
-      {!hasData && !cfg.precomputedValue && (
-        <span className="text-[9px] text-muted-foreground/60">Connect data to see value</span>
-      )}
-    </div>
+    <KPIWidget
+      title={label}
+      value={display}
+      formula={cfg.formula}
+      aggregation={cfg.aggregation}
+      trend={cfg.trend}
+    />
   );
 }
 
@@ -296,7 +278,7 @@ function WidgetBody({ widget, data, onDataClick }: { widget: DashboardWidget; da
       );
     }
     case 'kpi':
-      return <KPIWidget widget={widget} data={data} />;
+      return <KPIWidgetRenderer widget={widget} data={data} />;
     case 'table':
       return <TableWidget widget={widget} data={data} />;
     case 'text':

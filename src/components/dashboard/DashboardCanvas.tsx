@@ -8,6 +8,7 @@ import { ChartRenderer } from '@/components/charts/ChartRenderer';
 import { Button } from '@/components/ui/button';
 import { GripVertical, X, Maximize2, MoreHorizontal, BarChart3, Hash, Table2, LayoutDashboard, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { KPIWidget } from './KPIWidget';
 
 function aggregateData(
   data: Record<string, unknown>[],

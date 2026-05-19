@@ -108,13 +108,15 @@ export function buildAutoLayout(data: Record<string, unknown>[]): AutoLayoutWidg
   });
   const kpiCols = ranked.slice(0, 4);
 
-  // Row 1: KPIs (3 cols wide each, h=2)
+  // Row 1: KPIs (3 cols wide each, h=2). Skip cols with no valid numeric values.
   let y = 0;
-  kpiCols.forEach((col, i) => {
+  let kpiSlot = 0;
+  for (const col of kpiCols) {
     const kpi = buildKPI(col, data);
+    if (!kpi) continue;
     widgets.push({
       type: 'kpi',
-      layout: { x: i * 3, y, w: 3, h: 2 },
+      layout: { x: kpiSlot * 3, y, w: 3, h: 2 },
       config: {
         kpiColumn: col,
         aggregation: kpi.aggregation,
@@ -125,8 +127,10 @@ export function buildAutoLayout(data: Record<string, unknown>[]): AutoLayoutWidg
         precomputedValue: kpi.precomputedValue,
       },
     });
-  });
-  if (kpiCols.length) y += 2;
+    kpiSlot++;
+    if (kpiSlot >= 4) break;
+  }
+  if (kpiSlot) y += 2;
 
   // Row 2: 1 primary large chart (12 wide, h=5)
   const primaryX = dateCols[0] || strCols[0];

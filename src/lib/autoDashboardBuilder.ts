@@ -181,7 +181,9 @@ export function buildAutoLayout(data: Record<string, unknown>[]): AutoLayoutWidg
   });
   const tertiarySpecs: ChartSpec[] = [];
   if (lowCardStr && primaryY) {
-    tertiarySpecs.push({ chartType: 'pie', xAxis: lowCardStr, yAxis: primaryY, aggregation: 'sum', title: `${primaryY} by ${lowCardStr}` });
+    const uniqueCount = new Set(data.slice(0, 200).map(r => String(r[lowCardStr]))).size;
+    const chartType = uniqueCount <= 5 ? 'donut' : 'pie';
+    tertiarySpecs.push({ chartType, xAxis: lowCardStr, yAxis: primaryY, aggregation: 'sum', title: `${primaryY} by ${lowCardStr}` });
   }
   if (numCols.length >= 2) {
     tertiarySpecs.push({ chartType: 'scatter', xAxis: numCols[0], yAxis: numCols[1], aggregation: 'sum', title: `${numCols[0]} vs ${numCols[1]}` });

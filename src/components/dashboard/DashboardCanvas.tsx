@@ -278,7 +278,7 @@ function WidgetBody({ widget, data, onDataClick }: { widget: DashboardWidget; da
       );
     }
     case 'kpi':
-      return <KPIWidget widget={widget} data={data} />;
+      return <KPIWidgetRenderer widget={widget} data={data} />;
     case 'table':
       return <TableWidget widget={widget} data={data} />;
     case 'text':

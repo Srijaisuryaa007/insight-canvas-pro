@@ -417,3 +417,59 @@ export async function enhanceWithGroq(
     return narrateFinding(f);
   }
 }
+
+// ─────────────────── Groq messages builder + cleaner ───────────────────
+// Builds the chat-completion `messages` array for Groq/LLM enhancement.
+// System prompt enumerates ALL forbidden jargon and demands plain English.
+export interface GroqMessage { role: 'system' | 'user'; content: string }
+
+export function buildGroqMessages(
+  finding: Finding,
+  ctx: { datasetName: string; rowCount: number; colNames: string[] },
+): GroqMessage[] {
+  const forbiddenList = FORBIDDEN.join(', ');
+  const system = [
+    'You are a McKinsey-grade senior data analyst writing for a non-technical business owner.',
+    'Translate the supplied statistical finding into plain, decisive English.',
+    'STRICT OUTPUT: return ONLY a single JSON object — no preamble, no markdown fences, no commentary.',
+    'Schema (all fields REQUIRED):',
+    '{',
+    '  "title": string (max 10 words, business-flavoured, no jargon),',
+    '  "type": "trend"|"anomaly"|"correlation"|"ranking"|"distribution",',
+    '  "confidence": integer 0-100,',
+    '  "whatHappening": string (2-3 sentences, must START with "In plain terms,"),',
+    '  "whyMatters": string (2-3 sentences, must INCLUDE the phrase "This means for your business"),',
+    '  "whatToDo": [string, string, string]  // exactly 3 numbered actions, each starts with an imperative verb,',
+    '  "impact": "high"|"medium"|"low",',
+    '  "effort": "easy"|"medium"|"complex"',
+    '}',
+    `FORBIDDEN WORDS (never use any of these, not even in passing): ${forbiddenList}.`,
+    'Forbidden style: academic hedging ("it could be argued"), passive voice, bullet lists inside string fields, emoji, percent signs without numbers, references to formulae.',
+    'Required style: short sentences, concrete numbers, named columns from the dataset, action-oriented verbs, present tense.',
+    `Dataset context: name="${ctx.datasetName}", rows=${ctx.rowCount}, columns=[${ctx.colNames.slice(0, 25).join(', ')}].`,
+  ].join('\n');
+  const user = JSON.stringify(finding);
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+// Parses raw LLM text (may have stray markdown), validates schema,
+// strips every forbidden word from every string field. Throws on bad schema.
+export function validateAndCleanInsight(raw: string): InsightResult {
+  if (typeof raw !== 'string' || !raw.trim()) throw new Error('empty-response');
+  // Strip markdown code fences and any prose before/after the JSON.
+  let txt = raw.trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '');
+  const first = txt.indexOf('{');
+  const last = txt.lastIndexOf('}');
+  if (first === -1 || last === -1 || last <= first) throw new Error('no-json-object');
+  txt = txt.slice(first, last + 1);
+  let parsed: unknown;
+  try { parsed = JSON.parse(txt); } catch { throw new Error('json-parse'); }
+  // validateInsightJSON already enforces schema + strips forbidden words via stripForbidden.
+  return validateInsightJSON(parsed);
+}
+
